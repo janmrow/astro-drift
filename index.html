@@ -4,15 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Astro Drift QA Lab</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
     <main id="app">
-      <section class="game-shell">
-        <p class="eyebrow">Astro Drift QA Lab</p>
-        <h1>Astro Drift</h1>
-        <p class="description">
-          A small retro arcade game built as a practical QA/SDET portfolio project.
+      <section class="game-shell" aria-label="Astro Drift game">
+        <div class="game-header">
+          <div>
+            <p class="eyebrow">Astro Drift QA Lab</p>
+            <h1>Astro Drift</h1>
+          </div>
+
+          <p class="status-pill">Prototype</p>
+        </div>
+
+        <canvas
+          id="game-canvas"
+          width="960"
+          height="540"
+          aria-label="Astro Drift game canvas"
+          data-testid="game-canvas"
+        ></canvas>
+
+        <p class="controls-hint">
+          Coming next: player movement with Arrow Keys / WASD.
         </p>
       </section>
     </main>

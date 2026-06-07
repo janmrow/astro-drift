@@ -12,6 +12,8 @@ const ASTEROID_MIN_SPEED = 150;
 const ASTEROID_MAX_SPEED = 230;
 const ASTEROID_REMOVE_PADDING = 80;
 
+type GameStatus = "running" | "gameOver";
+
 type Star = {
   x: number;
   y: number;
@@ -24,6 +26,13 @@ type Player = {
   y: number;
   width: number;
   height: number;
+};
+
+type PlayerHitbox = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
 };
 
 type AsteroidPoint = {
@@ -72,6 +81,7 @@ const player: Player = {
 
 const asteroids: Asteroid[] = [];
 
+let gameStatus: GameStatus = "running";
 let previousFrameTime = performance.now();
 let asteroidSpawnTimer = 0;
 let nextAsteroidId = 1;
@@ -84,11 +94,17 @@ function runGameLoop(currentFrameTime: number): void {
 
   previousFrameTime = currentFrameTime;
 
-  updatePlayer(player, input, deltaTime);
-  asteroidSpawnTimer = updateAsteroidSpawning(asteroids, asteroidSpawnTimer, deltaTime);
-  updateAsteroids(asteroids, deltaTime);
+  if (gameStatus === "running") {
+    updatePlayer(player, input, deltaTime);
+    asteroidSpawnTimer = updateAsteroidSpawning(asteroids, asteroidSpawnTimer, deltaTime);
+    updateAsteroids(asteroids, deltaTime);
 
-  renderFrame(context, stars, player, asteroids);
+    if (hasPlayerCollision(player, asteroids)) {
+      gameStatus = "gameOver";
+    }
+  }
+
+  renderFrame(context, stars, player, asteroids, gameStatus);
 
   requestAnimationFrame(runGameLoop);
 }
@@ -231,6 +247,35 @@ function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number): void 
   }
 }
 
+function hasPlayerCollision(currentPlayer: Player, currentAsteroids: Asteroid[]): boolean {
+  return currentAsteroids.some((asteroid) => isPlayerCollidingWithAsteroid(currentPlayer, asteroid));
+}
+
+function isPlayerCollidingWithAsteroid(currentPlayer: Player, asteroid: Asteroid): boolean {
+  const hitbox = getPlayerHitbox(currentPlayer);
+  const asteroidHitRadius = asteroid.radius * 0.82;
+
+  const closestX = clamp(asteroid.x, hitbox.left, hitbox.right);
+  const closestY = clamp(asteroid.y, hitbox.top, hitbox.bottom);
+
+  const distanceX = asteroid.x - closestX;
+  const distanceY = asteroid.y - closestY;
+
+  return distanceX * distanceX + distanceY * distanceY <= asteroidHitRadius * asteroidHitRadius;
+}
+
+function getPlayerHitbox(currentPlayer: Player): PlayerHitbox {
+  const hitboxWidth = currentPlayer.width * 0.72;
+  const hitboxHeight = currentPlayer.height * 0.64;
+
+  return {
+    left: currentPlayer.x - hitboxWidth / 2,
+    right: currentPlayer.x + hitboxWidth / 2,
+    top: currentPlayer.y - hitboxHeight / 2,
+    bottom: currentPlayer.y + hitboxHeight / 2,
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -244,13 +289,18 @@ function renderFrame(
   starField: Star[],
   currentPlayer: Player,
   currentAsteroids: Asteroid[],
+  currentStatus: GameStatus,
 ): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
   drawPlayerAreaGuide(ctx);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer);
-  drawStatusText(ctx, currentAsteroids.length);
+  drawStatusText(ctx, currentStatus, currentAsteroids.length);
+
+  if (currentStatus === "gameOver") {
+    drawGameOverOverlay(ctx);
+  }
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
@@ -334,14 +384,39 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   ctx.restore();
 }
 
-function drawStatusText(ctx: CanvasRenderingContext2D, asteroidCount: number): void {
+function drawStatusText(
+  ctx: CanvasRenderingContext2D,
+  currentStatus: GameStatus,
+  asteroidCount: number,
+): void {
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 28px system-ui, sans-serif";
-  ctx.fillText("Avoid the asteroids", 430, 64);
+
+  if (currentStatus === "gameOver") {
+    ctx.fillText("Collision detected", 430, 64);
+  } else {
+    ctx.fillText("Avoid the asteroids", 430, 64);
+  }
 
   ctx.fillStyle = "#cfc8ef";
   ctx.font = "400 17px system-ui, sans-serif";
   ctx.fillText(`Asteroids on screen: ${asteroidCount}`, 432, 96);
+}
+
+function drawGameOverOverlay(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = "rgba(5, 5, 16, 0.72)";
+  ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+  ctx.fillStyle = "#f4f1ff";
+  ctx.font = "700 56px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 18);
+
+  ctx.fillStyle = "#cfc8ef";
+  ctx.font = "400 22px system-ui, sans-serif";
+  ctx.fillText("Restart flow comes next.", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 28);
+
+  ctx.textAlign = "start";
 }
 
 function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {

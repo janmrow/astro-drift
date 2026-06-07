@@ -4,6 +4,8 @@ const GAME_WIDTH = 960;
 const GAME_HEIGHT = 540;
 const PLAYER_SPEED = 280;
 const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
+const PLAYER_START_X = 170;
+const PLAYER_START_Y = GAME_HEIGHT / 2;
 
 const ASTEROID_SPAWN_INTERVAL = 1.15;
 const ASTEROID_MIN_RADIUS = 18;
@@ -75,8 +77,8 @@ if (!context) {
 const stars = createStars(90);
 const input = createInputState();
 const player: Player = {
-  x: 170,
-  y: GAME_HEIGHT / 2,
+  x: PLAYER_START_X,
+  y: PLAYER_START_Y,
   width: 58,
   height: 44,
 };
@@ -133,6 +135,12 @@ function createInputState(): InputState {
 
 function setupKeyboardControls(currentInput: InputState): void {
   window.addEventListener("keydown", (event) => {
+    if (gameStatus === "gameOver" && isRestartKey(event.key)) {
+      restartGame();
+      event.preventDefault();
+      return;
+    }
+
     updateInputFromKey(event.key, true, currentInput);
 
     if (isMovementKey(event.key)) {
@@ -174,6 +182,10 @@ function isMovementKey(key: string): boolean {
   return ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
     key.toLowerCase(),
   );
+}
+
+function isRestartKey(key: string): boolean {
+  return ["r", "enter", " "].includes(key.toLowerCase());
 }
 
 function updatePlayer(currentPlayer: Player, currentInput: InputState, deltaTime: number): void {
@@ -218,6 +230,16 @@ function updateAsteroidSpawning(
 
 function updateScore(currentScore: number, deltaTime: number): number {
   return currentScore + SCORE_PER_SECOND * deltaTime;
+}
+
+function restartGame(): void {
+  gameStatus = "running";
+  player.x = PLAYER_START_X;
+  player.y = PLAYER_START_Y;
+  asteroids.length = 0;
+  asteroidSpawnTimer = 0;
+  score = 0;
+  previousFrameTime = performance.now();
 }
 
 function createAsteroid(): Asteroid {
@@ -428,15 +450,15 @@ function drawGameOverOverlay(ctx: CanvasRenderingContext2D, finalScore: number):
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 56px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 44);
+  ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 54);
 
   ctx.fillStyle = "#9ee9ff";
   ctx.font = "700 30px system-ui, sans-serif";
-  ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 4);
+  ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 6);
 
   ctx.fillStyle = "#cfc8ef";
   ctx.font = "400 20px system-ui, sans-serif";
-  ctx.fillText("Restart flow comes next.", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 44);
+  ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40);
 
   ctx.textAlign = "start";
 }

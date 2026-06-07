@@ -7,11 +7,15 @@ const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
 const PLAYER_START_X = 170;
 const PLAYER_START_Y = GAME_HEIGHT / 2;
 
-const ASTEROID_SPAWN_INTERVAL = 1.15;
+const ASTEROID_BASE_SPAWN_INTERVAL = 1.2;
+const ASTEROID_MIN_SPAWN_INTERVAL = 0.62;
+const ASTEROID_SPAWN_RAMP = 0.006;
+
 const ASTEROID_MIN_RADIUS = 18;
 const ASTEROID_MAX_RADIUS = 42;
-const ASTEROID_MIN_SPEED = 150;
-const ASTEROID_MAX_SPEED = 230;
+const ASTEROID_BASE_MIN_SPEED = 145;
+const ASTEROID_BASE_MAX_SPEED = 220;
+const ASTEROID_SPEED_RAMP = 1.25;
 const ASTEROID_REMOVE_PADDING = 80;
 
 const SCORE_PER_SECOND = 10;
@@ -90,6 +94,7 @@ let previousFrameTime = performance.now();
 let asteroidSpawnTimer = 0;
 let nextAsteroidId = 1;
 let score = 0;
+let survivalTime = 0;
 
 setupKeyboardControls(input);
 requestAnimationFrame(runGameLoop);
@@ -100,8 +105,15 @@ function runGameLoop(currentFrameTime: number): void {
   previousFrameTime = currentFrameTime;
 
   if (gameStatus === "running") {
+    survivalTime += deltaTime;
+
     updatePlayer(player, input, deltaTime);
-    asteroidSpawnTimer = updateAsteroidSpawning(asteroids, asteroidSpawnTimer, deltaTime);
+    asteroidSpawnTimer = updateAsteroidSpawning(
+      asteroids,
+      asteroidSpawnTimer,
+      deltaTime,
+      survivalTime,
+    );
     updateAsteroids(asteroids, deltaTime);
     score = updateScore(score, deltaTime);
 
@@ -110,7 +122,7 @@ function runGameLoop(currentFrameTime: number): void {
     }
   }
 
-  renderFrame(context, stars, player, asteroids, gameStatus, score);
+  renderFrame(context, stars, player, asteroids, gameStatus, score, survivalTime);
 
   requestAnimationFrame(runGameLoop);
 }
@@ -217,15 +229,25 @@ function updateAsteroidSpawning(
   currentAsteroids: Asteroid[],
   currentTimer: number,
   deltaTime: number,
+  currentSurvivalTime: number,
 ): number {
   let nextTimer = currentTimer + deltaTime;
+  const spawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
 
-  while (nextTimer >= ASTEROID_SPAWN_INTERVAL) {
-    currentAsteroids.push(createAsteroid());
-    nextTimer -= ASTEROID_SPAWN_INTERVAL;
+  while (nextTimer >= spawnInterval) {
+    currentAsteroids.push(createAsteroid(currentSurvivalTime));
+    nextTimer -= spawnInterval;
   }
 
   return nextTimer;
+}
+
+function getAsteroidSpawnInterval(currentSurvivalTime: number): number {
+  return clamp(
+    ASTEROID_BASE_SPAWN_INTERVAL - currentSurvivalTime * ASTEROID_SPAWN_RAMP,
+    ASTEROID_MIN_SPAWN_INTERVAL,
+    ASTEROID_BASE_SPAWN_INTERVAL,
+  );
 }
 
 function updateScore(currentScore: number, deltaTime: number): number {
@@ -239,18 +261,23 @@ function restartGame(): void {
   asteroids.length = 0;
   asteroidSpawnTimer = 0;
   score = 0;
+  survivalTime = 0;
   previousFrameTime = performance.now();
 }
 
-function createAsteroid(): Asteroid {
+function createAsteroid(currentSurvivalTime: number): Asteroid {
   const radius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
+  const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
 
   return {
     id: `asteroid-${nextAsteroidId++}`,
     x: GAME_WIDTH + radius,
     y: randomBetween(radius + 16, GAME_HEIGHT - radius - 16),
     radius,
-    speed: randomBetween(ASTEROID_MIN_SPEED, ASTEROID_MAX_SPEED),
+    speed: randomBetween(
+      ASTEROID_BASE_MIN_SPEED + speedBonus,
+      ASTEROID_BASE_MAX_SPEED + speedBonus,
+    ),
     rotation: randomBetween(0, Math.PI * 2),
     rotationSpeed: randomBetween(-1.2, 1.2),
     points: createAsteroidPoints(9),
@@ -318,6 +345,10 @@ function formatScore(currentScore: number): string {
   return Math.floor(currentScore).toString().padStart(5, "0");
 }
 
+function formatTime(seconds: number): string {
+  return `${Math.floor(seconds)}s`;
+}
+
 function renderFrame(
   ctx: CanvasRenderingContext2D,
   starField: Star[],
@@ -325,16 +356,17 @@ function renderFrame(
   currentAsteroids: Asteroid[],
   currentStatus: GameStatus,
   currentScore: number,
+  currentSurvivalTime: number,
 ): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
   drawPlayerAreaGuide(ctx);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer);
-  drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore);
+  drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime);
 
   if (currentStatus === "gameOver") {
-    drawGameOverOverlay(ctx, currentScore);
+    drawGameOverOverlay(ctx, currentScore, currentSurvivalTime);
   }
 }
 
@@ -424,41 +456,53 @@ function drawStatusText(
   currentStatus: GameStatus,
   asteroidCount: number,
   currentScore: number,
+  currentSurvivalTime: number,
 ): void {
-  ctx.fillStyle = "#f4f1ff";
-  ctx.font = "700 28px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(5, 5, 16, 0.42)";
+  ctx.fillRect(412, 32, 312, 116);
 
-  if (currentStatus === "gameOver") {
-    ctx.fillText("Collision detected", 430, 64);
-  } else {
-    ctx.fillText("Avoid the asteroids", 430, 64);
-  }
+  ctx.strokeStyle = "rgba(158, 233, 255, 0.2)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(412, 32, 312, 116);
+
+  ctx.fillStyle = "#f4f1ff";
+  ctx.font = "700 24px system-ui, sans-serif";
+  ctx.fillText(currentStatus === "gameOver" ? "Collision detected" : "Avoid the asteroids", 432, 64);
 
   ctx.fillStyle = "#9ee9ff";
-  ctx.font = "700 22px system-ui, sans-serif";
-  ctx.fillText(`Score: ${formatScore(currentScore)}`, 432, 100);
+  ctx.font = "700 20px system-ui, sans-serif";
+  ctx.fillText(`Score: ${formatScore(currentScore)}`, 432, 98);
 
   ctx.fillStyle = "#cfc8ef";
-  ctx.font = "400 16px system-ui, sans-serif";
-  ctx.fillText(`Asteroids on screen: ${asteroidCount}`, 432, 130);
+  ctx.font = "400 15px system-ui, sans-serif";
+  ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, 432, 124);
+  ctx.fillText(`Asteroids: ${asteroidCount}`, 548, 124);
 }
 
-function drawGameOverOverlay(ctx: CanvasRenderingContext2D, finalScore: number): void {
-  ctx.fillStyle = "rgba(5, 5, 16, 0.72)";
+function drawGameOverOverlay(
+  ctx: CanvasRenderingContext2D,
+  finalScore: number,
+  finalSurvivalTime: number,
+): void {
+  ctx.fillStyle = "rgba(5, 5, 16, 0.76)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 56px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 54);
+  ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
   ctx.fillStyle = "#9ee9ff";
   ctx.font = "700 30px system-ui, sans-serif";
-  ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 6);
+  ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 18);
 
   ctx.fillStyle = "#cfc8ef";
-  ctx.font = "400 20px system-ui, sans-serif";
-  ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40);
+  ctx.font = "400 21px system-ui, sans-serif";
+  ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 22);
+
+  ctx.fillStyle = "#f4f1ff";
+  ctx.font = "700 19px system-ui, sans-serif";
+  ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 72);
 
   ctx.textAlign = "start";
 }

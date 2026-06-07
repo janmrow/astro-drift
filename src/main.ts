@@ -5,6 +5,13 @@ const GAME_HEIGHT = 540;
 const PLAYER_SPEED = 280;
 const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
 
+const ASTEROID_SPAWN_INTERVAL = 1.15;
+const ASTEROID_MIN_RADIUS = 18;
+const ASTEROID_MAX_RADIUS = 42;
+const ASTEROID_MIN_SPEED = 150;
+const ASTEROID_MAX_SPEED = 230;
+const ASTEROID_REMOVE_PADDING = 80;
+
 type Star = {
   x: number;
   y: number;
@@ -17,6 +24,22 @@ type Player = {
   y: number;
   width: number;
   height: number;
+};
+
+type AsteroidPoint = {
+  angle: number;
+  distanceMultiplier: number;
+};
+
+type Asteroid = {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  speed: number;
+  rotation: number;
+  rotationSpeed: number;
+  points: AsteroidPoint[];
 };
 
 type InputState = {
@@ -47,7 +70,11 @@ const player: Player = {
   height: 44,
 };
 
+const asteroids: Asteroid[] = [];
+
 let previousFrameTime = performance.now();
+let asteroidSpawnTimer = 0;
+let nextAsteroidId = 1;
 
 setupKeyboardControls(input);
 requestAnimationFrame(runGameLoop);
@@ -58,7 +85,10 @@ function runGameLoop(currentFrameTime: number): void {
   previousFrameTime = currentFrameTime;
 
   updatePlayer(player, input, deltaTime);
-  renderFrame(context, stars, player);
+  asteroidSpawnTimer = updateAsteroidSpawning(asteroids, asteroidSpawnTimer, deltaTime);
+  updateAsteroids(asteroids, deltaTime);
+
+  renderFrame(context, stars, player, asteroids);
 
   requestAnimationFrame(runGameLoop);
 }
@@ -151,20 +181,76 @@ function updatePlayer(currentPlayer: Player, currentInput: InputState, deltaTime
   );
 }
 
+function updateAsteroidSpawning(
+  currentAsteroids: Asteroid[],
+  currentTimer: number,
+  deltaTime: number,
+): number {
+  let nextTimer = currentTimer + deltaTime;
+
+  while (nextTimer >= ASTEROID_SPAWN_INTERVAL) {
+    currentAsteroids.push(createAsteroid());
+    nextTimer -= ASTEROID_SPAWN_INTERVAL;
+  }
+
+  return nextTimer;
+}
+
+function createAsteroid(): Asteroid {
+  const radius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
+
+  return {
+    id: `asteroid-${nextAsteroidId++}`,
+    x: GAME_WIDTH + radius,
+    y: randomBetween(radius + 16, GAME_HEIGHT - radius - 16),
+    radius,
+    speed: randomBetween(ASTEROID_MIN_SPEED, ASTEROID_MAX_SPEED),
+    rotation: randomBetween(0, Math.PI * 2),
+    rotationSpeed: randomBetween(-1.2, 1.2),
+    points: createAsteroidPoints(9),
+  };
+}
+
+function createAsteroidPoints(count: number): AsteroidPoint[] {
+  return Array.from({ length: count }, (_, index) => ({
+    angle: (Math.PI * 2 * index) / count,
+    distanceMultiplier: randomBetween(0.72, 1.12),
+  }));
+}
+
+function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number): void {
+  for (const asteroid of currentAsteroids) {
+    asteroid.x -= asteroid.speed * deltaTime;
+    asteroid.rotation += asteroid.rotationSpeed * deltaTime;
+  }
+
+  for (let index = currentAsteroids.length - 1; index >= 0; index--) {
+    if (currentAsteroids[index].x < -ASTEROID_REMOVE_PADDING) {
+      currentAsteroids.splice(index, 1);
+    }
+  }
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function randomBetween(min: number, max: number): number {
+  return Math.random() * (max - min) + min;
 }
 
 function renderFrame(
   ctx: CanvasRenderingContext2D,
   starField: Star[],
   currentPlayer: Player,
+  currentAsteroids: Asteroid[],
 ): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
-  drawPlayer(ctx, currentPlayer);
-  drawStartText(ctx);
   drawPlayerAreaGuide(ctx);
+  drawAsteroids(ctx, currentAsteroids);
+  drawPlayer(ctx, currentPlayer);
+  drawStatusText(ctx, currentAsteroids.length);
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
@@ -212,14 +298,50 @@ function drawPlayer(ctx: CanvasRenderingContext2D, currentPlayer: Player): void 
   ctx.fill();
 }
 
-function drawStartText(ctx: CanvasRenderingContext2D): void {
+function drawAsteroids(ctx: CanvasRenderingContext2D, currentAsteroids: Asteroid[]): void {
+  for (const asteroid of currentAsteroids) {
+    drawAsteroid(ctx, asteroid);
+  }
+}
+
+function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
+  ctx.save();
+  ctx.translate(asteroid.x, asteroid.y);
+  ctx.rotate(asteroid.rotation);
+
+  ctx.beginPath();
+
+  for (const [index, point] of asteroid.points.entries()) {
+    const pointRadius = asteroid.radius * point.distanceMultiplier;
+    const x = Math.cos(point.angle) * pointRadius;
+    const y = Math.sin(point.angle) * pointRadius;
+
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+
+  ctx.closePath();
+  ctx.fillStyle = "#68617d";
+  ctx.fill();
+
+  ctx.strokeStyle = "#b8acd8";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawStatusText(ctx: CanvasRenderingContext2D, asteroidCount: number): void {
   ctx.fillStyle = "#f4f1ff";
-  ctx.font = "700 34px system-ui, sans-serif";
-  ctx.fillText("Use Arrow Keys / WASD", 430, 245);
+  ctx.font = "700 28px system-ui, sans-serif";
+  ctx.fillText("Avoid the asteroids", 430, 64);
 
   ctx.fillStyle = "#cfc8ef";
-  ctx.font = "400 19px system-ui, sans-serif";
-  ctx.fillText("Movement is live. Asteroids come next.", 432, 282);
+  ctx.font = "400 17px system-ui, sans-serif";
+  ctx.fillText(`Asteroids on screen: ${asteroidCount}`, 432, 96);
 }
 
 function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {

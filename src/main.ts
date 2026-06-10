@@ -1,69 +1,30 @@
 import "./style.css";
-
-const GAME_WIDTH = 960;
-const GAME_HEIGHT = 540;
-const PLAYER_SPEED = 280;
-const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
-const PLAYER_START_X = 170;
-const PLAYER_START_Y = GAME_HEIGHT / 2;
-
-const ASTEROID_BASE_SPAWN_INTERVAL = 1.2;
-const ASTEROID_MIN_SPAWN_INTERVAL = 0.62;
-const ASTEROID_SPAWN_RAMP = 0.006;
-
-const ASTEROID_MIN_RADIUS = 18;
-const ASTEROID_MAX_RADIUS = 42;
-const ASTEROID_BASE_MIN_SPEED = 145;
-const ASTEROID_BASE_MAX_SPEED = 220;
-const ASTEROID_SPEED_RAMP = 1.25;
-const ASTEROID_REMOVE_PADDING = 80;
-
-const SCORE_PER_SECOND = 10;
-
-type GameStatus = "running" | "gameOver";
+import {
+  ASTEROID_BASE_MAX_SPEED,
+  ASTEROID_BASE_MIN_SPEED,
+  ASTEROID_MAX_RADIUS,
+  ASTEROID_MIN_RADIUS,
+  ASTEROID_REMOVE_PADDING,
+  ASTEROID_SPEED_RAMP,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  PLAYER_AREA_MAX_X,
+  createInitialPlayer,
+  createInputState,
+  formatScore,
+  formatTime,
+  getAsteroidSpawnInterval,
+  hasPlayerCollision,
+  updatePlayer,
+  updateScore,
+} from "./game/engine";
+import type { Asteroid, AsteroidPoint, GameStatus, InputState, Player } from "./game/types";
 
 type Star = {
   x: number;
   y: number;
   radius: number;
   alpha: number;
-};
-
-type Player = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type PlayerHitbox = {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-};
-
-type AsteroidPoint = {
-  angle: number;
-  distanceMultiplier: number;
-};
-
-type Asteroid = {
-  id: string;
-  x: number;
-  y: number;
-  radius: number;
-  speed: number;
-  rotation: number;
-  rotationSpeed: number;
-  points: AsteroidPoint[];
-};
-
-type InputState = {
-  up: boolean;
-  down: boolean;
-  left: boolean;
-  right: boolean;
 };
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -80,12 +41,7 @@ if (!context) {
 
 const stars = createStars(90);
 const input = createInputState();
-const player: Player = {
-  x: PLAYER_START_X,
-  y: PLAYER_START_Y,
-  width: 58,
-  height: 44,
-};
+let player = createInitialPlayer();
 
 const asteroids: Asteroid[] = [];
 
@@ -107,7 +63,7 @@ function runGameLoop(currentFrameTime: number): void {
   if (gameStatus === "running") {
     survivalTime += deltaTime;
 
-    updatePlayer(player, input, deltaTime);
+    player = updatePlayer(player, input, deltaTime);
     asteroidSpawnTimer = updateAsteroidSpawning(
       asteroids,
       asteroidSpawnTimer,
@@ -134,15 +90,6 @@ function createStars(count: number): Star[] {
     radius: Math.random() * 1.8 + 0.4,
     alpha: Math.random() * 0.7 + 0.25,
   }));
-}
-
-function createInputState(): InputState {
-  return {
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-  };
 }
 
 function setupKeyboardControls(currentInput: InputState): void {
@@ -200,31 +147,6 @@ function isRestartKey(key: string): boolean {
   return ["r", "enter", " "].includes(key.toLowerCase());
 }
 
-function updatePlayer(currentPlayer: Player, currentInput: InputState, deltaTime: number): void {
-  const directionX = Number(currentInput.right) - Number(currentInput.left);
-  const directionY = Number(currentInput.down) - Number(currentInput.up);
-  const directionLength = Math.hypot(directionX, directionY);
-
-  if (directionLength === 0) {
-    return;
-  }
-
-  const normalizedX = directionX / directionLength;
-  const normalizedY = directionY / directionLength;
-
-  currentPlayer.x = clamp(
-    currentPlayer.x + normalizedX * PLAYER_SPEED * deltaTime,
-    currentPlayer.width / 2 + 12,
-    PLAYER_AREA_MAX_X,
-  );
-
-  currentPlayer.y = clamp(
-    currentPlayer.y + normalizedY * PLAYER_SPEED * deltaTime,
-    currentPlayer.height / 2 + 12,
-    GAME_HEIGHT - currentPlayer.height / 2 - 12,
-  );
-}
-
 function updateAsteroidSpawning(
   currentAsteroids: Asteroid[],
   currentTimer: number,
@@ -232,32 +154,19 @@ function updateAsteroidSpawning(
   currentSurvivalTime: number,
 ): number {
   let nextTimer = currentTimer + deltaTime;
-  const spawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
+  const MathSpawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
 
-  while (nextTimer >= spawnInterval) {
+  while (nextTimer >= MathSpawnInterval) {
     currentAsteroids.push(createAsteroid(currentSurvivalTime));
-    nextTimer -= spawnInterval;
+    nextTimer -= MathSpawnInterval;
   }
 
   return nextTimer;
 }
 
-function getAsteroidSpawnInterval(currentSurvivalTime: number): number {
-  return clamp(
-    ASTEROID_BASE_SPAWN_INTERVAL - currentSurvivalTime * ASTEROID_SPAWN_RAMP,
-    ASTEROID_MIN_SPAWN_INTERVAL,
-    ASTEROID_BASE_SPAWN_INTERVAL,
-  );
-}
-
-function updateScore(currentScore: number, deltaTime: number): number {
-  return currentScore + SCORE_PER_SECOND * deltaTime;
-}
-
 function restartGame(): void {
   gameStatus = "running";
-  player.x = PLAYER_START_X;
-  player.y = PLAYER_START_Y;
+  player = createInitialPlayer();
   asteroids.length = 0;
   asteroidSpawnTimer = 0;
   score = 0;
@@ -304,49 +213,8 @@ function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number): void 
   }
 }
 
-function hasPlayerCollision(currentPlayer: Player, currentAsteroids: Asteroid[]): boolean {
-  return currentAsteroids.some((asteroid) => isPlayerCollidingWithAsteroid(currentPlayer, asteroid));
-}
-
-function isPlayerCollidingWithAsteroid(currentPlayer: Player, asteroid: Asteroid): boolean {
-  const hitbox = getPlayerHitbox(currentPlayer);
-  const asteroidHitRadius = asteroid.radius * 0.82;
-
-  const closestX = clamp(asteroid.x, hitbox.left, hitbox.right);
-  const closestY = clamp(asteroid.y, hitbox.top, hitbox.bottom);
-
-  const distanceX = asteroid.x - closestX;
-  const distanceY = asteroid.y - closestY;
-
-  return distanceX * distanceX + distanceY * distanceY <= asteroidHitRadius * asteroidHitRadius;
-}
-
-function getPlayerHitbox(currentPlayer: Player): PlayerHitbox {
-  const hitboxWidth = currentPlayer.width * 0.72;
-  const hitboxHeight = currentPlayer.height * 0.64;
-
-  return {
-    left: currentPlayer.x - hitboxWidth / 2,
-    right: currentPlayer.x + hitboxWidth / 2,
-    top: currentPlayer.y - hitboxHeight / 2,
-    bottom: currentPlayer.y + hitboxHeight / 2,
-  };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
 function randomBetween(min: number, max: number): number {
   return Math.random() * (max - min) + min;
-}
-
-function formatScore(currentScore: number): string {
-  return Math.floor(currentScore).toString().padStart(5, "0");
-}
-
-function formatTime(seconds: number): string {
-  return `${Math.floor(seconds)}s`;
 }
 
 function renderFrame(

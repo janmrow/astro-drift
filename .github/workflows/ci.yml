@@ -23,3 +23,6 @@ jobs:
 
       - name: Build & Typecheck
         run: npm run build
+
+      - name: Run Unit Tests
+        run: npm run test

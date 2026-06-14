@@ -15,7 +15,8 @@ import {
   updatePlayer,
   updateScore,
 } from "./game/engine";
-import type { Asteroid, AsteroidPoint, GameStatus, InputState } from "./game/types";
+import type { Asteroid, AsteroidPoint, GameStatus } from "./game/types";
+import { setupKeyboardControls } from "./input/keyboard";
 import { createStars, renderFrame } from "./rendering/canvasRenderer";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -43,7 +44,7 @@ let nextAsteroidId = 1;
 let score = 0;
 let survivalTime = 0;
 
-setupKeyboardControls(input);
+setupKeyboardControls(input, restartGameIfGameOver);
 requestAnimationFrame(runGameLoop);
 
 function runGameLoop(currentFrameTime: number): void {
@@ -74,61 +75,6 @@ function runGameLoop(currentFrameTime: number): void {
   requestAnimationFrame(runGameLoop);
 }
 
-function setupKeyboardControls(currentInput: InputState): void {
-  window.addEventListener("keydown", (event) => {
-    if (gameStatus === "gameOver" && isRestartKey(event.key)) {
-      restartGame();
-      event.preventDefault();
-      return;
-    }
-
-    updateInputFromKey(event.key, true, currentInput);
-
-    if (isMovementKey(event.key)) {
-      event.preventDefault();
-    }
-  });
-
-  window.addEventListener("keyup", (event) => {
-    updateInputFromKey(event.key, false, currentInput);
-
-    if (isMovementKey(event.key)) {
-      event.preventDefault();
-    }
-  });
-}
-
-function updateInputFromKey(key: string, isPressed: boolean, currentInput: InputState): void {
-  switch (key.toLowerCase()) {
-    case "arrowup":
-    case "w":
-      currentInput.up = isPressed;
-      break;
-    case "arrowdown":
-    case "s":
-      currentInput.down = isPressed;
-      break;
-    case "arrowleft":
-    case "a":
-      currentInput.left = isPressed;
-      break;
-    case "arrowright":
-    case "d":
-      currentInput.right = isPressed;
-      break;
-  }
-}
-
-function isMovementKey(key: string): boolean {
-  return ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
-    key.toLowerCase(),
-  );
-}
-
-function isRestartKey(key: string): boolean {
-  return ["r", "enter", " "].includes(key.toLowerCase());
-}
-
 function updateAsteroidSpawning(
   currentAsteroids: Asteroid[],
   currentTimer: number,
@@ -144,6 +90,15 @@ function updateAsteroidSpawning(
   }
 
   return nextTimer;
+}
+
+function restartGameIfGameOver(): boolean {
+  if (gameStatus !== "gameOver") {
+    return false;
+  }
+
+  restartGame();
+  return true;
 }
 
 function restartGame(): void {

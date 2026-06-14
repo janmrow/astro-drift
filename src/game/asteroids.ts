@@ -11,23 +11,38 @@ import {
 } from "./engine";
 import type { Asteroid, AsteroidPoint } from "./types";
 
-let nextAsteroidId = 1;
+export type AsteroidSpawnState = {
+  timer: number;
+  nextId: number;
+};
+
+export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
+  return {
+    timer: 0,
+    nextId: 1,
+  };
+}
 
 export function updateAsteroidSpawning(
   currentAsteroids: Asteroid[],
-  currentTimer: number,
+  currentSpawnState: AsteroidSpawnState,
   deltaTime: number,
   currentSurvivalTime: number,
-): number {
-  let nextTimer = currentTimer + deltaTime;
-  const MathSpawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
+): AsteroidSpawnState {
+  let nextTimer = currentSpawnState.timer + deltaTime;
+  let nextId = currentSpawnState.nextId;
+  const spawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
 
-  while (nextTimer >= MathSpawnInterval) {
-    currentAsteroids.push(createAsteroid(currentSurvivalTime));
-    nextTimer -= MathSpawnInterval;
+  while (nextTimer >= spawnInterval) {
+    currentAsteroids.push(createAsteroid(currentSurvivalTime, nextId));
+    nextId += 1;
+    nextTimer -= spawnInterval;
   }
 
-  return nextTimer;
+  return {
+    timer: nextTimer,
+    nextId,
+  };
 }
 
 export function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number): void {
@@ -43,12 +58,12 @@ export function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number)
   }
 }
 
-function createAsteroid(currentSurvivalTime: number): Asteroid {
+function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
   const radius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
   const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
 
   return {
-    id: `asteroid-${nextAsteroidId++}`,
+    id: `asteroid-${id}`,
     x: GAME_WIDTH + radius,
     y: randomBetween(radius + 16, GAME_HEIGHT - radius - 16),
     radius,

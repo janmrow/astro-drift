@@ -1,4 +1,5 @@
 import "./style.css";
+
 import {
   createInitialPlayer,
   createInputState,
@@ -6,8 +7,12 @@ import {
   updatePlayer,
   updateScore,
 } from "./game/engine";
+import {
+  createInitialAsteroidSpawnState,
+  updateAsteroidSpawning,
+  updateAsteroids,
+} from "./game/asteroids";
 import type { Asteroid, GameStatus } from "./game/types";
-import { updateAsteroids, updateAsteroidSpawning } from "./game/asteroids";
 import { setupKeyboardControls } from "./input/keyboard";
 import { createStars, renderFrame } from "./rendering/canvasRenderer";
 
@@ -31,7 +36,7 @@ const asteroids: Asteroid[] = [];
 
 let gameStatus: GameStatus = "running";
 let previousFrameTime = performance.now();
-let asteroidSpawnTimer = 0;
+let asteroidSpawnState = createInitialAsteroidSpawnState();
 let score = 0;
 let survivalTime = 0;
 
@@ -47,9 +52,9 @@ function runGameLoop(currentFrameTime: number): void {
     survivalTime += deltaTime;
 
     player = updatePlayer(player, input, deltaTime);
-    asteroidSpawnTimer = updateAsteroidSpawning(
+    asteroidSpawnState = updateAsteroidSpawning(
       asteroids,
-      asteroidSpawnTimer,
+      asteroidSpawnState,
       deltaTime,
       survivalTime,
     );
@@ -79,7 +84,7 @@ function restartGame(): void {
   gameStatus = "running";
   player = createInitialPlayer();
   asteroids.length = 0;
-  asteroidSpawnTimer = 0;
+  asteroidSpawnState = createInitialAsteroidSpawnState();
   score = 0;
   survivalTime = 0;
   previousFrameTime = performance.now();

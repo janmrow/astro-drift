@@ -1,13 +1,13 @@
 import type { InputState } from "../game/types";
 
-type RestartHandler = () => boolean;
+type GameActionHandler = () => boolean;
 
 export function setupKeyboardControls(
   currentInput: InputState,
-  onRestartRequested: RestartHandler,
+  onGameActionRequested: GameActionHandler,
 ): void {
   window.addEventListener("keydown", (event) => {
-    if (isRestartKey(event.key) && onRestartRequested()) {
+    if (isActionKey(event.key) && onGameActionRequested()) {
       event.preventDefault();
       return;
     }
@@ -55,6 +55,6 @@ function isMovementKey(key: string): boolean {
   );
 }
 
-function isRestartKey(key: string): boolean {
+function isActionKey(key: string): boolean {
   return ["r", "enter", " "].includes(key.toLowerCase());
 }

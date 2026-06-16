@@ -39,6 +39,10 @@ export function renderFrame(
   drawPlayer(ctx, currentPlayer);
   drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime);
 
+  if (currentStatus === "idle") {
+    drawStartOverlay(ctx);
+  }
+
   if (currentStatus === "gameOver") {
     drawGameOverOverlay(ctx, currentScore, currentSurvivalTime);
   }
@@ -141,7 +145,15 @@ function drawStatusText(
 
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 24px system-ui, sans-serif";
-  ctx.fillText(currentStatus === "gameOver" ? "Collision detected" : "Avoid the asteroids", 432, 64);
+
+  const statusText =
+    currentStatus === "idle"
+      ? "Ready to drift"
+      : currentStatus === "gameOver"
+        ? "Collision detected"
+        : "Avoid the asteroids";
+
+  ctx.fillText(statusText, 432, 64);
 
   ctx.fillStyle = "#9ee9ff";
   ctx.font = "700 20px system-ui, sans-serif";
@@ -151,6 +163,30 @@ function drawStatusText(
   ctx.font = "400 15px system-ui, sans-serif";
   ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, 432, 124);
   ctx.fillText(`Asteroids: ${asteroidCount}`, 548, 124);
+}
+
+function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = "rgba(5, 5, 16, 0.68)";
+  ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+  ctx.fillStyle = "#f4f1ff";
+  ctx.font = "700 58px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
+
+  ctx.fillStyle = "#cfc8ef";
+  ctx.font = "400 22px system-ui, sans-serif";
+  ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
+
+  ctx.fillStyle = "#9ee9ff";
+  ctx.font = "700 21px system-ui, sans-serif";
+  ctx.fillText("Press Enter or Space to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
+
+  ctx.fillStyle = "#cfc8ef";
+  ctx.font = "400 17px system-ui, sans-serif";
+  ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
+
+  ctx.textAlign = "start";
 }
 
 function drawGameOverOverlay(

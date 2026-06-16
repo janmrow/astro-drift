@@ -3,6 +3,8 @@ import "./style.css";
 import {
   createInitialPlayer,
   createInputState,
+  formatScore,
+  formatTime,
   hasPlayerCollision,
   updatePlayer,
   updateScore,
@@ -21,6 +23,11 @@ const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
 if (!canvas) {
   throw new Error("Game canvas was not found.");
 }
+
+const statusElement = getRequiredElement("[data-testid='game-status']");
+const scoreElement = getRequiredElement("[data-testid='game-score']");
+const timeElement = getRequiredElement("[data-testid='game-time']");
+const asteroidCountElement = getRequiredElement("[data-testid='asteroid-count']");
 
 const context = canvas.getContext("2d") as CanvasRenderingContext2D;
 
@@ -67,6 +74,7 @@ function runGameLoop(currentFrameTime: number): void {
   }
 
   renderFrame(context, stars, player, asteroids, gameStatus, score, survivalTime);
+  updateDomStatus();
 
   requestAnimationFrame(runGameLoop);
 }
@@ -98,4 +106,21 @@ function restartGame(): void {
   score = 0;
   survivalTime = 0;
   previousFrameTime = performance.now();
+}
+
+function updateDomStatus(): void {
+  statusElement.textContent = gameStatus;
+  scoreElement.textContent = formatScore(score);
+  timeElement.textContent = formatTime(survivalTime);
+  asteroidCountElement.textContent = asteroids.length.toString();
+}
+
+function getRequiredElement(selector: string): HTMLElement {
+  const element = document.querySelector<HTMLElement>(selector);
+
+  if (!element) {
+    throw new Error(`Required element was not found: ${selector}`);
+  }
+
+  return element;
 }

@@ -22,6 +22,30 @@
       <canvas id="game-canvas" width="960" height="540" aria-label="Astro Drift game canvas"
         data-testid="game-canvas"></canvas>
 
+      <div
+        class="visually-hidden"
+        aria-live="polite"
+        aria-label="Current game status"
+        data-testid="game-status-panel"
+      >
+        <p>
+          Status:
+          <span data-testid="game-status">idle</span>
+        </p>
+        <p>
+          Score:
+          <span data-testid="game-score">00000</span>
+        </p>
+        <p>
+          Time:
+          <span data-testid="game-time">0s</span>
+        </p>
+        <p>
+          Asteroids:
+          <span data-testid="asteroid-count">0</span>
+        </p>
+      </div>
+
       <p class="controls-hint">
         Press Enter or Space to start. Move with Arrow Keys or WASD. Restart with R.
       </p>

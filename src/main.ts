@@ -34,13 +34,13 @@ let player = createInitialPlayer();
 
 const asteroids: Asteroid[] = [];
 
-let gameStatus: GameStatus = "running";
+let gameStatus: GameStatus = "idle";
 let previousFrameTime = performance.now();
 let asteroidSpawnState = createInitialAsteroidSpawnState();
 let score = 0;
 let survivalTime = 0;
 
-setupKeyboardControls(input, restartGameIfGameOver);
+setupKeyboardControls(input, handleGameAction);
 requestAnimationFrame(runGameLoop);
 
 function runGameLoop(currentFrameTime: number): void {
@@ -71,13 +71,23 @@ function runGameLoop(currentFrameTime: number): void {
   requestAnimationFrame(runGameLoop);
 }
 
-function restartGameIfGameOver(): boolean {
-  if (gameStatus !== "gameOver") {
-    return false;
+function handleGameAction(): boolean {
+  if (gameStatus === "idle") {
+    startGame();
+    return true;
   }
 
-  restartGame();
-  return true;
+  if (gameStatus === "gameOver") {
+    restartGame();
+    return true;
+  }
+
+  return false;
+}
+
+function startGame(): void {
+  gameStatus = "running";
+  previousFrameTime = performance.now();
 }
 
 function restartGame(): void {

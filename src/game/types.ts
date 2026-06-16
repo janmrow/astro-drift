@@ -1,4 +1,4 @@
-export type GameStatus = "running" | "gameOver";
+export type GameStatus = "idle" | "running" | "gameOver";
 
 export type Player = {
   x: number;

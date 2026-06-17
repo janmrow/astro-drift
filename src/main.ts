@@ -1,6 +1,7 @@
 import "./style.css";
 
 import {
+  applyPassedAsteroidBonuses,
   createInitialPlayer,
   createInputState,
   formatScore,
@@ -67,6 +68,7 @@ function runGameLoop(currentFrameTime: number): void {
     );
     updateAsteroids(asteroids, deltaTime);
     score = updateScore(score, deltaTime);
+    score = applyPassedAsteroidBonuses(score, player, asteroids);
 
     if (hasPlayerCollision(player, asteroids)) {
       gameStatus = "gameOver";

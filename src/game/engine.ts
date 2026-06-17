@@ -20,6 +20,7 @@ export const ASTEROID_SPEED_RAMP = 1.25;
 export const ASTEROID_REMOVE_PADDING = 80;
 
 export const SCORE_PER_SECOND = 10;
+export const ASTEROID_PASS_BONUS = 25;
 
 export function createInitialPlayer(): Player {
   return {
@@ -72,6 +73,28 @@ export function updatePlayer(
 
 export function updateScore(currentScore: number, deltaTime: number): number {
   return currentScore + SCORE_PER_SECOND * deltaTime;
+}
+
+export function applyPassedAsteroidBonuses(
+  currentScore: number,
+  currentPlayer: Player,
+  currentAsteroids: Asteroid[],
+): number {
+  let nextScore = currentScore;
+
+  for (const asteroid of currentAsteroids) {
+    if (!asteroid.passed && hasAsteroidPassedPlayer(currentPlayer, asteroid)) {
+      asteroid.passed = true;
+      nextScore += ASTEROID_PASS_BONUS;
+    }
+  }
+
+  return nextScore;
+}
+
+export function hasAsteroidPassedPlayer(currentPlayer: Player, asteroid: Asteroid): boolean {
+  const playerLeftEdge = currentPlayer.x - currentPlayer.width / 2;
+  return asteroid.x + asteroid.radius < playerLeftEdge;
 }
 
 export function getAsteroidSpawnInterval(currentSurvivalTime: number): number {

@@ -18,6 +18,7 @@ function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
     rotation: 0,
     rotationSpeed: 0.5,
     points: [],
+    passed: false,
     ...overrides,
   };
 }
@@ -45,6 +46,7 @@ describe("asteroid logic", () => {
 
     expect(asteroids).toHaveLength(1);
     expect(asteroids[0].id).toBe("asteroid-1");
+    expect(asteroids[0].passed).toBe(false);
     expect(updatedSpawnState.nextId).toBe(2);
     expect(updatedSpawnState.timer).toBeCloseTo(0.1);
   });

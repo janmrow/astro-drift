@@ -18,6 +18,7 @@ import {
 import type { Asteroid, GameStatus } from "./game/types";
 import { setupKeyboardControls } from "./input/keyboard";
 import { createStars, renderFrame } from "./rendering/canvasRenderer";
+import { readBestScore, saveBestScore } from "./storage/bestScoreStorage";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
 
@@ -49,6 +50,7 @@ let previousFrameTime = performance.now();
 let asteroidSpawnState = createInitialAsteroidSpawnState();
 let score = 0;
 let survivalTime = 0;
+let bestScore = readBestScore();
 let bonusFeedbackText: string | null = null;
 let bonusFeedbackTimeLeft = 0;
 
@@ -74,6 +76,7 @@ function runGameLoop(currentFrameTime: number): void {
     
     if (hasPlayerCollision(player, asteroids)) {
       gameStatus = "gameOver";
+      bestScore = saveBestScore(score);
     } else {
       score = updateScore(score, deltaTime);
       score = applyScoreBonuses(score);
@@ -89,6 +92,7 @@ function runGameLoop(currentFrameTime: number): void {
     gameStatus,
     score,
     survivalTime,
+    bestScore,
     bonusFeedbackTimeLeft > 0 ? bonusFeedbackText : null,
   );
   updateDomStatus();

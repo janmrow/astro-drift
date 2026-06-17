@@ -31,6 +31,7 @@ export function renderFrame(
   currentStatus: GameStatus,
   currentScore: number,
   currentSurvivalTime: number,
+  bonusFeedbackText: string | null,
 ): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
@@ -38,6 +39,10 @@ export function renderFrame(
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer);
   drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime);
+
+  if (bonusFeedbackText) {
+    drawBonusFeedback(ctx, bonusFeedbackText);
+  }
 
   if (currentStatus === "idle") {
     drawStartOverlay(ctx);
@@ -230,4 +235,10 @@ function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
   ctx.fillStyle = "rgba(158, 233, 255, 0.52)";
   ctx.font = "600 14px system-ui, sans-serif";
   ctx.fillText("player sector", 48, GAME_HEIGHT - 32);
+}
+
+function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
+  ctx.fillStyle = "#9ee9ff";
+  ctx.font = "700 22px system-ui, sans-serif";
+  ctx.fillText(text, 650, 100);
 }

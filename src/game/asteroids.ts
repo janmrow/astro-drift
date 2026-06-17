@@ -31,6 +31,7 @@ export function updateAsteroidSpawning(
 ): AsteroidSpawnState {
   let nextTimer = currentSpawnState.timer + deltaTime;
   let nextId = currentSpawnState.nextId;
+
   const spawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
 
   while (nextTimer >= spawnInterval) {
@@ -74,14 +75,22 @@ function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
     rotation: randomBetween(0, Math.PI * 2),
     rotationSpeed: randomBetween(-1.2, 1.2),
     points: createAsteroidPoints(9),
+    passed: false,
   };
 }
 
 function createAsteroidPoints(count: number): AsteroidPoint[] {
-  return Array.from({ length: count }, (_, index) => ({
-    angle: (Math.PI * 2 * index) / count,
-    distanceMultiplier: randomBetween(0.72, 1.12),
-  }));
+  const points: AsteroidPoint[] = [];
+  const angleStep = (Math.PI * 2) / count;
+
+  for (let i = 0; i < count; i++) {
+    const angle = i * angleStep;
+    const distanceMultiplier = randomBetween(0.8, 1.2);
+
+    points.push({ angle, distanceMultiplier });
+  }
+
+  return points;
 }
 
 function randomBetween(min: number, max: number): number {

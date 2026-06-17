@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
+  ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
   PLAYER_AREA_MAX_X,
+  applyPassedAsteroidBonuses,
   createInitialPlayer,
   formatScore,
   formatTime,
   getAsteroidSpawnInterval,
+  hasAsteroidPassedPlayer,
   hasPlayerCollision,
   updatePlayer,
   updateScore,
@@ -34,6 +37,7 @@ function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
     rotation: 0,
     rotationSpeed: 0,
     points: [],
+    passed: false,
     ...overrides,
   };
 }
@@ -135,5 +139,51 @@ describe("game engine", () => {
 
   it("formats survival time in seconds", () => {
     expect(formatTime(12.9)).toBe("12s");
+  });
+  
+  it("detects when an asteroid has passed the player", () => {
+    const player = createInitialPlayer();
+    const asteroid = createAsteroid({
+      x: player.x - player.width / 2 - 40,
+      radius: 20,
+    });
+
+    expect(hasAsteroidPassedPlayer(player, asteroid)).toBe(true);
+  });
+
+  it("does not mark an asteroid as passed while it is still in front of the player", () => {
+    const player = createInitialPlayer();
+    const asteroid = createAsteroid({
+      x: player.x + 80,
+      radius: 20,
+    });
+
+    expect(hasAsteroidPassedPlayer(player, asteroid)).toBe(false);
+  });
+
+  it("adds bonus score when an asteroid passes the player", () => {
+    const player = createInitialPlayer();
+    const asteroid = createAsteroid({
+      x: player.x - player.width / 2 - 40,
+      radius: 20,
+    });
+
+    const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+
+    expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS);
+    expect(asteroid.passed).toBe(true);
+  });
+
+  it("does not add pass bonus twice for the same asteroid", () => {
+    const player = createInitialPlayer();
+    const asteroid = createAsteroid({
+      x: player.x - player.width / 2 - 40,
+      radius: 20,
+      passed: true,
+    });
+
+    const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+
+    expect(updatedScore).toBe(100);
   });
 });

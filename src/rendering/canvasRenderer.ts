@@ -31,6 +31,7 @@ export function renderFrame(
   currentStatus: GameStatus,
   currentScore: number,
   currentSurvivalTime: number,
+  currentBestScore: number,
   bonusFeedbackText: string | null,
 ): void {
   drawBackground(ctx);
@@ -38,7 +39,7 @@ export function renderFrame(
   drawPlayerAreaGuide(ctx);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer);
-  drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime);
+  drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime, currentBestScore);
 
   if (bonusFeedbackText) {
     drawBonusFeedback(ctx, bonusFeedbackText);
@@ -49,7 +50,7 @@ export function renderFrame(
   }
 
   if (currentStatus === "gameOver") {
-    drawGameOverOverlay(ctx, currentScore, currentSurvivalTime);
+    drawGameOverOverlay(ctx, currentScore, currentSurvivalTime, currentBestScore);
   }
 }
 
@@ -140,13 +141,20 @@ function drawStatusText(
   asteroidCount: number,
   currentScore: number,
   currentSurvivalTime: number,
+  currentBestScore: number,
 ): void {
+  const panelX = 412;
+  const panelY = 32;
+  const panelWidth = 352;
+  const panelHeight = 124;
+  const panelPadding = 20;
+
   ctx.fillStyle = "rgba(5, 5, 16, 0.42)";
-  ctx.fillRect(412, 32, 312, 116);
+  ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
 
   ctx.strokeStyle = "rgba(158, 233, 255, 0.2)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(412, 32, 312, 116);
+  ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
 
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 24px system-ui, sans-serif";
@@ -158,16 +166,29 @@ function drawStatusText(
         ? "Collision detected"
         : "Avoid the asteroids";
 
-  ctx.fillText(statusText, 432, 64);
+  ctx.fillText(statusText, panelX + panelPadding, panelY + 32);
+
+  ctx.fillStyle = "rgba(207, 200, 239, 0.74)";
+  ctx.font = "700 11px system-ui, sans-serif";
+  ctx.fillText("SCORE", panelX + panelPadding, panelY + 64);
+  ctx.textAlign = "right";
+  ctx.fillText("BEST", panelX + panelWidth - panelPadding, panelY + 64);
+  ctx.textAlign = "start";
 
   ctx.fillStyle = "#9ee9ff";
-  ctx.font = "700 20px system-ui, sans-serif";
-  ctx.fillText(`Score: ${formatScore(currentScore)}`, 432, 98);
+  ctx.font = "700 24px system-ui, sans-serif";
+  ctx.fillText(formatScore(currentScore), panelX + panelPadding, panelY + 92);
+
+  ctx.fillStyle = "#f4f1ff";
+  ctx.font = "700 18px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(formatScore(currentBestScore), panelX + panelWidth - panelPadding, panelY + 91);
+  ctx.textAlign = "start";
 
   ctx.fillStyle = "#cfc8ef";
   ctx.font = "400 15px system-ui, sans-serif";
-  ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, 432, 124);
-  ctx.fillText(`Asteroids: ${asteroidCount}`, 548, 124);
+  ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, panelX + panelPadding, panelY + 118);
+  ctx.fillText(`Asteroids: ${asteroidCount}`, panelX + 198, panelY + 118);
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -198,6 +219,7 @@ function drawGameOverOverlay(
   ctx: CanvasRenderingContext2D,
   finalScore: number,
   finalSurvivalTime: number,
+  bestScore: number,
 ): void {
   ctx.fillStyle = "rgba(5, 5, 16, 0.76)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -209,15 +231,19 @@ function drawGameOverOverlay(
 
   ctx.fillStyle = "#9ee9ff";
   ctx.font = "700 30px system-ui, sans-serif";
-  ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 18);
+  ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
+
+  ctx.fillStyle = "#f4f1ff";
+  ctx.font = "700 22px system-ui, sans-serif";
+  ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
 
   ctx.fillStyle = "#cfc8ef";
   ctx.font = "400 21px system-ui, sans-serif";
-  ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 22);
+  ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
 
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 19px system-ui, sans-serif";
-  ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 72);
+  ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
   ctx.textAlign = "start";
 }
@@ -238,7 +264,21 @@ function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
 }
 
 function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
-  ctx.fillStyle = "#9ee9ff";
-  ctx.font = "700 22px system-ui, sans-serif";
-  ctx.fillText(text, 650, 100);
+  const badgeX = 712;
+  const badgeY = 132;
+  const badgeWidth = 36;
+  const badgeHeight = 16;
+
+  ctx.fillStyle = "rgba(158, 233, 255, 0.12)";
+  ctx.fillRect(badgeX, badgeY, badgeWidth, badgeHeight);
+
+  ctx.strokeStyle = "rgba(158, 233, 255, 0.32)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(badgeX, badgeY, badgeWidth, badgeHeight);
+
+  ctx.fillStyle = "rgba(158, 233, 255, 0.88)";
+  ctx.font = "700 11px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(text, badgeX + badgeWidth / 2, badgeY + 12);
+  ctx.textAlign = "start";
 }

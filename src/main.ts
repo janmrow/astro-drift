@@ -42,11 +42,15 @@ let player = createInitialPlayer();
 
 const asteroids: Asteroid[] = [];
 
+const BONUS_FEEDBACK_DURATION = 0.65;
+
 let gameStatus: GameStatus = "idle";
 let previousFrameTime = performance.now();
 let asteroidSpawnState = createInitialAsteroidSpawnState();
 let score = 0;
 let survivalTime = 0;
+let bonusFeedbackText: string | null = null;
+let bonusFeedbackTimeLeft = 0;
 
 setupKeyboardControls(input, handleGameAction);
 requestAnimationFrame(runGameLoop);
@@ -67,15 +71,26 @@ function runGameLoop(currentFrameTime: number): void {
       survivalTime,
     );
     updateAsteroids(asteroids, deltaTime);
-    score = updateScore(score, deltaTime);
-    score = applyPassedAsteroidBonuses(score, player, asteroids);
-
+    
     if (hasPlayerCollision(player, asteroids)) {
       gameStatus = "gameOver";
+    } else {
+      score = updateScore(score, deltaTime);
+      score = applyScoreBonuses(score);
+      updateBonusFeedbackTimer(deltaTime);
     }
   }
 
-  renderFrame(context, stars, player, asteroids, gameStatus, score, survivalTime);
+  renderFrame(
+    context,
+    stars,
+    player,
+    asteroids,
+    gameStatus,
+    score,
+    survivalTime,
+    bonusFeedbackTimeLeft > 0 ? bonusFeedbackText : null,
+  );
   updateDomStatus();
 
   requestAnimationFrame(runGameLoop);
@@ -107,6 +122,8 @@ function restartGame(): void {
   asteroidSpawnState = createInitialAsteroidSpawnState();
   score = 0;
   survivalTime = 0;
+  bonusFeedbackText = null;
+  bonusFeedbackTimeLeft = 0;
   previousFrameTime = performance.now();
 }
 
@@ -125,4 +142,29 @@ function getRequiredElement(selector: string): HTMLElement {
   }
 
   return element;
+}
+
+function applyScoreBonuses(currentScore: number): number {
+  const scoreBeforeBonus = currentScore;
+  const scoreAfterBonus = applyPassedAsteroidBonuses(currentScore, player, asteroids);
+  const bonusPoints = Math.floor(scoreAfterBonus - scoreBeforeBonus);
+
+  if (bonusPoints > 0) {
+    bonusFeedbackText = `+${bonusPoints}`;
+    bonusFeedbackTimeLeft = BONUS_FEEDBACK_DURATION;
+  }
+
+  return scoreAfterBonus;
+}
+
+function updateBonusFeedbackTimer(deltaTime: number): void {
+  if (bonusFeedbackTimeLeft <= 0) {
+    return;
+  }
+
+  bonusFeedbackTimeLeft = Math.max(0, bonusFeedbackTimeLeft - deltaTime);
+
+  if (bonusFeedbackTimeLeft === 0) {
+    bonusFeedbackText = null;
+  }
 }

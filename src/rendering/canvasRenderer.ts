@@ -12,6 +12,7 @@ export type Star = {
   y: number;
   radius: number;
   alpha: number;
+  speed: number;
 };
 
 export function createStars(count: number): Star[] {
@@ -20,7 +21,19 @@ export function createStars(count: number): Star[] {
     y: Math.random() * GAME_HEIGHT,
     radius: Math.random() * 1.8 + 0.4,
     alpha: Math.random() * 0.7 + 0.25,
+    speed: Math.random() * 18 + 8,
   }));
+}
+
+export function updateStars(starField: Star[], deltaTime: number): void {
+  for (const star of starField) {
+    star.x -= star.speed * deltaTime;
+
+    if (star.x < -4) {
+      star.x = GAME_WIDTH + 4;
+      star.y = Math.random() * GAME_HEIGHT;
+    }
+  }
 }
 
 export function renderFrame(
@@ -38,7 +51,7 @@ export function renderFrame(
   drawStars(ctx, starField);
   drawPlayerAreaGuide(ctx);
   drawAsteroids(ctx, currentAsteroids);
-  drawPlayer(ctx, currentPlayer);
+  drawPlayer(ctx, currentPlayer, currentStatus);
   drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime, currentBestScore);
 
   if (bonusFeedbackText) {
@@ -74,10 +87,18 @@ function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
   }
 }
 
-function drawPlayer(ctx: CanvasRenderingContext2D, currentPlayer: Player): void {
+function drawPlayer(
+  ctx: CanvasRenderingContext2D,
+  currentPlayer: Player,
+  currentStatus: GameStatus,
+): void {
   const noseX = currentPlayer.x + currentPlayer.width / 2;
   const tailX = currentPlayer.x - currentPlayer.width / 2;
   const centerY = currentPlayer.y;
+
+  if (currentStatus === "running") {
+    drawShipThrust(ctx, tailX, centerY);
+  }
 
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
@@ -96,6 +117,17 @@ function drawPlayer(ctx: CanvasRenderingContext2D, currentPlayer: Player): void 
   ctx.beginPath();
   ctx.fillStyle = "#7a5cff";
   ctx.arc(currentPlayer.x - 6, centerY, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawShipThrust(ctx: CanvasRenderingContext2D, tailX: number, centerY: number): void {
+  ctx.beginPath();
+  ctx.moveTo(tailX - 4, centerY - 9);
+  ctx.lineTo(tailX - 26, centerY);
+  ctx.lineTo(tailX - 4, centerY + 9);
+  ctx.closePath();
+
+  ctx.fillStyle = "rgba(158, 233, 255, 0.72)";
   ctx.fill();
 }
 

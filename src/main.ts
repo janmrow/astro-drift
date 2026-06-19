@@ -17,7 +17,7 @@ import {
 } from "./game/asteroids";
 import type { Asteroid, GameStatus } from "./game/types";
 import { setupKeyboardControls } from "./input/keyboard";
-import { createStars, renderFrame } from "./rendering/canvasRenderer";
+import { createStars, renderFrame, updateStars } from "./rendering/canvasRenderer";
 import { readBestScore, saveBestScore } from "./storage/bestScoreStorage";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -61,6 +61,8 @@ function runGameLoop(currentFrameTime: number): void {
   const deltaTime = Math.min((currentFrameTime - previousFrameTime) / 1000, 0.033);
 
   previousFrameTime = currentFrameTime;
+
+  updateStars(stars, deltaTime);
 
   if (gameStatus === "running") {
     survivalTime += deltaTime;

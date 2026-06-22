@@ -16,7 +16,6 @@ export type Star = {
 };
 
 const STAR_WRAP_PADDING = 4;
-const HORIZON_Y = 344;
 
 const HUD_PANEL = {
   x: 412,
@@ -60,6 +59,7 @@ const PALETTE = {
   magenta: "#ff4fab",
   magentaSoft: "rgba(255, 79, 171, 0.62)",
   amber: "#ffb86c",
+  amberSoft: "rgba(255, 184, 108, 0.58)",
   asteroidFill: "#211936",
   asteroidStroke: "#78e6f0",
 };
@@ -125,52 +125,6 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
 
   ctx.fillStyle = skyGradient;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-  const horizonGlow = ctx.createLinearGradient(0, HORIZON_Y - 96, 0, HORIZON_Y + 96);
-  horizonGlow.addColorStop(0, "rgba(255, 79, 171, 0)");
-  horizonGlow.addColorStop(0.48, "rgba(255, 79, 171, 0.14)");
-  horizonGlow.addColorStop(0.54, "rgba(125, 249, 255, 0.12)");
-  horizonGlow.addColorStop(1, "rgba(255, 184, 108, 0)");
-
-  ctx.fillStyle = horizonGlow;
-  ctx.fillRect(0, HORIZON_Y - 96, GAME_WIDTH, 192);
-
-  drawGroundGrid(ctx);
-
-  ctx.strokeStyle = "rgba(125, 249, 255, 0.42)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(0, HORIZON_Y);
-  ctx.lineTo(GAME_WIDTH, HORIZON_Y);
-  ctx.stroke();
-}
-
-function drawGroundGrid(ctx: CanvasRenderingContext2D): void {
-  const vanishingX = GAME_WIDTH * 0.5;
-
-  ctx.save();
-  ctx.strokeStyle = "rgba(125, 249, 255, 0.12)";
-  ctx.lineWidth = 1;
-
-  for (let line = 0; line <= 12; line++) {
-    const x = (GAME_WIDTH / 12) * line;
-    ctx.beginPath();
-    ctx.moveTo(vanishingX, HORIZON_Y);
-    ctx.lineTo(x, GAME_HEIGHT);
-    ctx.stroke();
-  }
-
-  for (let line = 1; line <= 7; line++) {
-    const progress = line / 7;
-    const y = HORIZON_Y + Math.pow(progress, 1.85) * (GAME_HEIGHT - HORIZON_Y);
-
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(GAME_WIDTH, y);
-    ctx.stroke();
-  }
-
-  ctx.restore();
 }
 
 function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
@@ -230,9 +184,9 @@ function drawShipThrust(ctx: CanvasRenderingContext2D, tailX: number, centerY: n
   ctx.closePath();
 
   ctx.save();
-  ctx.shadowColor = "rgba(125, 249, 255, 0.5)";
-  ctx.shadowBlur = 12;
-  ctx.fillStyle = "rgba(125, 249, 255, 0.52)";
+  ctx.shadowColor = PALETTE.amberSoft;
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = "rgba(255, 184, 108, 0.66)";
   ctx.fill();
   ctx.restore();
 }

@@ -87,6 +87,8 @@ Run Playwright E2E tests:
 npm run test:e2e
 ```
 
+Playwright builds the app and starts a local preview server from `playwright.config.ts`.
+
 Run the full local quality gate:
 
 ```bash
@@ -145,6 +147,8 @@ The main architectural rule is simple:
 
 > Keep game rules separate from Canvas rendering.
 
+The decision is documented in [ADR-001: Separate game engine from rendering](docs/ADR-001-separate-engine-from-rendering.md).
+
 Core gameplay rules live in `src/game/`:
 
 - player movement
@@ -164,6 +168,8 @@ Local best score persistence lives in `src/storage/bestScoreStorage.ts`.
 `src/main.ts` connects these pieces: input, game state, rendering, storage, DOM status hooks, and the animation loop.
 
 This structure keeps the important behavior testable without relying on Canvas pixel assertions.
+
+For a quick model or reviewer handoff, start with this README, then read `TEST_STRATEGY.md` and the ADR linked above.
 
 ## Testing Approach
 

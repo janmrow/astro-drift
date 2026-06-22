@@ -15,6 +15,36 @@ export type Star = {
   speed: number;
 };
 
+const STAR_WRAP_PADDING = 4;
+
+const HUD_PANEL = {
+  x: 412,
+  y: 32,
+  width: 352,
+  height: 124,
+  padding: 20,
+  statusBaseline: 32,
+  labelBaseline: 64,
+  scoreBaseline: 92,
+  bestScoreBaseline: 91,
+  detailsBaseline: 118,
+  asteroidCountXOffset: 198,
+};
+
+const PLAYER_SECTOR_GUIDE = {
+  xOffset: 24,
+  verticalPadding: 36,
+  labelX: 48,
+  labelBaselineFromBottom: 32,
+};
+
+const BONUS_BADGE = {
+  x: 712,
+  y: 132,
+  width: 36,
+  height: 16,
+};
+
 export function createStars(count: number): Star[] {
   return Array.from({ length: count }, () => ({
     x: Math.random() * GAME_WIDTH,
@@ -29,8 +59,8 @@ export function updateStars(starField: Star[], deltaTime: number): void {
   for (const star of starField) {
     star.x -= star.speed * deltaTime;
 
-    if (star.x < -4) {
-      star.x = GAME_WIDTH + 4;
+    if (star.x < -STAR_WRAP_PADDING) {
+      star.x = GAME_WIDTH + STAR_WRAP_PADDING;
       star.y = Math.random() * GAME_HEIGHT;
     }
   }
@@ -175,18 +205,14 @@ function drawStatusText(
   currentSurvivalTime: number,
   currentBestScore: number,
 ): void {
-  const panelX = 412;
-  const panelY = 32;
-  const panelWidth = 352;
-  const panelHeight = 124;
-  const panelPadding = 20;
+  const { x, y, width, height, padding } = HUD_PANEL;
 
   ctx.fillStyle = "rgba(5, 5, 16, 0.42)";
-  ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+  ctx.fillRect(x, y, width, height);
 
   ctx.strokeStyle = "rgba(158, 233, 255, 0.2)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+  ctx.strokeRect(x, y, width, height);
 
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 24px system-ui, sans-serif";
@@ -198,29 +224,33 @@ function drawStatusText(
         ? "Collision detected"
         : "Avoid the asteroids";
 
-  ctx.fillText(statusText, panelX + panelPadding, panelY + 32);
+  ctx.fillText(statusText, x + padding, y + HUD_PANEL.statusBaseline);
 
   ctx.fillStyle = "rgba(207, 200, 239, 0.74)";
   ctx.font = "700 11px system-ui, sans-serif";
-  ctx.fillText("SCORE", panelX + panelPadding, panelY + 64);
+  ctx.fillText("SCORE", x + padding, y + HUD_PANEL.labelBaseline);
   ctx.textAlign = "right";
-  ctx.fillText("BEST", panelX + panelWidth - panelPadding, panelY + 64);
+  ctx.fillText("BEST", x + width - padding, y + HUD_PANEL.labelBaseline);
   ctx.textAlign = "start";
 
   ctx.fillStyle = "#9ee9ff";
   ctx.font = "700 24px system-ui, sans-serif";
-  ctx.fillText(formatScore(currentScore), panelX + panelPadding, panelY + 92);
+  ctx.fillText(formatScore(currentScore), x + padding, y + HUD_PANEL.scoreBaseline);
 
   ctx.fillStyle = "#f4f1ff";
   ctx.font = "700 18px system-ui, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText(formatScore(currentBestScore), panelX + panelWidth - panelPadding, panelY + 91);
+  ctx.fillText(formatScore(currentBestScore), x + width - padding, y + HUD_PANEL.bestScoreBaseline);
   ctx.textAlign = "start";
 
   ctx.fillStyle = "#cfc8ef";
   ctx.font = "400 15px system-ui, sans-serif";
-  ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, panelX + panelPadding, panelY + 118);
-  ctx.fillText(`Asteroids: ${asteroidCount}`, panelX + 198, panelY + 118);
+  ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, x + padding, y + HUD_PANEL.detailsBaseline);
+  ctx.fillText(
+    `Asteroids: ${asteroidCount}`,
+    x + HUD_PANEL.asteroidCountXOffset,
+    y + HUD_PANEL.detailsBaseline,
+  );
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -281,36 +311,37 @@ function drawGameOverOverlay(
 }
 
 function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
+  const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
+
   ctx.strokeStyle = "rgba(158, 233, 255, 0.16)";
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 10]);
   ctx.beginPath();
-  ctx.moveTo(PLAYER_AREA_MAX_X + 24, 36);
-  ctx.lineTo(PLAYER_AREA_MAX_X + 24, GAME_HEIGHT - 36);
+  ctx.moveTo(guideX, PLAYER_SECTOR_GUIDE.verticalPadding);
+  ctx.lineTo(guideX, GAME_HEIGHT - PLAYER_SECTOR_GUIDE.verticalPadding);
   ctx.stroke();
   ctx.setLineDash([]);
 
   ctx.fillStyle = "rgba(158, 233, 255, 0.52)";
   ctx.font = "600 14px system-ui, sans-serif";
-  ctx.fillText("player sector", 48, GAME_HEIGHT - 32);
+  ctx.fillText(
+    "player sector",
+    PLAYER_SECTOR_GUIDE.labelX,
+    GAME_HEIGHT - PLAYER_SECTOR_GUIDE.labelBaselineFromBottom,
+  );
 }
 
 function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
-  const badgeX = 712;
-  const badgeY = 132;
-  const badgeWidth = 36;
-  const badgeHeight = 16;
-
   ctx.fillStyle = "rgba(158, 233, 255, 0.12)";
-  ctx.fillRect(badgeX, badgeY, badgeWidth, badgeHeight);
+  ctx.fillRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
 
   ctx.strokeStyle = "rgba(158, 233, 255, 0.32)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(badgeX, badgeY, badgeWidth, badgeHeight);
+  ctx.strokeRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
 
   ctx.fillStyle = "rgba(158, 233, 255, 0.88)";
   ctx.font = "700 11px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(text, badgeX + badgeWidth / 2, badgeY + 12);
+  ctx.fillText(text, BONUS_BADGE.x + BONUS_BADGE.width / 2, BONUS_BADGE.y + 12);
   ctx.textAlign = "start";
 }

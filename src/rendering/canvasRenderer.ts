@@ -46,9 +46,9 @@ const BONUS_BADGE = {
 };
 
 const PALETTE = {
-  backgroundTop: "#1a0b2e",
-  backgroundMid: "#120725",
-  backgroundBottom: "#070417",
+  backgroundTop: "#22103a",
+  backgroundMid: "#29123a",
+  backgroundBottom: "#10071f",
   surface: "rgba(7, 4, 23, 0.52)",
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
   text: "#f6f0ff",
@@ -60,6 +60,8 @@ const PALETTE = {
   magentaSoft: "rgba(255, 79, 171, 0.62)",
   amber: "#ffb86c",
   amberSoft: "rgba(255, 184, 108, 0.58)",
+  rust: "#a34a38",
+  darkGold: "#b98b3f",
   asteroidFill: "#211936",
   asteroidStroke: "#78e6f0",
 };
@@ -164,14 +166,14 @@ function drawPlayer(
   ctx.fill();
 
   ctx.shadowBlur = 8;
-  ctx.strokeStyle = PALETTE.cyan;
+  ctx.strokeStyle = PALETTE.rust;
   ctx.lineWidth = 3;
   ctx.stroke();
 
   ctx.restore();
 
   ctx.beginPath();
-  ctx.fillStyle = PALETTE.cyan;
+  ctx.fillStyle = PALETTE.darkGold;
   ctx.arc(currentPlayer.x - 6, centerY, 5, 0, Math.PI * 2);
   ctx.fill();
 }

@@ -22,6 +22,12 @@ export const ASTEROID_REMOVE_PADDING = 80;
 export const SCORE_PER_SECOND = 10;
 export const ASTEROID_PASS_BONUS = 25;
 
+const PLAYER_SCREEN_PADDING = 12;
+// Slightly smaller than the drawn ship so near misses still feel fair.
+const PLAYER_HITBOX_WIDTH_RATIO = 0.72;
+const PLAYER_HITBOX_HEIGHT_RATIO = 0.64;
+const ASTEROID_COLLISION_RADIUS_RATIO = 0.82;
+
 export function createInitialPlayer(): Player {
   return {
     x: PLAYER_START_X,
@@ -60,13 +66,13 @@ export function updatePlayer(
     ...currentPlayer,
     x: clamp(
       currentPlayer.x + normalizedX * PLAYER_SPEED * deltaTime,
-      currentPlayer.width / 2 + 12,
+      currentPlayer.width / 2 + PLAYER_SCREEN_PADDING,
       PLAYER_AREA_MAX_X,
     ),
     y: clamp(
       currentPlayer.y + normalizedY * PLAYER_SPEED * deltaTime,
-      currentPlayer.height / 2 + 12,
-      GAME_HEIGHT - currentPlayer.height / 2 - 12,
+      currentPlayer.height / 2 + PLAYER_SCREEN_PADDING,
+      GAME_HEIGHT - currentPlayer.height / 2 - PLAYER_SCREEN_PADDING,
     ),
   };
 }
@@ -111,7 +117,7 @@ export function hasPlayerCollision(currentPlayer: Player, currentAsteroids: Aste
 
 export function isPlayerCollidingWithAsteroid(currentPlayer: Player, asteroid: Asteroid): boolean {
   const hitbox = getPlayerHitbox(currentPlayer);
-  const asteroidHitRadius = asteroid.radius * 0.82;
+  const asteroidHitRadius = asteroid.radius * ASTEROID_COLLISION_RADIUS_RATIO;
 
   const closestX = clamp(asteroid.x, hitbox.left, hitbox.right);
   const closestY = clamp(asteroid.y, hitbox.top, hitbox.bottom);
@@ -123,8 +129,8 @@ export function isPlayerCollidingWithAsteroid(currentPlayer: Player, asteroid: A
 }
 
 export function getPlayerHitbox(currentPlayer: Player): PlayerHitbox {
-  const hitboxWidth = currentPlayer.width * 0.72;
-  const hitboxHeight = currentPlayer.height * 0.64;
+  const hitboxWidth = currentPlayer.width * PLAYER_HITBOX_WIDTH_RATIO;
+  const hitboxHeight = currentPlayer.height * PLAYER_HITBOX_HEIGHT_RATIO;
 
   return {
     left: currentPlayer.x - hitboxWidth / 2,

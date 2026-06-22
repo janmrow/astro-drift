@@ -37,13 +37,16 @@ if (!context) {
   throw new Error("Canvas 2D context is not available.");
 }
 
-const stars = createStars(90);
+const STAR_COUNT = 90;
+// Caps long frames after tab switches so movement does not jump across the field.
+const MAX_FRAME_DELTA_SECONDS = 0.033;
+const BONUS_FEEDBACK_DURATION = 0.65;
+
+const stars = createStars(STAR_COUNT);
 const input = createInputState();
 let player = createInitialPlayer();
 
 const asteroids: Asteroid[] = [];
-
-const BONUS_FEEDBACK_DURATION = 0.65;
 
 let gameStatus: GameStatus = "idle";
 let previousFrameTime = performance.now();
@@ -58,7 +61,10 @@ setupKeyboardControls(input, handleGameAction);
 requestAnimationFrame(runGameLoop);
 
 function runGameLoop(currentFrameTime: number): void {
-  const deltaTime = Math.min((currentFrameTime - previousFrameTime) / 1000, 0.033);
+  const deltaTime = Math.min(
+    (currentFrameTime - previousFrameTime) / 1000,
+    MAX_FRAME_DELTA_SECONDS,
+  );
 
   previousFrameTime = currentFrameTime;
 
@@ -75,7 +81,7 @@ function runGameLoop(currentFrameTime: number): void {
       survivalTime,
     );
     updateAsteroids(asteroids, deltaTime);
-    
+
     if (hasPlayerCollision(player, asteroids)) {
       gameStatus = "gameOver";
       bestScore = saveBestScore(score);

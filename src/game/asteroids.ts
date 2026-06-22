@@ -16,6 +16,13 @@ export type AsteroidSpawnState = {
   nextId: number;
 };
 
+const ASTEROID_VERTICAL_SPAWN_PADDING = 16;
+const ASTEROID_POINT_COUNT = 9;
+const ASTEROID_MIN_POINT_RADIUS_RATIO = 0.8;
+const ASTEROID_MAX_POINT_RADIUS_RATIO = 1.2;
+const ASTEROID_MIN_ROTATION_SPEED = -1.2;
+const ASTEROID_MAX_ROTATION_SPEED = 1.2;
+
 export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   return {
     timer: 0,
@@ -66,15 +73,18 @@ function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
   return {
     id: `asteroid-${id}`,
     x: GAME_WIDTH + radius,
-    y: randomBetween(radius + 16, GAME_HEIGHT - radius - 16),
+    y: randomBetween(
+      radius + ASTEROID_VERTICAL_SPAWN_PADDING,
+      GAME_HEIGHT - radius - ASTEROID_VERTICAL_SPAWN_PADDING,
+    ),
     radius,
     speed: randomBetween(
       ASTEROID_BASE_MIN_SPEED + speedBonus,
       ASTEROID_BASE_MAX_SPEED + speedBonus,
     ),
     rotation: randomBetween(0, Math.PI * 2),
-    rotationSpeed: randomBetween(-1.2, 1.2),
-    points: createAsteroidPoints(9),
+    rotationSpeed: randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED),
+    points: createAsteroidPoints(ASTEROID_POINT_COUNT),
     passed: false,
   };
 }
@@ -85,7 +95,10 @@ function createAsteroidPoints(count: number): AsteroidPoint[] {
 
   for (let i = 0; i < count; i++) {
     const angle = i * angleStep;
-    const distanceMultiplier = randomBetween(0.8, 1.2);
+    const distanceMultiplier = randomBetween(
+      ASTEROID_MIN_POINT_RADIUS_RATIO,
+      ASTEROID_MAX_POINT_RADIUS_RATIO,
+    );
 
     points.push({ angle, distanceMultiplier });
   }

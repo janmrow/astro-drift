@@ -56,8 +56,8 @@ const PALETTE = {
   cyan: "#7df9ff",
   cyanSoft: "rgba(125, 249, 255, 0.62)",
   cyanDim: "rgba(125, 249, 255, 0.18)",
-  magenta: "#ff4fab",
-  magentaSoft: "rgba(255, 79, 171, 0.62)",
+  magenta: "#d83b86",
+  magentaSoft: "rgba(216, 59, 134, 0.42)",
   amber: "#ffb86c",
   amberSoft: "rgba(255, 184, 108, 0.58)",
   rust: "#a34a38",
@@ -153,7 +153,7 @@ function drawPlayer(
 
   ctx.save();
   ctx.shadowColor = PALETTE.magentaSoft;
-  ctx.shadowBlur = 16;
+  ctx.shadowBlur = 10;
 
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
@@ -165,7 +165,7 @@ function drawPlayer(
   ctx.fillStyle = PALETTE.magenta;
   ctx.fill();
 
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 4;
   ctx.strokeStyle = PALETTE.rust;
   ctx.lineWidth = 3;
   ctx.stroke();

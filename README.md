@@ -183,6 +183,7 @@ Playwright tests cover the main browser smoke flow:
 - Enter starts the game
 - Space starts the game
 - DOM status hooks update to `running`
+- score, time, and asteroid status hooks progress while the game is running
 
 The project intentionally does not test Canvas pixels. Pixel-level tests are brittle and would make small visual changes look like gameplay regressions. Instead, game rules are tested directly and browser flow is checked through stable DOM hooks such as `data-testid`.
 

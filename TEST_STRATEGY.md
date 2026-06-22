@@ -48,17 +48,17 @@ These tests should stay fast and independent from the browser.
 
 ### E2E tests
 
-Planned E2E tests should cover the main user flow:
+E2E tests cover the main browser contract:
 
 - page loads;
 - canvas exists;
 - game starts with Enter or Space;
 - game status changes from `idle` to `running`;
-- score/time update while playing;
-- game can reach `gameOver`;
-- restart returns the game to a clean running state.
+- score, time, and asteroid count update while playing.
 
 E2E tests should use DOM status hooks where possible instead of reading Canvas pixels.
+
+Future E2E coverage may include game over and restart only if those flows can be made deterministic without relying on random asteroid timing.
 
 ### API tests
 
@@ -79,7 +79,9 @@ Later scope:
 Current automated checks:
 
 ```text
+npm run lint
 npm test
+npm run test:e2e
 npm run build
 ```
 
@@ -90,15 +92,7 @@ Current unit test areas:
 
 ## Planned quality gates
 
-The intended frontend quality gate is:
-
-```text
-npm run lint
-npm test
-npm run build
-```
-
-After Playwright is added:
+The frontend quality gate is:
 
 ```text
 npm run lint

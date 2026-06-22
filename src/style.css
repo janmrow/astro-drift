@@ -2,8 +2,8 @@
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  color: #f4f1ff;
-  background: #080814;
+  color: #f6f0ff;
+  background: #070417;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -28,12 +28,12 @@ body {
 .game-shell {
   width: min(1080px, 100%);
   padding: 24px;
-  border: 1px solid rgba(198, 181, 255, 0.24);
+  border: 1px solid rgba(125, 249, 255, 0.2);
   border-radius: 20px;
   background:
-    radial-gradient(circle at top left, rgba(122, 92, 255, 0.28), transparent 32%),
-    linear-gradient(135deg, rgba(22, 22, 48, 0.95), rgba(8, 8, 20, 0.95));
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+    radial-gradient(circle at top left, rgba(255, 79, 171, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(26, 11, 46, 0.96), rgba(7, 4, 23, 0.96));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
 }
 
 .game-header {
@@ -46,7 +46,7 @@ body {
 
 .eyebrow {
   margin: 0 0 8px;
-  color: #9ee9ff;
+  color: #7df9ff;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -62,10 +62,10 @@ h1 {
 .status-pill {
   margin: 0;
   padding: 8px 12px;
-  border: 1px solid rgba(158, 233, 255, 0.32);
+  border: 1px solid rgba(125, 249, 255, 0.28);
   border-radius: 999px;
-  color: #9ee9ff;
-  background: rgba(158, 233, 255, 0.08);
+  color: #7df9ff;
+  background: rgba(125, 249, 255, 0.07);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -74,14 +74,14 @@ h1 {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid rgba(244, 241, 255, 0.14);
+  border: 1px solid rgba(125, 249, 255, 0.18);
   border-radius: 16px;
-  background: #050510;
+  background: #070417;
 }
 
 .controls-hint {
   margin: 16px 0 0;
-  color: #cfc8ef;
+  color: #c9bfe8;
   font-size: 0.95rem;
 }
 

@@ -16,6 +16,7 @@ export type Star = {
 };
 
 const STAR_WRAP_PADDING = 4;
+const HORIZON_Y = 344;
 
 const HUD_PANEL = {
   x: 412,
@@ -43,6 +44,24 @@ const BONUS_BADGE = {
   y: 132,
   width: 36,
   height: 16,
+};
+
+const PALETTE = {
+  backgroundTop: "#1a0b2e",
+  backgroundMid: "#120725",
+  backgroundBottom: "#070417",
+  surface: "rgba(7, 4, 23, 0.52)",
+  surfaceStrong: "rgba(7, 4, 23, 0.76)",
+  text: "#f6f0ff",
+  mutedText: "#c9bfe8",
+  cyan: "#7df9ff",
+  cyanSoft: "rgba(125, 249, 255, 0.62)",
+  cyanDim: "rgba(125, 249, 255, 0.18)",
+  magenta: "#ff4fab",
+  magentaSoft: "rgba(255, 79, 171, 0.62)",
+  amber: "#ffb86c",
+  asteroidFill: "#211936",
+  asteroidStroke: "#78e6f0",
 };
 
 export function createStars(count: number): Star[] {
@@ -98,20 +117,66 @@ export function renderFrame(
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
-  const gradient = ctx.createLinearGradient(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  const skyGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
 
-  gradient.addColorStop(0, "#080814");
-  gradient.addColorStop(0.5, "#11112a");
-  gradient.addColorStop(1, "#050510");
+  skyGradient.addColorStop(0, PALETTE.backgroundTop);
+  skyGradient.addColorStop(0.56, PALETTE.backgroundMid);
+  skyGradient.addColorStop(1, PALETTE.backgroundBottom);
 
-  ctx.fillStyle = gradient;
+  ctx.fillStyle = skyGradient;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+  const horizonGlow = ctx.createLinearGradient(0, HORIZON_Y - 96, 0, HORIZON_Y + 96);
+  horizonGlow.addColorStop(0, "rgba(255, 79, 171, 0)");
+  horizonGlow.addColorStop(0.48, "rgba(255, 79, 171, 0.14)");
+  horizonGlow.addColorStop(0.54, "rgba(125, 249, 255, 0.12)");
+  horizonGlow.addColorStop(1, "rgba(255, 184, 108, 0)");
+
+  ctx.fillStyle = horizonGlow;
+  ctx.fillRect(0, HORIZON_Y - 96, GAME_WIDTH, 192);
+
+  drawGroundGrid(ctx);
+
+  ctx.strokeStyle = "rgba(125, 249, 255, 0.42)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, HORIZON_Y);
+  ctx.lineTo(GAME_WIDTH, HORIZON_Y);
+  ctx.stroke();
+}
+
+function drawGroundGrid(ctx: CanvasRenderingContext2D): void {
+  const vanishingX = GAME_WIDTH * 0.5;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(125, 249, 255, 0.12)";
+  ctx.lineWidth = 1;
+
+  for (let line = 0; line <= 12; line++) {
+    const x = (GAME_WIDTH / 12) * line;
+    ctx.beginPath();
+    ctx.moveTo(vanishingX, HORIZON_Y);
+    ctx.lineTo(x, GAME_HEIGHT);
+    ctx.stroke();
+  }
+
+  for (let line = 1; line <= 7; line++) {
+    const progress = line / 7;
+    const y = HORIZON_Y + Math.pow(progress, 1.85) * (GAME_HEIGHT - HORIZON_Y);
+
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(GAME_WIDTH, y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
   for (const star of starField) {
     ctx.beginPath();
-    ctx.fillStyle = `rgba(244, 241, 255, ${star.alpha})`;
+    ctx.fillStyle = `rgba(246, 240, 255, ${star.alpha * 0.78})`;
     ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
     ctx.fill();
   }
@@ -130,6 +195,10 @@ function drawPlayer(
     drawShipThrust(ctx, tailX, centerY);
   }
 
+  ctx.save();
+  ctx.shadowColor = PALETTE.magentaSoft;
+  ctx.shadowBlur = 16;
+
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
   ctx.lineTo(tailX, centerY - currentPlayer.height / 2);
@@ -137,15 +206,18 @@ function drawPlayer(
   ctx.lineTo(tailX, centerY + currentPlayer.height / 2);
   ctx.closePath();
 
-  ctx.fillStyle = "#d9f7ff";
+  ctx.fillStyle = PALETTE.magenta;
   ctx.fill();
 
-  ctx.strokeStyle = "#9ee9ff";
+  ctx.shadowBlur = 8;
+  ctx.strokeStyle = PALETTE.cyan;
   ctx.lineWidth = 3;
   ctx.stroke();
 
+  ctx.restore();
+
   ctx.beginPath();
-  ctx.fillStyle = "#7a5cff";
+  ctx.fillStyle = PALETTE.cyan;
   ctx.arc(currentPlayer.x - 6, centerY, 5, 0, Math.PI * 2);
   ctx.fill();
 }
@@ -157,8 +229,12 @@ function drawShipThrust(ctx: CanvasRenderingContext2D, tailX: number, centerY: n
   ctx.lineTo(tailX - 4, centerY + 9);
   ctx.closePath();
 
-  ctx.fillStyle = "rgba(158, 233, 255, 0.72)";
+  ctx.save();
+  ctx.shadowColor = "rgba(125, 249, 255, 0.5)";
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = "rgba(125, 249, 255, 0.52)";
   ctx.fill();
+  ctx.restore();
 }
 
 function drawAsteroids(ctx: CanvasRenderingContext2D, currentAsteroids: Asteroid[]): void {
@@ -187,10 +263,13 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   }
 
   ctx.closePath();
-  ctx.fillStyle = "#68617d";
+
+  ctx.shadowColor = "rgba(125, 249, 255, 0.24)";
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = PALETTE.asteroidFill;
   ctx.fill();
 
-  ctx.strokeStyle = "#b8acd8";
+  ctx.strokeStyle = PALETTE.asteroidStroke;
   ctx.lineWidth = 2;
   ctx.stroke();
 
@@ -207,14 +286,14 @@ function drawStatusText(
 ): void {
   const { x, y, width, height, padding } = HUD_PANEL;
 
-  ctx.fillStyle = "rgba(5, 5, 16, 0.42)";
+  ctx.fillStyle = PALETTE.surface;
   ctx.fillRect(x, y, width, height);
 
-  ctx.strokeStyle = "rgba(158, 233, 255, 0.2)";
+  ctx.strokeStyle = PALETTE.cyanDim;
   ctx.lineWidth = 1;
   ctx.strokeRect(x, y, width, height);
 
-  ctx.fillStyle = "#f4f1ff";
+  ctx.fillStyle = PALETTE.text;
   ctx.font = "700 24px system-ui, sans-serif";
 
   const statusText =
@@ -226,24 +305,24 @@ function drawStatusText(
 
   ctx.fillText(statusText, x + padding, y + HUD_PANEL.statusBaseline);
 
-  ctx.fillStyle = "rgba(207, 200, 239, 0.74)";
+  ctx.fillStyle = "rgba(201, 191, 232, 0.74)";
   ctx.font = "700 11px system-ui, sans-serif";
   ctx.fillText("SCORE", x + padding, y + HUD_PANEL.labelBaseline);
   ctx.textAlign = "right";
   ctx.fillText("BEST", x + width - padding, y + HUD_PANEL.labelBaseline);
   ctx.textAlign = "start";
 
-  ctx.fillStyle = "#9ee9ff";
+  ctx.fillStyle = PALETTE.cyan;
   ctx.font = "700 24px system-ui, sans-serif";
   ctx.fillText(formatScore(currentScore), x + padding, y + HUD_PANEL.scoreBaseline);
 
-  ctx.fillStyle = "#f4f1ff";
+  ctx.fillStyle = PALETTE.text;
   ctx.font = "700 18px system-ui, sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(formatScore(currentBestScore), x + width - padding, y + HUD_PANEL.bestScoreBaseline);
   ctx.textAlign = "start";
 
-  ctx.fillStyle = "#cfc8ef";
+  ctx.fillStyle = PALETTE.mutedText;
   ctx.font = "400 15px system-ui, sans-serif";
   ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, x + padding, y + HUD_PANEL.detailsBaseline);
   ctx.fillText(
@@ -254,23 +333,23 @@ function drawStatusText(
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = "rgba(5, 5, 16, 0.68)";
+  ctx.fillStyle = "rgba(7, 4, 23, 0.68)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-  ctx.fillStyle = "#f4f1ff";
+  ctx.fillStyle = PALETTE.text;
   ctx.font = "700 58px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
 
-  ctx.fillStyle = "#cfc8ef";
+  ctx.fillStyle = PALETTE.mutedText;
   ctx.font = "400 22px system-ui, sans-serif";
   ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
 
-  ctx.fillStyle = "#9ee9ff";
+  ctx.fillStyle = PALETTE.cyan;
   ctx.font = "700 21px system-ui, sans-serif";
   ctx.fillText("Press Enter or Space to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
-  ctx.fillStyle = "#cfc8ef";
+  ctx.fillStyle = PALETTE.mutedText;
   ctx.font = "400 17px system-ui, sans-serif";
   ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
@@ -283,27 +362,27 @@ function drawGameOverOverlay(
   finalSurvivalTime: number,
   bestScore: number,
 ): void {
-  ctx.fillStyle = "rgba(5, 5, 16, 0.76)";
+  ctx.fillStyle = PALETTE.surfaceStrong;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-  ctx.fillStyle = "#f4f1ff";
+  ctx.fillStyle = PALETTE.text;
   ctx.font = "700 56px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
-  ctx.fillStyle = "#9ee9ff";
+  ctx.fillStyle = PALETTE.amber;
   ctx.font = "700 30px system-ui, sans-serif";
   ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
 
-  ctx.fillStyle = "#f4f1ff";
+  ctx.fillStyle = PALETTE.text;
   ctx.font = "700 22px system-ui, sans-serif";
   ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
 
-  ctx.fillStyle = "#cfc8ef";
+  ctx.fillStyle = PALETTE.mutedText;
   ctx.font = "400 21px system-ui, sans-serif";
   ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
 
-  ctx.fillStyle = "#f4f1ff";
+  ctx.fillStyle = PALETTE.text;
   ctx.font = "700 19px system-ui, sans-serif";
   ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
@@ -313,7 +392,7 @@ function drawGameOverOverlay(
 function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
   const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
 
-  ctx.strokeStyle = "rgba(158, 233, 255, 0.16)";
+  ctx.strokeStyle = PALETTE.cyanDim;
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 10]);
   ctx.beginPath();
@@ -322,7 +401,7 @@ function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillStyle = "rgba(158, 233, 255, 0.52)";
+  ctx.fillStyle = PALETTE.cyanSoft;
   ctx.font = "600 14px system-ui, sans-serif";
   ctx.fillText(
     "player sector",
@@ -332,14 +411,14 @@ function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
 }
 
 function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
-  ctx.fillStyle = "rgba(158, 233, 255, 0.12)";
+  ctx.fillStyle = "rgba(255, 184, 108, 0.12)";
   ctx.fillRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
 
-  ctx.strokeStyle = "rgba(158, 233, 255, 0.32)";
+  ctx.strokeStyle = "rgba(255, 184, 108, 0.42)";
   ctx.lineWidth = 1;
   ctx.strokeRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
 
-  ctx.fillStyle = "rgba(158, 233, 255, 0.88)";
+  ctx.fillStyle = PALETTE.amber;
   ctx.font = "700 11px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(text, BONUS_BADGE.x + BONUS_BADGE.width / 2, BONUS_BADGE.y + 12);

@@ -6,17 +6,23 @@ import {
   ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
   PLAYER_AREA_MAX_X,
+  PLAYER_SPEED,
   applyPassedAsteroidBonuses,
+  createInputState,
   createInitialPlayer,
   formatScore,
   formatTime,
   getAsteroidSpawnInterval,
+  getPlayerHitbox,
   hasAsteroidPassedPlayer,
   hasPlayerCollision,
+  isPlayerCollidingWithAsteroid,
   updatePlayer,
   updateScore,
 } from "../../src/game/engine";
 import type { Asteroid, InputState, Player } from "../../src/game/types";
+
+const PLAYER_SCREEN_PADDING = 12;
 
 function idleInput(): InputState {
   return {
@@ -53,6 +59,19 @@ describe("game engine", () => {
     expect(player.height).toBeGreaterThan(0);
   });
 
+  it("creates a neutral input state", () => {
+    expect(createInputState()).toEqual(idleInput());
+  });
+
+  it("keeps the player still when there is no movement input", () => {
+    const player = createInitialPlayer();
+
+    const updatedPlayer = updatePlayer(player, idleInput(), 0.5);
+
+    expect(updatedPlayer.x).toBe(player.x);
+    expect(updatedPlayer.y).toBe(player.y);
+  });
+
   it("moves the player according to input", () => {
     const player = createInitialPlayer();
     const input: InputState = {
@@ -66,7 +85,37 @@ describe("game engine", () => {
     expect(updatedPlayer.y).toBe(player.y);
   });
 
-  it("keeps the player inside the left gameplay sector", () => {
+  it("normalizes diagonal movement so it is not faster than straight movement", () => {
+    const player = createInitialPlayer();
+    const deltaTime = 0.5;
+    const input: InputState = {
+      ...idleInput(),
+      right: true,
+      up: true,
+    };
+
+    const updatedPlayer = updatePlayer(player, input, deltaTime);
+    const expectedOffset = (PLAYER_SPEED * deltaTime) / Math.sqrt(2);
+
+    expect(updatedPlayer.x).toBeCloseTo(player.x + expectedOffset);
+    expect(updatedPlayer.y).toBeCloseTo(player.y - expectedOffset);
+  });
+
+  it("does not move the player when opposite horizontal inputs cancel out", () => {
+    const player = createInitialPlayer();
+    const input: InputState = {
+      ...idleInput(),
+      left: true,
+      right: true,
+    };
+
+    const updatedPlayer = updatePlayer(player, input, 0.5);
+
+    expect(updatedPlayer.x).toBe(player.x);
+    expect(updatedPlayer.y).toBe(player.y);
+  });
+
+  it("keeps the player inside the right edge of the player sector", () => {
     const player: Player = {
       ...createInitialPlayer(),
       x: PLAYER_AREA_MAX_X - 2,
@@ -82,8 +131,43 @@ describe("game engine", () => {
     expect(updatedPlayer.x).toBe(PLAYER_AREA_MAX_X);
   });
 
-  it("keeps the player inside the vertical screen bounds", () => {
-    const player = createInitialPlayer();
+  it("keeps the player inside the left edge of the screen", () => {
+    const player: Player = {
+      ...createInitialPlayer(),
+      x: 14,
+    };
+
+    const input: InputState = {
+      ...idleInput(),
+      left: true,
+    };
+
+    const updatedPlayer = updatePlayer(player, input, 10);
+
+    expect(updatedPlayer.x).toBe(player.width / 2 + PLAYER_SCREEN_PADDING);
+  });
+
+  it("keeps the player inside the top screen bound", () => {
+    const player: Player = {
+      ...createInitialPlayer(),
+      y: 20,
+    };
+
+    const input: InputState = {
+      ...idleInput(),
+      up: true,
+    };
+
+    const updatedPlayer = updatePlayer(player, input, 10);
+
+    expect(updatedPlayer.y).toBe(player.height / 2 + PLAYER_SCREEN_PADDING);
+  });
+
+  it("keeps the player inside the bottom screen bound", () => {
+    const player: Player = {
+      ...createInitialPlayer(),
+      y: GAME_HEIGHT - 20,
+    };
 
     const input: InputState = {
       ...idleInput(),
@@ -92,7 +176,7 @@ describe("game engine", () => {
 
     const updatedPlayer = updatePlayer(player, input, 10);
 
-    expect(updatedPlayer.y).toBeLessThan(GAME_HEIGHT);
+    expect(updatedPlayer.y).toBe(GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING);
   });
 
   it("increases score over time", () => {
@@ -108,6 +192,10 @@ describe("game engine", () => {
     expect(earlyInterval).toBe(ASTEROID_BASE_SPAWN_INTERVAL);
     expect(laterInterval).toBeLessThan(earlyInterval);
     expect(laterInterval).toBeGreaterThanOrEqual(ASTEROID_MIN_SPAWN_INTERVAL);
+  });
+
+  it("does not reduce asteroid spawn interval below the minimum", () => {
+    expect(getAsteroidSpawnInterval(1_000)).toBe(ASTEROID_MIN_SPAWN_INTERVAL);
   });
 
   it("detects collision between player and asteroid", () => {
@@ -132,6 +220,24 @@ describe("game engine", () => {
     expect(hasPlayerCollision(player, [asteroid])).toBe(false);
   });
 
+  it("does not detect collision when there are no asteroids", () => {
+    expect(hasPlayerCollision(createInitialPlayer(), [])).toBe(false);
+  });
+
+  it("allows near misses around the drawn ship edges", () => {
+    const player = createInitialPlayer();
+    const hitbox = getPlayerHitbox(player);
+    const asteroid = createAsteroid({
+      x: player.x + player.width / 2 + 6,
+      y: player.y,
+      radius: 10,
+    });
+
+    expect(asteroid.x - asteroid.radius).toBeLessThan(player.x + player.width / 2);
+    expect(asteroid.x).toBeGreaterThan(hitbox.right);
+    expect(isPlayerCollidingWithAsteroid(player, asteroid)).toBe(false);
+  });
+
   it("formats score as a five digit value", () => {
     expect(formatScore(7.9)).toBe("00007");
     expect(formatScore(123)).toBe("00123");
@@ -140,7 +246,7 @@ describe("game engine", () => {
   it("formats survival time in seconds", () => {
     expect(formatTime(12.9)).toBe("12s");
   });
-  
+
   it("detects when an asteroid has passed the player", () => {
     const player = createInitialPlayer();
     const asteroid = createAsteroid({
@@ -172,6 +278,39 @@ describe("game engine", () => {
 
     expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS);
     expect(asteroid.passed).toBe(true);
+  });
+
+  it("adds bonus score for each newly passed asteroid", () => {
+    const player = createInitialPlayer();
+    const firstAsteroid = createAsteroid({
+      id: "asteroid-first",
+      x: player.x - player.width / 2 - 40,
+      radius: 20,
+    });
+    const secondAsteroid = createAsteroid({
+      id: "asteroid-second",
+      x: player.x - player.width / 2 - 50,
+      radius: 20,
+    });
+
+    const updatedScore = applyPassedAsteroidBonuses(100, player, [firstAsteroid, secondAsteroid]);
+
+    expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS * 2);
+    expect(firstAsteroid.passed).toBe(true);
+    expect(secondAsteroid.passed).toBe(true);
+  });
+
+  it("does not mark asteroids as passed before they pass the player", () => {
+    const player = createInitialPlayer();
+    const asteroid = createAsteroid({
+      x: player.x + 80,
+      radius: 20,
+    });
+
+    const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+
+    expect(updatedScore).toBe(100);
+    expect(asteroid.passed).toBe(false);
   });
 
   it("does not add pass bonus twice for the same asteroid", () => {

@@ -93,4 +93,11 @@ describe("best score storage", () => {
     expect(bestScore).toBe(99);
     expect(localStorage.getItem("astro-drift-best-score")).toBe("99");
   });
+
+  it("normalizes negative saved score to zero", () => {
+    const bestScore = saveBestScore(-10);
+
+    expect(bestScore).toBe(0);
+    expect(localStorage.getItem("astro-drift-best-score")).toBe("0");
+  });
 });

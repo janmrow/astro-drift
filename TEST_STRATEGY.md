@@ -37,12 +37,15 @@ Current focus:
 - player initial state;
 - player movement;
 - movement boundaries;
+- input state defaults;
 - scoring;
+- passed asteroid bonuses;
 - difficulty calculation;
 - collision detection;
 - asteroid movement;
 - asteroid cleanup;
-- asteroid spawn state.
+- asteroid spawn state;
+- local best score storage.
 
 These tests should stay fast and independent from the browser.
 
@@ -88,7 +91,8 @@ npm run build
 Current unit test areas:
 
 - `src/game/engine.ts`;
-- `src/game/asteroids.ts`.
+- `src/game/asteroids.ts`;
+- `src/storage/bestScoreStorage.ts`.
 
 ## Planned quality gates
 
@@ -119,6 +123,7 @@ We also do not test every random asteroid shape.
 Instead, we test stable behavior:
 
 - spawn state;
+- spawned asteroid ranges with controlled randomness;
 - movement;
 - cleanup;
 - collision-related rules.

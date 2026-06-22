@@ -1,11 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createInitialAsteroidSpawnState,
   updateAsteroidSpawning,
   updateAsteroids,
 } from "../../src/game/asteroids";
-import { ASTEROID_BASE_SPAWN_INTERVAL, ASTEROID_REMOVE_PADDING } from "../../src/game/engine";
+import {
+  ASTEROID_BASE_MAX_SPEED,
+  ASTEROID_BASE_MIN_SPEED,
+  ASTEROID_BASE_SPAWN_INTERVAL,
+  ASTEROID_MAX_RADIUS,
+  ASTEROID_MIN_RADIUS,
+  ASTEROID_REMOVE_PADDING,
+  ASTEROID_SPEED_RAMP,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+} from "../../src/game/engine";
 import type { Asteroid } from "../../src/game/types";
 
 function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
@@ -24,6 +34,10 @@ function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
 }
 
 describe("asteroid logic", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("creates the initial asteroid spawn state", () => {
     const spawnState = createInitialAsteroidSpawnState();
 
@@ -51,6 +65,38 @@ describe("asteroid logic", () => {
     expect(updatedSpawnState.timer).toBeCloseTo(0.1);
   });
 
+  it("spawns multiple asteroids when more than one interval passes", () => {
+    const asteroids: Asteroid[] = [];
+    const spawnState = createInitialAsteroidSpawnState();
+
+    const updatedSpawnState = updateAsteroidSpawning(
+      asteroids,
+      spawnState,
+      ASTEROID_BASE_SPAWN_INTERVAL * 2 + 0.2,
+      0,
+    );
+
+    expect(asteroids).toHaveLength(2);
+    expect(asteroids.map((asteroid) => asteroid.id)).toEqual(["asteroid-1", "asteroid-2"]);
+    expect(updatedSpawnState.nextId).toBe(3);
+    expect(updatedSpawnState.timer).toBeCloseTo(0.2);
+  });
+
+  it("continues spawning from an existing timer and id", () => {
+    const asteroids: Asteroid[] = [];
+    const spawnState = {
+      timer: ASTEROID_BASE_SPAWN_INTERVAL - 0.1,
+      nextId: 7,
+    };
+
+    const updatedSpawnState = updateAsteroidSpawning(asteroids, spawnState, 0.2, 0);
+
+    expect(asteroids).toHaveLength(1);
+    expect(asteroids[0].id).toBe("asteroid-7");
+    expect(updatedSpawnState.nextId).toBe(8);
+    expect(updatedSpawnState.timer).toBeCloseTo(0.1);
+  });
+
   it("does not spawn an asteroid before the spawn interval passes", () => {
     const asteroids: Asteroid[] = [];
     const spawnState = createInitialAsteroidSpawnState();
@@ -65,6 +111,39 @@ describe("asteroid logic", () => {
     expect(asteroids).toHaveLength(0);
     expect(updatedSpawnState.nextId).toBe(1);
     expect(updatedSpawnState.timer).toBeCloseTo(ASTEROID_BASE_SPAWN_INTERVAL - 0.1);
+  });
+
+  it("creates spawned asteroids inside the expected gameplay ranges", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+
+    const asteroids: Asteroid[] = [];
+    const survivalTime = 20;
+    const radius = (ASTEROID_MIN_RADIUS + ASTEROID_MAX_RADIUS) / 2;
+    const speedBonus = survivalTime * ASTEROID_SPEED_RAMP;
+
+    updateAsteroidSpawning(
+      asteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      survivalTime,
+    );
+
+    expect(asteroids).toHaveLength(1);
+    expect(asteroids[0]).toMatchObject({
+      id: "asteroid-1",
+      radius,
+      x: GAME_WIDTH + radius,
+      y: GAME_HEIGHT / 2,
+      speed: (ASTEROID_BASE_MIN_SPEED + ASTEROID_BASE_MAX_SPEED) / 2 + speedBonus,
+      rotation: Math.PI,
+      rotationSpeed: 0,
+      passed: false,
+    });
+    expect(asteroids[0].points).toHaveLength(9);
+    expect(asteroids[0].points[0]).toEqual({
+      angle: 0,
+      distanceMultiplier: 1,
+    });
   });
 
   it("moves asteroids to the left according to their speed", () => {

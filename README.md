@@ -1,72 +1,73 @@
 # Astro Drift QA Lab
 
-Astro Drift QA Lab is a small retro browser arcade game built with TypeScript and Canvas.
+Astro Drift QA Lab is a small retro browser arcade game built with TypeScript, Vite, and Canvas.
 
-The project is designed as a practical QA/SDET / Quality Engineering portfolio project.
+It is also a practical QA/SDET portfolio project: a compact product with a clear gameplay loop, separated game logic, fast unit tests, stable browser smoke tests, linting, CI, and deployment automation.
 
-The goal is not to build a large game.  
-The goal is to create a small playable loop and surround it with clean, testable, quality-focused engineering.
+The project is intentionally small. The goal is not to build a large game. The goal is to show how a simple frontend product can be engineered, tested, and documented cleanly.
 
-## Current gameplay
+## What You Can Play
 
-The player controls a small spaceship and avoids incoming asteroids.
+You control a small spaceship and avoid incoming asteroids.
 
-Current game loop:
+The current game flow is:
 
 ```text
-idle → running → gameOver → restart
+idle -> running -> gameOver -> restart
 ```
 
-Current features:
+Current gameplay:
 
-- Canvas-based retro arcade game;
-- keyboard controls with Arrow Keys and WASD;
-- start with Enter or Space;
-- asteroids flying from right to left;
-- collision detection;
-- score increasing over time;
-- bonus score for passing asteroids;
-- local best score stored in the browser;
-- Game Over state;
-- quick restart with R, Enter or Space.
+- Canvas-rendered retro arcade scene
+- keyboard controls with Arrow keys or WASD
+- start with Enter or Space
+- asteroids moving from right to left
+- collision detection
+- score increasing over time
+- bonus score for passing asteroids
+- local best score stored in the browser
+- game over state
+- quick restart with R, Enter, or Space
 
-## Tech stack
+## Tech Stack
 
-- TypeScript;
-- Vite;
-- Canvas;
-- Vitest;
-- Playwright;
-- ESLint;
-- GitHub Actions.
+- TypeScript
+- Vite
+- Canvas
+- Vitest
+- Playwright
+- ESLint
+- GitHub Actions
 
-## Getting started
+## Getting Started
 
-Install dependencies:
+Use Node.js 22. The CI pipeline runs on Node 22, so local development should match it.
+
+Install dependencies from the lockfile:
 
 ```bash
-npm install
+npm ci
 ```
 
-Run the app locally:
+Start the local dev server:
 
 ```bash
 npm run dev
 ```
 
-Build the project:
+Build the production bundle:
 
 ```bash
 npm run build
 ```
 
-Preview production build:
+Preview the production build locally:
 
 ```bash
 npm run preview
 ```
 
-## Quality checks
+## Quality Checks
 
 Run lint:
 
@@ -92,13 +93,19 @@ Run the full local quality gate:
 npm run check
 ```
 
-The local quality gate runs:
+The quality gate runs:
 
 ```text
-lint → unit tests → Playwright E2E → build
+lint -> unit tests -> Playwright E2E -> build
 ```
 
-## Project structure
+If Playwright browsers are missing on a fresh machine, install Chromium:
+
+```bash
+npx playwright install chromium
+```
+
+## Project Structure
 
 ```text
 src/
@@ -113,6 +120,7 @@ src/
     canvasRenderer.ts
   storage/
     bestScoreStorage.ts
+  style.css
 
 tests/
   unit/
@@ -127,122 +135,108 @@ docs/
 
 .github/
   workflows/
-    quality.yml
+    ci.yml
+    deploy-pages.yml
 ```
 
-## Architecture notes
+## How The Code Is Organized
 
-The most important architectural decision is separating game rules from Canvas rendering.
+The main architectural rule is simple:
 
-The game logic lives in:
+> Keep game rules separate from Canvas rendering.
 
-```text
-src/game/engine.ts
-src/game/asteroids.ts
-```
+Core gameplay rules live in `src/game/`:
 
-Canvas rendering lives in:
+- player movement
+- movement boundaries
+- score calculation
+- difficulty ramping
+- asteroid spawning and movement
+- collision checks
+- score and time formatting
 
-```text
-src/rendering/canvasRenderer.ts
-```
+Rendering lives in `src/rendering/canvasRenderer.ts`. It draws the background, stars, player, asteroids, HUD, bonus feedback, and game over overlay.
 
-Keyboard handling lives in:
+Keyboard input lives in `src/input/keyboard.ts`.
 
-```text
-src/input/keyboard.ts
-```
+Local best score persistence lives in `src/storage/bestScoreStorage.ts`.
 
-Local browser storage lives in:
+`src/main.ts` connects these pieces: input, game state, rendering, storage, DOM status hooks, and the animation loop.
 
-```text
-src/storage/bestScoreStorage.ts
-```
+This structure keeps the important behavior testable without relying on Canvas pixel assertions.
 
-The entry point:
+## Testing Approach
 
-```text
-src/main.ts
-```
+Unit tests cover pure game logic, including movement, boundaries, scoring, asteroid behavior, collision checks, formatting, and best score storage.
 
-acts mostly as glue between input, game state, rendering and storage.
+Playwright tests cover the main browser smoke flow:
 
-This keeps the core rules testable without relying on browser rendering or Canvas pixels.
+- the page loads
+- the canvas is visible
+- the game starts in `idle`
+- Enter starts the game
+- Space starts the game
+- DOM status hooks update to `running`
 
-## Testing approach
+The project intentionally does not test Canvas pixels. Pixel-level tests are brittle and would make small visual changes look like gameplay regressions. Instead, game rules are tested directly and browser flow is checked through stable DOM hooks such as `data-testid`.
 
-The project intentionally avoids testing Canvas pixel output.
+More detail is documented in [TEST_STRATEGY.md](TEST_STRATEGY.md).
 
-Instead, it focuses on:
+## CI And Deployment
 
-- unit tests for pure game rules;
-- unit tests for asteroid behavior;
-- unit tests for local best score storage;
-- Playwright smoke tests for the main browser flow;
-- DOM status hooks for stable E2E assertions.
+GitHub Actions runs CI on pushes and pull requests targeting `main`.
 
-Current test strategy is documented in:
-
-```text
-TEST_STRATEGY.md
-```
-
-## CI
-
-GitHub Actions runs the quality workflow on push and pull requests.
-
-The workflow runs:
+The CI workflow:
 
 ```text
 npm ci
+npm run lint
+npm test
 npx playwright install --with-deps chromium
-npm run check
+npm run test:e2e
+npm run build
 ```
 
-Playwright reports are uploaded as artifacts when E2E tests fail.
+The GitHub Pages deployment workflow also runs the full quality gate before publishing the built `dist/` artifact.
 
-## What this project demonstrates
+For Pages builds, `vite.config.ts` adjusts the Vite `base` path through the `GITHUB_PAGES=true` environment variable.
 
-This project demonstrates practical quality engineering around a small product:
+## Project Scope
 
-- building a playable browser game;
-- separating core logic from rendering;
-- writing fast unit tests for game rules;
-- using E2E tests without brittle pixel assertions;
-- adding local quality gates;
-- using CI for automated checks;
-- documenting architectural and testing decisions.
+This repository is currently frontend-only.
 
-## Current non-goals
+In scope:
 
-The project intentionally does not include yet:
+- improving the existing arcade gameplay loop
+- small gameplay polish
+- small visual polish
+- improving architecture without overengineering
+- improving tests, linting, build, CI, deployment, and documentation
+- keeping the game lightweight and performant
 
-- backend leaderboard;
-- SQL database;
-- user accounts;
-- multiplayer;
-- mobile-first UI;
-- power-ups;
-- shooting mechanics;
-- complex levels;
-- advanced graphics.
+Out of scope unless explicitly requested:
 
-These are avoided to keep the project small, focused and maintainable.
+- React or another frontend framework
+- backend leaderboard
+- SQL database
+- user accounts
+- multiplayer
+- complex levels
+- shooting mechanics
+- power-ups
+- large visual redesigns
+- broad rewrites
 
-A backend leaderboard, SQL database, API tests, Docker Compose and deploy can be added later as separate milestones.
+## What This Project Demonstrates
 
-## Roadmap
+- A playable browser game built without a frontend framework
+- Core game logic separated from rendering
+- Fast unit tests for the important rules
+- Playwright smoke tests that avoid brittle Canvas pixel checks
+- A local quality gate that mirrors CI
+- GitHub Actions for CI and GitHub Pages deployment
+- Lightweight architecture documented with an ADR
 
-Near-term frontend quality roadmap:
+## License
 
-```text
-1. Improve gameplay polish where it adds clear value
-2. Keep Playwright E2E small and stable
-3. Maintain CI quality gate
-4. Add deployment, likely through GitHub Pages
-5. Add backend leaderboard later as a separate milestone
-```
-
-The guiding principle:
-
-> Small game, strong quality engineering, no overengineering.
+This project is licensed under the [MIT License](LICENSE).

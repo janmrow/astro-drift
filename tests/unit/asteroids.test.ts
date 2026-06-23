@@ -146,6 +146,28 @@ describe("asteroid logic", () => {
     });
   });
 
+  it("increases spawned asteroid speed as survival time grows", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+
+    const earlyAsteroids: Asteroid[] = [];
+    const laterAsteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      earlyAsteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+    );
+    updateAsteroidSpawning(
+      laterAsteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      60,
+    );
+
+    expect(laterAsteroids[0].speed).toBeGreaterThan(earlyAsteroids[0].speed);
+  });
+
   it("moves asteroids to the left according to their speed", () => {
     const asteroids = [
       createAsteroid({

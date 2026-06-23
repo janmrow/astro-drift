@@ -3,7 +3,7 @@ import type { Asteroid, InputState, Player, PlayerHitbox } from "./types";
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
 
-export const PLAYER_SPEED = 280;
+export const PLAYER_SPEED = 325;
 export const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
 export const PLAYER_START_X = 170;
 export const PLAYER_START_Y = GAME_HEIGHT / 2;
@@ -14,9 +14,9 @@ export const ASTEROID_SPAWN_RAMP = 0.006;
 
 export const ASTEROID_MIN_RADIUS = 18;
 export const ASTEROID_MAX_RADIUS = 42;
-export const ASTEROID_BASE_MIN_SPEED = 145;
-export const ASTEROID_BASE_MAX_SPEED = 220;
-export const ASTEROID_SPEED_RAMP = 1.25;
+export const ASTEROID_BASE_MIN_SPEED = 165;
+export const ASTEROID_BASE_MAX_SPEED = 245;
+export const ASTEROID_SPEED_RAMP = 1.5;
 export const ASTEROID_REMOVE_PADDING = 80;
 
 export const SCORE_PER_SECOND = 10;
@@ -32,8 +32,8 @@ export function createInitialPlayer(): Player {
   return {
     x: PLAYER_START_X,
     y: PLAYER_START_Y,
-    width: 58,
-    height: 44,
+    width: 72,
+    height: 54,
   };
 }
 

@@ -9,6 +9,7 @@ import {
   FIERY_ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
   PLAYER_AREA_MAX_X,
+  PLAYER_SCREEN_PADDING,
   applyPassedAsteroidBonuses,
   getAsteroidSpawnInterval,
   updatePlayer,
@@ -17,7 +18,6 @@ import {
 import { updateAsteroids } from "../../src/game/asteroids";
 import type { Asteroid, InputState, Player } from "../../src/game/types";
 
-const PLAYER_SCREEN_PADDING = 12;
 const PROPERTY_RUNS = 100;
 
 const deltaTimeArbitrary = fc

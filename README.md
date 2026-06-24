@@ -127,6 +127,7 @@ src/
 tests/
   unit/
     engine.test.ts
+    engine.properties.test.ts
     asteroids.test.ts
     bestScoreStorage.test.ts
   e2e/
@@ -173,7 +174,7 @@ For a quick model or reviewer handoff, start with this README, then read `TEST_S
 
 ## Testing Approach
 
-Unit tests cover pure game logic, including movement, boundaries, scoring, asteroid behavior, collision checks, formatting, and best score storage.
+Unit tests cover pure game logic, including movement, boundaries, scoring, asteroid behavior, collision checks, formatting, and best score storage. The suite includes both example-based tests for specific cases and property-based tests with `fast-check` for core invariants such as movement bounds, non-decreasing score, spawn interval limits, asteroid movement, and pass bonus rules.
 
 Playwright tests cover the main browser smoke flow:
 

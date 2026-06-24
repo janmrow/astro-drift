@@ -102,6 +102,7 @@ function runGameLoop(currentFrameTime: number): void {
     survivalTime,
     bestScore,
     bonusFeedbackTimeLeft > 0 ? bonusFeedbackText : null,
+    currentFrameTime,
   );
   updateDomStatus();
 

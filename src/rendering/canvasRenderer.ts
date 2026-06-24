@@ -13,9 +13,43 @@ export type Star = {
   radius: number;
   alpha: number;
   speed: number;
+  layer: StarLayer;
 };
 
+type StarLayer = "far" | "near";
+
 const STAR_WRAP_PADDING = 4;
+
+const STAR_LAYER_SETTINGS: Record<
+  StarLayer,
+  {
+    radiusMin: number;
+    radiusRange: number;
+    alphaMin: number;
+    alphaRange: number;
+    speedMin: number;
+    speedRange: number;
+  }
+> = {
+  far: {
+    radiusMin: 0.35,
+    radiusRange: 1.1,
+    alphaMin: 0.22,
+    alphaRange: 0.42,
+    speedMin: 7,
+    speedRange: 10,
+  },
+  near: {
+    radiusMin: 1.1,
+    radiusRange: 1.45,
+    alphaMin: 0.42,
+    alphaRange: 0.42,
+    speedMin: 22,
+    speedRange: 18,
+  },
+};
+
+const NEAR_STAR_RATIO = 0.32;
 
 const HUD_PANEL = {
   x: 412,
@@ -71,13 +105,21 @@ const PALETTE = {
 };
 
 export function createStars(count: number): Star[] {
-  return Array.from({ length: count }, () => ({
-    x: Math.random() * GAME_WIDTH,
-    y: Math.random() * GAME_HEIGHT,
-    radius: Math.random() * 1.8 + 0.4,
-    alpha: Math.random() * 0.7 + 0.25,
-    speed: Math.random() * 18 + 8,
-  }));
+  const nearStarStartIndex = Math.floor(count * (1 - NEAR_STAR_RATIO));
+
+  return Array.from({ length: count }, (_, index) => {
+    const layer: StarLayer = index >= nearStarStartIndex ? "near" : "far";
+    const settings = STAR_LAYER_SETTINGS[layer];
+
+    return {
+      x: Math.random() * GAME_WIDTH,
+      y: Math.random() * GAME_HEIGHT,
+      radius: Math.random() * settings.radiusRange + settings.radiusMin,
+      alpha: Math.random() * settings.alphaRange + settings.alphaMin,
+      speed: Math.random() * settings.speedRange + settings.speedMin,
+      layer,
+    };
+  });
 }
 
 export function updateStars(starField: Star[], deltaTime: number): void {
@@ -101,17 +143,20 @@ export function renderFrame(
   currentSurvivalTime: number,
   currentBestScore: number,
   bonusFeedbackText: string | null,
+  frameTime: number,
 ): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
-  drawPlayerAreaGuide(ctx);
+  drawPlayerAreaGuide(ctx, frameTime);
   drawAsteroids(ctx, currentAsteroids);
-  drawPlayer(ctx, currentPlayer, currentStatus);
+  drawPlayer(ctx, currentPlayer, currentStatus, frameTime);
   drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime, currentBestScore);
 
   if (bonusFeedbackText) {
     drawBonusFeedback(ctx, bonusFeedbackText);
   }
+
+  drawVignette(ctx);
 
   if (currentStatus === "idle") {
     drawStartOverlay(ctx);
@@ -135,8 +180,10 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
 
 function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
   for (const star of starField) {
+    const alphaMultiplier = star.layer === "near" ? 0.86 : 0.64;
+
     ctx.beginPath();
-    ctx.fillStyle = `rgba(246, 240, 255, ${star.alpha * 0.78})`;
+    ctx.fillStyle = `rgba(246, 240, 255, ${star.alpha * alphaMultiplier})`;
     ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
     ctx.fill();
   }
@@ -146,6 +193,7 @@ function drawPlayer(
   ctx: CanvasRenderingContext2D,
   currentPlayer: Player,
   currentStatus: GameStatus,
+  frameTime: number,
 ): void {
   const noseX = currentPlayer.x + currentPlayer.width / 2;
   const tailX = currentPlayer.x - currentPlayer.width / 2;
@@ -157,7 +205,7 @@ function drawPlayer(
 
   ctx.save();
   ctx.shadowColor = PALETTE.magentaSoft;
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = getPulse(frameTime, 8, 18, 0.002);
 
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
@@ -183,16 +231,25 @@ function drawPlayer(
 }
 
 function drawShipThrust(ctx: CanvasRenderingContext2D, tailX: number, centerY: number): void {
-  ctx.beginPath();
-  ctx.moveTo(tailX - 4, centerY - 9);
-  ctx.lineTo(tailX - 26, centerY);
-  ctx.lineTo(tailX - 4, centerY + 9);
-  ctx.closePath();
-
   ctx.save();
   ctx.shadowColor = PALETTE.amberSoft;
-  ctx.shadowBlur = 14;
-  ctx.fillStyle = "rgba(255, 184, 108, 0.66)";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "rgba(255, 111, 64, 0.52)";
+  ctx.beginPath();
+  ctx.moveTo(tailX - 4, centerY - 9);
+  ctx.lineTo(tailX - 30, centerY);
+  ctx.lineTo(tailX - 4, centerY + 9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 240, 188, 0.82)";
+  ctx.beginPath();
+  ctx.moveTo(tailX - 4, centerY - 4);
+  ctx.lineTo(tailX - 18, centerY);
+  ctx.lineTo(tailX - 4, centerY + 4);
+  ctx.closePath();
   ctx.fill();
   ctx.restore();
 }
@@ -243,20 +300,24 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
 }
 
 function drawFieryAsteroidTrail(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
-  const trailLength = asteroid.radius * 1.8;
+  const trailLength = asteroid.radius * 2.45;
   const trailStartX = asteroid.x + asteroid.radius * 0.25;
   const trailEndX = asteroid.x + asteroid.radius + trailLength;
   const trailGradient = ctx.createLinearGradient(trailStartX, asteroid.y, trailEndX, asteroid.y);
 
-  trailGradient.addColorStop(0, PALETTE.fieryAsteroidTrail);
+  trailGradient.addColorStop(0, "rgba(255, 205, 125, 0.42)");
+  trailGradient.addColorStop(0.34, PALETTE.fieryAsteroidTrail);
+  trailGradient.addColorStop(0.72, "rgba(255, 91, 53, 0.16)");
   trailGradient.addColorStop(1, "rgba(255, 91, 53, 0)");
 
   ctx.save();
+  ctx.shadowColor = PALETTE.fieryAsteroidGlow;
+  ctx.shadowBlur = 10;
   ctx.fillStyle = trailGradient;
   ctx.beginPath();
-  ctx.moveTo(trailStartX, asteroid.y - asteroid.radius * 0.42);
+  ctx.moveTo(trailStartX, asteroid.y - asteroid.radius * 0.5);
   ctx.lineTo(trailEndX, asteroid.y);
-  ctx.lineTo(trailStartX, asteroid.y + asteroid.radius * 0.42);
+  ctx.lineTo(trailStartX, asteroid.y + asteroid.radius * 0.5);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -298,6 +359,7 @@ function drawStatusText(
   ctx.strokeStyle = PALETTE.cyanDim;
   ctx.lineWidth = 1;
   ctx.strokeRect(x, y, width, height);
+  drawHudSeparator(ctx, x, y, width);
 
   ctx.fillStyle = PALETTE.text;
   ctx.font = "700 24px system-ui, sans-serif";
@@ -336,6 +398,21 @@ function drawStatusText(
     x + HUD_PANEL.asteroidCountXOffset,
     y + HUD_PANEL.detailsBaseline,
   );
+}
+
+function drawHudSeparator(ctx: CanvasRenderingContext2D, x: number, y: number, width: number): void {
+  const separatorY = y + HUD_PANEL.labelBaseline + 9;
+
+  ctx.save();
+  ctx.shadowColor = PALETTE.cyanSoft;
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = "rgba(125, 249, 255, 0.45)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + HUD_PANEL.padding, separatorY);
+  ctx.lineTo(x + width - HUD_PANEL.padding, separatorY);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -395,10 +472,11 @@ function drawGameOverOverlay(
   ctx.textAlign = "start";
 }
 
-function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
+function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D, frameTime: number): void {
   const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
+  const guideOpacity = getPulse(frameTime, 0.14, 0.3, 0.0016);
 
-  ctx.strokeStyle = PALETTE.cyanDim;
+  ctx.strokeStyle = `rgba(125, 249, 255, ${guideOpacity})`;
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 10]);
   ctx.beginPath();
@@ -429,4 +507,29 @@ function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
   ctx.textAlign = "center";
   ctx.fillText(text, BONUS_BADGE.x + BONUS_BADGE.width / 2, BONUS_BADGE.y + 12);
   ctx.textAlign = "start";
+}
+
+function drawVignette(ctx: CanvasRenderingContext2D): void {
+  const vignette = ctx.createRadialGradient(
+    GAME_WIDTH / 2,
+    GAME_HEIGHT / 2,
+    GAME_WIDTH * 0.24,
+    GAME_WIDTH / 2,
+    GAME_HEIGHT / 2,
+    GAME_WIDTH * 0.72,
+  );
+
+  vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
+  vignette.addColorStop(0.72, "rgba(8, 3, 20, 0.14)");
+  vignette.addColorStop(1, "rgba(4, 1, 12, 0.42)");
+
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+}
+
+function getPulse(frameTime: number, min: number, max: number, speed: number): number {
+  const midpoint = (min + max) / 2;
+  const amplitude = (max - min) / 2;
+
+  return midpoint + Math.sin(frameTime * speed) * amplitude;
 }

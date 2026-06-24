@@ -64,6 +64,10 @@ const PALETTE = {
   darkGold: "#b98b3f",
   asteroidFill: "#211936",
   asteroidStroke: "#78e6f0",
+  fieryAsteroidFill: "#4b1723",
+  fieryAsteroidStroke: "#ff6b45",
+  fieryAsteroidGlow: "rgba(255, 91, 53, 0.38)",
+  fieryAsteroidTrail: "rgba(255, 91, 53, 0.32)",
 };
 
 export function createStars(count: number): Star[] {
@@ -195,11 +199,17 @@ function drawShipThrust(ctx: CanvasRenderingContext2D, tailX: number, centerY: n
 
 function drawAsteroids(ctx: CanvasRenderingContext2D, currentAsteroids: Asteroid[]): void {
   for (const asteroid of currentAsteroids) {
+    if (asteroid.variant === "fiery") {
+      drawFieryAsteroidTrail(ctx, asteroid);
+    }
+
     drawAsteroid(ctx, asteroid);
   }
 }
 
 function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
+  const asteroidStyle = getAsteroidStyle(asteroid);
+
   ctx.save();
   ctx.translate(asteroid.x, asteroid.y);
   ctx.rotate(asteroid.rotation);
@@ -220,16 +230,56 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
 
   ctx.closePath();
 
-  ctx.shadowColor = "rgba(125, 249, 255, 0.24)";
+  ctx.shadowColor = asteroidStyle.glow;
   ctx.shadowBlur = 12;
-  ctx.fillStyle = PALETTE.asteroidFill;
+  ctx.fillStyle = asteroidStyle.fill;
   ctx.fill();
 
-  ctx.strokeStyle = PALETTE.asteroidStroke;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = asteroidStyle.stroke;
+  ctx.lineWidth = asteroid.variant === "fiery" ? 3 : 2;
   ctx.stroke();
 
   ctx.restore();
+}
+
+function drawFieryAsteroidTrail(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
+  const trailLength = asteroid.radius * 1.8;
+  const trailStartX = asteroid.x + asteroid.radius * 0.25;
+  const trailEndX = asteroid.x + asteroid.radius + trailLength;
+  const trailGradient = ctx.createLinearGradient(trailStartX, asteroid.y, trailEndX, asteroid.y);
+
+  trailGradient.addColorStop(0, PALETTE.fieryAsteroidTrail);
+  trailGradient.addColorStop(1, "rgba(255, 91, 53, 0)");
+
+  ctx.save();
+  ctx.fillStyle = trailGradient;
+  ctx.beginPath();
+  ctx.moveTo(trailStartX, asteroid.y - asteroid.radius * 0.42);
+  ctx.lineTo(trailEndX, asteroid.y);
+  ctx.lineTo(trailStartX, asteroid.y + asteroid.radius * 0.42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function getAsteroidStyle(asteroid: Asteroid): {
+  fill: string;
+  stroke: string;
+  glow: string;
+} {
+  if (asteroid.variant === "fiery") {
+    return {
+      fill: PALETTE.fieryAsteroidFill,
+      stroke: PALETTE.fieryAsteroidStroke,
+      glow: PALETTE.fieryAsteroidGlow,
+    };
+  }
+
+  return {
+    fill: PALETTE.asteroidFill,
+    stroke: PALETTE.asteroidStroke,
+    glow: "rgba(125, 249, 255, 0.24)",
+  };
 }
 
 function drawStatusText(

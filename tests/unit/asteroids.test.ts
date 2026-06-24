@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  FIERY_ASTEROID_CHANCE,
+  FIERY_ASTEROID_ROTATION_MULTIPLIER,
+  FIERY_ASTEROID_SPEED_MULTIPLIER,
   createInitialAsteroidSpawnState,
   updateAsteroidSpawning,
   updateAsteroids,
@@ -21,6 +24,7 @@ import type { Asteroid } from "../../src/game/types";
 function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
   return {
     id: "asteroid-test",
+    variant: "standard",
     x: 500,
     y: 250,
     radius: 30,
@@ -31,6 +35,10 @@ function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
     passed: false,
     ...overrides,
   };
+}
+
+function asteroidRandomValues(variantRoll: number): number[] {
+  return [variantRoll, 0.5, 0.5, 0.75, 0.5, 0.5, ...Array(9).fill(0.5)];
 }
 
 describe("asteroid logic", () => {
@@ -131,6 +139,7 @@ describe("asteroid logic", () => {
     expect(asteroids).toHaveLength(1);
     expect(asteroids[0]).toMatchObject({
       id: "asteroid-1",
+      variant: "standard",
       radius,
       x: GAME_WIDTH + radius,
       y: GAME_HEIGHT / 2,
@@ -166,6 +175,40 @@ describe("asteroid logic", () => {
     );
 
     expect(laterAsteroids[0].speed).toBeGreaterThan(earlyAsteroids[0].speed);
+  });
+
+  it("creates fiery asteroids with faster speed and rotation when the variant roll hits", () => {
+    const randomValues = [
+      ...asteroidRandomValues(FIERY_ASTEROID_CHANCE + 0.01),
+      ...asteroidRandomValues(FIERY_ASTEROID_CHANCE - 0.01),
+    ];
+
+    vi.spyOn(Math, "random").mockImplementation(() => randomValues.shift() ?? 0.5);
+
+    const standardAsteroids: Asteroid[] = [];
+    const fieryAsteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      standardAsteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+    );
+    updateAsteroidSpawning(
+      fieryAsteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+    );
+
+    expect(standardAsteroids[0].variant).toBe("standard");
+    expect(fieryAsteroids[0].variant).toBe("fiery");
+    expect(fieryAsteroids[0].speed).toBeCloseTo(
+      standardAsteroids[0].speed * FIERY_ASTEROID_SPEED_MULTIPLIER,
+    );
+    expect(fieryAsteroids[0].rotationSpeed).toBeCloseTo(
+      standardAsteroids[0].rotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER,
+    );
   });
 
   it("moves asteroids to the left according to their speed", () => {

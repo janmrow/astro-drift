@@ -21,6 +21,7 @@ export const ASTEROID_REMOVE_PADDING = 80;
 
 export const SCORE_PER_SECOND = 10;
 export const ASTEROID_PASS_BONUS = 25;
+export const FIERY_ASTEROID_PASS_BONUS = 100;
 
 const PLAYER_SCREEN_PADDING = 12;
 // Slightly smaller than the drawn ship so near misses still feel fair.
@@ -91,11 +92,15 @@ export function applyPassedAsteroidBonuses(
   for (const asteroid of currentAsteroids) {
     if (!asteroid.passed && hasAsteroidPassedPlayer(currentPlayer, asteroid)) {
       asteroid.passed = true;
-      nextScore += ASTEROID_PASS_BONUS;
+      nextScore += getAsteroidPassBonus(asteroid);
     }
   }
 
   return nextScore;
+}
+
+export function getAsteroidPassBonus(asteroid: Asteroid): number {
+  return asteroid.variant === "fiery" ? FIERY_ASTEROID_PASS_BONUS : ASTEROID_PASS_BONUS;
 }
 
 export function hasAsteroidPassedPlayer(currentPlayer: Player, asteroid: Asteroid): boolean {

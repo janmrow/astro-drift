@@ -2,18 +2,15 @@
 
 ## Project context
 
-Astro Drift QA Lab is a small browser arcade game built as a QA/SDET portfolio project.
-
-The goal is not to create a large game.  
-The goal is to build a small playable loop and surround it with practical quality engineering.
+Astro Drift QA Lab is a small browser arcade game.
 
 Current product loop:
 
 ```text
-idle → running → gameOver → restart
+idle → running → gameOver
 ```
 
-The game is rendered on Canvas, but the core rules are kept outside the rendering layer.
+The game is rendered on Canvas, but the core rules stay outside the rendering layer.
 
 ## Main product risks
 
@@ -23,8 +20,7 @@ The most important risks are:
 - collision detection feels too strict or too loose;
 - difficulty ramps too quickly or too slowly;
 - restart does not reset the game cleanly;
-- future E2E tests become flaky because they depend on Canvas pixels;
-- project grows too much and loses its simple portfolio focus.
+- E2E tests can become flaky if they depend on Canvas pixels.
 
 ## Test levels
 
@@ -61,22 +57,6 @@ E2E tests cover the main browser contract:
 
 E2E tests should use DOM status hooks where possible instead of reading Canvas pixels.
 
-Future E2E coverage may include game over and restart only if those flows can be made deterministic without relying on random asteroid timing.
-
-### API tests
-
-API tests are planned for a later leaderboard milestone.
-
-They are intentionally not part of the current frontend quality milestone.
-
-Later scope:
-
-- `POST /scores`;
-- `GET /scores`;
-- validation errors;
-- leaderboard sorting;
-- SQL persistence checks.
-
 ## What is automated now
 
 Current automated checks:
@@ -93,10 +73,7 @@ Current unit test areas:
 - `src/game/engine.ts`;
 - `src/game/asteroids.ts`;
 - `src/storage/bestScoreStorage.ts`.
-
-## Planned quality gates
-
-The frontend quality gate is:
+CI should run these checks on pull requests and main branch updates:
 
 ```text
 npm run lint
@@ -104,8 +81,6 @@ npm test
 npm run test:e2e
 npm run build
 ```
-
-CI should run these checks on pull requests and main branch updates.
 
 ## What we do not test
 
@@ -140,15 +115,6 @@ createAsteroid({ x: 500, speed: 120 });
 
 Avoid relying on exact random values.
 
-For future API tests, test data should use clear names and scores, for example:
-
-```json
-{
-  "nickname": "Pilot",
-  "score": 120
-}
-```
-
 ## Flaky test prevention
 
 To reduce flaky tests:
@@ -162,11 +128,9 @@ To reduce flaky tests:
 
 ## Known trade-offs
 
-The project uses a small amount of architecture earlier than a tiny game strictly needs.
+The project uses a small amount of architecture earlier than a tiny game strictly needs. That is intentional.
 
-That is intentional.
-
-The goal is to demonstrate practical quality engineering:
+The current setup gives us:
 
 - separated game rules;
 - testable logic;
@@ -174,5 +138,3 @@ The goal is to demonstrate practical quality engineering:
 - readable tests;
 - simple documentation;
 - quality gates.
-
-Backend, SQL, Docker and API tests are still part of the broader roadmap, but they are deferred until the frontend game and quality baseline feel solid.

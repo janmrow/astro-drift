@@ -9,7 +9,7 @@ import {
   GAME_WIDTH,
   getAsteroidSpawnInterval,
 } from "./engine";
-import type { Asteroid, AsteroidPoint } from "./types";
+import type { Asteroid, AsteroidPoint, AsteroidVariant } from "./types";
 
 export type AsteroidSpawnState = {
   timer: number;
@@ -22,6 +22,11 @@ const ASTEROID_MIN_POINT_RADIUS_RATIO = 0.8;
 const ASTEROID_MAX_POINT_RADIUS_RATIO = 1.2;
 const ASTEROID_MIN_ROTATION_SPEED = -1.2;
 const ASTEROID_MAX_ROTATION_SPEED = 1.2;
+export const FIERY_ASTEROID_CHANCE = 0.12;
+export const FIERY_ASTEROID_SPEED_MULTIPLIER = 1.7;
+export const FIERY_ASTEROID_ROTATION_MULTIPLIER = 1.7;
+export const FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER = 1.2;
+export const FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER = 1.3;
 
 export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   return {
@@ -67,26 +72,58 @@ export function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number)
 }
 
 function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
-  const radius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
+  const variant = createAsteroidVariant();
+  const baseRadius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
+  const radius = getAsteroidRadius(baseRadius, variant);
   const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
+  const speed = randomBetween(
+    ASTEROID_BASE_MIN_SPEED + speedBonus,
+    ASTEROID_BASE_MAX_SPEED + speedBonus,
+  );
+  const rotationSpeed = randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED);
 
   return {
     id: `asteroid-${id}`,
+    variant,
     x: GAME_WIDTH + radius,
     y: randomBetween(
       radius + ASTEROID_VERTICAL_SPAWN_PADDING,
       GAME_HEIGHT - radius - ASTEROID_VERTICAL_SPAWN_PADDING,
     ),
     radius,
-    speed: randomBetween(
-      ASTEROID_BASE_MIN_SPEED + speedBonus,
-      ASTEROID_BASE_MAX_SPEED + speedBonus,
-    ),
+    speed: getAsteroidSpeed(speed, variant),
     rotation: randomBetween(0, Math.PI * 2),
-    rotationSpeed: randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED),
+    rotationSpeed: getAsteroidRotationSpeed(rotationSpeed, variant),
     points: createAsteroidPoints(ASTEROID_POINT_COUNT),
     passed: false,
   };
+}
+
+function createAsteroidVariant(): AsteroidVariant {
+  return Math.random() < FIERY_ASTEROID_CHANCE ? "fiery" : "standard";
+}
+
+function getAsteroidSpeed(baseSpeed: number, variant: AsteroidVariant): number {
+  return variant === "fiery" ? baseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER : baseSpeed;
+}
+
+function getAsteroidRadius(baseRadius: number, variant: AsteroidVariant): number {
+  if (variant === "standard") {
+    return baseRadius;
+  }
+
+  const radiusProgress = (baseRadius - ASTEROID_MIN_RADIUS) / (ASTEROID_MAX_RADIUS - ASTEROID_MIN_RADIUS);
+  const radiusMultiplier =
+    FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER -
+    radiusProgress * (FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER - FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER);
+
+  return baseRadius * radiusMultiplier;
+}
+
+function getAsteroidRotationSpeed(baseRotationSpeed: number, variant: AsteroidVariant): number {
+  return variant === "fiery"
+    ? baseRotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER
+    : baseRotationSpeed;
 }
 
 function createAsteroidPoints(count: number): AsteroidPoint[] {

@@ -19,8 +19,11 @@ export type AsteroidPoint = {
   distanceMultiplier: number;
 };
 
+export type AsteroidVariant = "standard" | "fiery";
+
 export type Asteroid = {
   id: string;
+  variant: AsteroidVariant;
   x: number;
   y: number;
   radius: number;

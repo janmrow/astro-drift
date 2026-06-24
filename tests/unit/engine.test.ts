@@ -4,6 +4,7 @@ import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_PASS_BONUS,
+  FIERY_ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
   PLAYER_AREA_MAX_X,
   PLAYER_SPEED,
@@ -36,6 +37,7 @@ function idleInput(): InputState {
 function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
   return {
     id: "asteroid-test",
+    variant: "standard",
     x: 500,
     y: 250,
     radius: 30,
@@ -277,6 +279,20 @@ describe("game engine", () => {
     const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
 
     expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS);
+    expect(asteroid.passed).toBe(true);
+  });
+
+  it("adds the larger bonus score when a fiery asteroid passes the player", () => {
+    const player = createInitialPlayer();
+    const asteroid = createAsteroid({
+      variant: "fiery",
+      x: player.x - player.width / 2 - 40,
+      radius: 20,
+    });
+
+    const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+
+    expect(updatedScore).toBe(100 + FIERY_ASTEROID_PASS_BONUS);
     expect(asteroid.passed).toBe(true);
   });
 

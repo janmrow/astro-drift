@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   FIERY_ASTEROID_CHANCE,
+  FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
+  FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
   FIERY_ASTEROID_ROTATION_MULTIPLIER,
   FIERY_ASTEROID_SPEED_MULTIPLIER,
   createInitialAsteroidSpawnState,
@@ -182,6 +184,8 @@ describe("asteroid logic", () => {
       ...asteroidRandomValues(FIERY_ASTEROID_CHANCE + 0.01),
       ...asteroidRandomValues(FIERY_ASTEROID_CHANCE - 0.01),
     ];
+    const expectedRadiusMultiplier =
+      (FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER + FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER) / 2;
 
     vi.spyOn(Math, "random").mockImplementation(() => randomValues.shift() ?? 0.5);
 
@@ -203,6 +207,9 @@ describe("asteroid logic", () => {
 
     expect(standardAsteroids[0].variant).toBe("standard");
     expect(fieryAsteroids[0].variant).toBe("fiery");
+    expect(fieryAsteroids[0].radius).toBeCloseTo(
+      standardAsteroids[0].radius * expectedRadiusMultiplier,
+    );
     expect(fieryAsteroids[0].speed).toBeCloseTo(
       standardAsteroids[0].speed * FIERY_ASTEROID_SPEED_MULTIPLIER,
     );

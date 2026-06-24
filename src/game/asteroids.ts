@@ -23,8 +23,10 @@ const ASTEROID_MAX_POINT_RADIUS_RATIO = 1.2;
 const ASTEROID_MIN_ROTATION_SPEED = -1.2;
 const ASTEROID_MAX_ROTATION_SPEED = 1.2;
 export const FIERY_ASTEROID_CHANCE = 0.12;
-export const FIERY_ASTEROID_SPEED_MULTIPLIER = 1.35;
+export const FIERY_ASTEROID_SPEED_MULTIPLIER = 1.7;
 export const FIERY_ASTEROID_ROTATION_MULTIPLIER = 1.7;
+export const FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER = 1.2;
+export const FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER = 1.3;
 
 export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   return {
@@ -71,7 +73,8 @@ export function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number)
 
 function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
   const variant = createAsteroidVariant();
-  const radius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
+  const baseRadius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
+  const radius = getAsteroidRadius(baseRadius, variant);
   const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
   const speed = randomBetween(
     ASTEROID_BASE_MIN_SPEED + speedBonus,
@@ -102,6 +105,19 @@ function createAsteroidVariant(): AsteroidVariant {
 
 function getAsteroidSpeed(baseSpeed: number, variant: AsteroidVariant): number {
   return variant === "fiery" ? baseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER : baseSpeed;
+}
+
+function getAsteroidRadius(baseRadius: number, variant: AsteroidVariant): number {
+  if (variant === "standard") {
+    return baseRadius;
+  }
+
+  const radiusProgress = (baseRadius - ASTEROID_MIN_RADIUS) / (ASTEROID_MAX_RADIUS - ASTEROID_MIN_RADIUS);
+  const radiusMultiplier =
+    FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER -
+    radiusProgress * (FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER - FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER);
+
+  return baseRadius * radiusMultiplier;
 }
 
 function getAsteroidRotationSpeed(baseRotationSpeed: number, variant: AsteroidVariant): number {

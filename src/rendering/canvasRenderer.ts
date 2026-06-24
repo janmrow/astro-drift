@@ -52,7 +52,7 @@ const STAR_LAYER_SETTINGS: Record<
 const NEAR_STAR_RATIO = 0.32;
 
 const HUD_PANEL = {
-  x: 412,
+  x: 560,
   y: 32,
   width: 352,
   height: 124,
@@ -73,7 +73,7 @@ const PLAYER_SECTOR_GUIDE = {
 };
 
 const BONUS_BADGE = {
-  x: 712,
+  x: 860,
   y: 132,
   width: 36,
   height: 16,

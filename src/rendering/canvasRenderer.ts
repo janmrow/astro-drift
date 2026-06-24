@@ -359,7 +359,6 @@ function drawStatusText(
   ctx.strokeStyle = PALETTE.cyanDim;
   ctx.lineWidth = 1;
   ctx.strokeRect(x, y, width, height);
-  drawHudSeparator(ctx, x, y, width);
 
   ctx.fillStyle = PALETTE.text;
   ctx.font = "700 24px system-ui, sans-serif";
@@ -398,21 +397,6 @@ function drawStatusText(
     x + HUD_PANEL.asteroidCountXOffset,
     y + HUD_PANEL.detailsBaseline,
   );
-}
-
-function drawHudSeparator(ctx: CanvasRenderingContext2D, x: number, y: number, width: number): void {
-  const separatorY = y + HUD_PANEL.labelBaseline + 9;
-
-  ctx.save();
-  ctx.shadowColor = PALETTE.cyanSoft;
-  ctx.shadowBlur = 6;
-  ctx.strokeStyle = "rgba(125, 249, 255, 0.45)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x + HUD_PANEL.padding, separatorY);
-  ctx.lineTo(x + width - HUD_PANEL.padding, separatorY);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {

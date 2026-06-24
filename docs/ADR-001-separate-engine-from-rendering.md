@@ -6,9 +6,7 @@ Accepted
 
 ## Context
 
-Astro Drift started as a small playable prototype in `src/main.ts`.
-
-That was useful for quickly proving the core loop:
+Astro Drift started as a playable prototype in `src/main.ts`. That was enough to prove the core loop:
 
 - player movement;
 - incoming asteroids;
@@ -17,16 +15,13 @@ That was useful for quickly proving the core loop:
 - game over;
 - restart.
 
-Now the project is moving from prototype code toward a QA/SDET portfolio project.  
-The main goal is not only to have a working game, but to show that the game logic can be tested without relying on Canvas rendering.
-
 Canvas is good for drawing the game, but it is not a good place to validate core rules.
 
 ## Decision
 
-Core game rules are moved into `src/game/engine.ts` and typed through `src/game/types.ts`.
+Core game rules are split across `src/game/engine.ts`, `src/game/asteroids.ts`, and `src/game/types.ts`.
 
-The engine should contain logic such as:
+The game logic includes:
 
 - player movement;
 - movement boundaries;
@@ -36,7 +31,7 @@ The engine should contain logic such as:
 - restart-related state creation;
 - formatting helpers used by the game state.
 
-The rendering layer should stay responsible for drawing:
+The rendering layer stays responsible for drawing:
 
 - background;
 - stars;
@@ -47,9 +42,7 @@ The rendering layer should stay responsible for drawing:
 
 ## Consequences
 
-This makes the project easier to test.
-
-Unit tests can cover the important game rules without opening a browser and without checking Canvas pixels.
+This makes the project easier to test. Unit tests can cover the important game rules without opening a browser and without checking Canvas pixels.
 
 Examples of rules that should be testable:
 
@@ -59,22 +52,10 @@ Examples of rules that should be testable:
 - collision detection works;
 - restart creates a clean state.
 
-The trade-off is that we introduce a small amount of structure earlier than a tiny game strictly needs.
-
-That trade-off is intentional because this project is also meant to demonstrate quality engineering, not only gameplay.
+The trade-off is a small amount of structure earlier than a tiny game strictly needs. That is intentional.
 
 ## Non-goals
 
-This decision does not mean we are introducing heavy architecture.
+This decision does not mean we are introducing heavy architecture or unnecessary abstractions.
 
-We are not adding:
-
-- Clean Architecture;
-- CQRS;
-- event sourcing;
-- complex domain layers;
-- unnecessary abstractions.
-
-The goal is simple:
-
-> Keep rendering separate from game rules so the important behavior can be tested directly.
+Keep rendering separate from game rules so the important behavior can be tested directly.

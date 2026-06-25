@@ -23,7 +23,7 @@ export const SCORE_PER_SECOND = 10;
 export const ASTEROID_PASS_BONUS = 25;
 export const FIERY_ASTEROID_PASS_BONUS = 100;
 
-const PLAYER_SCREEN_PADDING = 12;
+export const PLAYER_SCREEN_PADDING = 12;
 // Slightly smaller than the drawn ship so near misses still feel fair.
 const PLAYER_HITBOX_WIDTH_RATIO = 0.72;
 const PLAYER_HITBOX_HEIGHT_RATIO = 0.64;

@@ -39,8 +39,34 @@ function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
   };
 }
 
-function asteroidRandomValues(variantRoll: number): number[] {
-  return [variantRoll, 0.5, 0.5, 0.75, 0.5, 0.5, ...Array(9).fill(0.5)];
+type AsteroidRandomRolls = {
+  variant: number;
+  radius?: number;
+  speed?: number;
+  rotationSpeed?: number;
+  y?: number;
+  rotation?: number;
+  pointDistanceMultiplier?: number;
+};
+
+function asteroidRandomValues({
+  variant,
+  radius = 0.5,
+  speed = 0.5,
+  rotationSpeed = 0.75,
+  y = 0.5,
+  rotation = 0.5,
+  pointDistanceMultiplier = 0.5,
+}: AsteroidRandomRolls): number[] {
+  return [
+    variant,
+    radius,
+    speed,
+    rotationSpeed,
+    y,
+    rotation,
+    ...Array(9).fill(pointDistanceMultiplier),
+  ];
 }
 
 describe("asteroid logic", () => {
@@ -181,8 +207,8 @@ describe("asteroid logic", () => {
 
   it("creates fiery asteroids with faster speed and rotation when the variant roll hits", () => {
     const randomValues = [
-      ...asteroidRandomValues(FIERY_ASTEROID_CHANCE + 0.01),
-      ...asteroidRandomValues(FIERY_ASTEROID_CHANCE - 0.01),
+      ...asteroidRandomValues({ variant: FIERY_ASTEROID_CHANCE + 0.01 }),
+      ...asteroidRandomValues({ variant: FIERY_ASTEROID_CHANCE - 0.01 }),
     ];
     const expectedRadiusMultiplier =
       (FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER + FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER) / 2;

@@ -80,6 +80,7 @@ function runGameLoop(currentFrameTime: number): void {
       deltaTime,
       survivalTime,
     );
+    // TODO: Award pass bonuses before removing off-screen asteroids so a large frame jump cannot skip a newly passed asteroid.
     updateAsteroids(asteroids, deltaTime);
 
     if (hasPlayerCollision(player, asteroids)) {

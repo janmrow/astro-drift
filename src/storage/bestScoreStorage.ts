@@ -1,5 +1,6 @@
 const BEST_SCORE_KEY = "astro-drift-best-score";
 
+// TODO: Handle localStorage getItem/setItem failures so private mode or quota errors do not crash score persistence.
 export function readBestScore(): number {
   const storedValue = localStorage.getItem(BEST_SCORE_KEY);
 

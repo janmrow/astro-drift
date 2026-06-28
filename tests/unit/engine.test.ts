@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
+  ASTEROID_SPAWN_RAMP,
   ASTEROID_PASS_BONUS,
   FIERY_ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
@@ -134,6 +135,22 @@ describe("game engine", () => {
       expect(updatedPlayer.x).toBe(PLAYER_AREA_MAX_X);
     });
 
+    it("keeps the player clamped when starting exactly on the right movement bound", () => {
+      const player: Player = {
+        ...createInitialPlayer(),
+        x: PLAYER_AREA_MAX_X,
+      };
+
+      const input: InputState = {
+        ...idleInput(),
+        right: true,
+      };
+
+      const updatedPlayer = updatePlayer(player, input, 0.5);
+
+      expect(updatedPlayer.x).toBe(PLAYER_AREA_MAX_X);
+    });
+
     it("keeps the player inside the left edge of the screen", () => {
       const player: Player = {
         ...createInitialPlayer(),
@@ -181,6 +198,37 @@ describe("game engine", () => {
 
       expect(updatedPlayer.y).toBe(GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING);
     });
+
+    it("keeps the player clamped when starting exactly on the bottom movement bound", () => {
+      const player = createInitialPlayer();
+      const bottomY = GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING;
+      const input: InputState = {
+        ...idleInput(),
+        down: true,
+      };
+
+      const updatedPlayer = updatePlayer({ ...player, y: bottomY }, input, 0.5);
+
+      expect(updatedPlayer.y).toBe(bottomY);
+    });
+
+    it("corrects an out-of-bounds player when movement is applied", () => {
+      const player: Player = {
+        ...createInitialPlayer(),
+        x: PLAYER_AREA_MAX_X + 100,
+        y: GAME_HEIGHT + 100,
+      };
+      const input: InputState = {
+        ...idleInput(),
+        right: true,
+        down: true,
+      };
+
+      const updatedPlayer = updatePlayer(player, input, 0.1);
+
+      expect(updatedPlayer.x).toBe(PLAYER_AREA_MAX_X);
+      expect(updatedPlayer.y).toBe(GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING);
+    });
   });
 
   describe("scoring and difficulty", () => {
@@ -202,6 +250,17 @@ describe("game engine", () => {
     it("does not reduce asteroid spawn interval below the minimum", () => {
       expect(getAsteroidSpawnInterval(1_000)).toBe(ASTEROID_MIN_SPAWN_INTERVAL);
     });
+
+    it("clamps asteroid spawn interval exactly at the minimum threshold", () => {
+      const minimumThreshold =
+        (ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_MIN_SPAWN_INTERVAL) / ASTEROID_SPAWN_RAMP;
+
+      expect(getAsteroidSpawnInterval(minimumThreshold - 0.1)).toBeGreaterThan(
+        ASTEROID_MIN_SPAWN_INTERVAL,
+      );
+      expect(getAsteroidSpawnInterval(minimumThreshold)).toBeCloseTo(ASTEROID_MIN_SPAWN_INTERVAL);
+      expect(getAsteroidSpawnInterval(minimumThreshold + 0.1)).toBe(ASTEROID_MIN_SPAWN_INTERVAL);
+    });
   });
 
   describe("collision detection", () => {
@@ -214,6 +273,31 @@ describe("game engine", () => {
       });
 
       expect(hasPlayerCollision(player, [asteroid])).toBe(true);
+    });
+
+    it("detects collision when asteroid and player hitbox centers overlap", () => {
+      const player = createInitialPlayer();
+      const asteroid = createAsteroid({
+        x: player.x,
+        y: player.y,
+        radius: 20,
+      });
+
+      expect(isPlayerCollidingWithAsteroid(player, asteroid)).toBe(true);
+    });
+
+    it("detects collision at the exact tangential asteroid hit radius", () => {
+      const player = createInitialPlayer();
+      const hitbox = getPlayerHitbox(player);
+      const asteroidRadius = 50;
+      const asteroidHitRadius = asteroidRadius * 0.82;
+      const asteroid = createAsteroid({
+        x: hitbox.right + asteroidHitRadius,
+        y: player.y,
+        radius: asteroidRadius,
+      });
+
+      expect(isPlayerCollidingWithAsteroid(player, asteroid)).toBe(true);
     });
 
     it("does not detect collision when asteroid is far away", () => {
@@ -278,6 +362,16 @@ describe("game engine", () => {
       expect(hasAsteroidPassedPlayer(player, asteroid)).toBe(false);
     });
 
+    it("does not mark an asteroid as passed when its trailing edge is exactly aligned with the player", () => {
+      const player = createInitialPlayer();
+      const asteroid = createAsteroid({
+        x: player.x - player.width / 2 - 20,
+        radius: 20,
+      });
+
+      expect(hasAsteroidPassedPlayer(player, asteroid)).toBe(false);
+    });
+
     it("adds bonus score when an asteroid passes the player", () => {
       const player = createInitialPlayer();
       const asteroid = createAsteroid({
@@ -314,13 +408,14 @@ describe("game engine", () => {
       });
       const secondAsteroid = createAsteroid({
         id: "asteroid-second",
+        variant: "fiery",
         x: player.x - player.width / 2 - 50,
         radius: 20,
       });
 
       const updatedScore = applyPassedAsteroidBonuses(100, player, [firstAsteroid, secondAsteroid]);
 
-      expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS * 2);
+      expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS + FIERY_ASTEROID_PASS_BONUS);
       expect(firstAsteroid.passed).toBe(true);
       expect(secondAsteroid.passed).toBe(true);
     });

@@ -141,6 +141,40 @@ describe("asteroid logic", () => {
     expect(updatedSpawnState.timer).toBeCloseTo(0.2);
   });
 
+  it("does not spawn or advance the timer when elapsed time is zero", () => {
+    const asteroids: Asteroid[] = [];
+    const spawnState = {
+      timer: 0.5,
+      nextId: 3,
+    };
+
+    const updatedSpawnState = updateAsteroidSpawning(asteroids, spawnState, 0, 0);
+
+    expect(asteroids).toHaveLength(0);
+    expect(updatedSpawnState).toEqual(spawnState);
+  });
+
+  it("spawns the full interval multiple after a large elapsed time jump", () => {
+    const asteroids: Asteroid[] = [];
+
+    const updatedSpawnState = updateAsteroidSpawning(
+      asteroids,
+      createInitialAsteroidSpawnState(),
+      5,
+      0,
+    );
+
+    expect(asteroids).toHaveLength(4);
+    expect(asteroids.map((asteroid) => asteroid.id)).toEqual([
+      "asteroid-1",
+      "asteroid-2",
+      "asteroid-3",
+      "asteroid-4",
+    ]);
+    expect(updatedSpawnState.nextId).toBe(5);
+    expect(updatedSpawnState.timer).toBeCloseTo(0.2);
+  });
+
   it("continues spawning from an existing timer and id", () => {
     const asteroids: Asteroid[] = [];
     const spawnState = {

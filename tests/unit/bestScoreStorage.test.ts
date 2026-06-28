@@ -51,6 +51,18 @@ describe("best score storage", () => {
     expect(readBestScore()).toBe(125);
   });
 
+  it("reads stored best score with surrounding whitespace", () => {
+    localStorage.setItem("astro-drift-best-score", " 125 ");
+
+    expect(readBestScore()).toBe(125);
+  });
+
+  it("reads stored best score in scientific notation", () => {
+    localStorage.setItem("astro-drift-best-score", "1.25e2");
+
+    expect(readBestScore()).toBe(125);
+  });
+
   it("rounds stored best score down to an integer", () => {
     localStorage.setItem("astro-drift-best-score", "125.9");
 

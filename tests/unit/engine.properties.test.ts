@@ -12,6 +12,8 @@ import {
   PLAYER_SCREEN_PADDING,
   applyPassedAsteroidBonuses,
   getAsteroidSpawnInterval,
+  getAsteroidPassBonus,
+  hasAsteroidPassedPlayer,
   updatePlayer,
   updateScore,
 } from "../../src/game/engine";
@@ -55,7 +57,7 @@ const asteroidArbitrary: fc.Arbitrary<Asteroid> = fc.record({
   variant: fc.constantFrom("standard", "fiery"),
   x: fc.integer({ min: -200, max: 1_200 }),
   y: fc.integer({ min: -100, max: GAME_HEIGHT + 100 }),
-  radius: fc.integer({ min: 1, max: 80 }),
+  radius: fc.integer({ min: 0, max: 80 }),
   speed: fc.integer({ min: 0, max: 500 }),
   verticalSpeed: fc.integer({ min: -100, max: 100 }),
   rotation: fc.integer({ min: -360, max: 360 }),
@@ -162,9 +164,12 @@ describe("game engine properties", () => {
         playerArbitrary,
         fc.array(asteroidArbitrary, { minLength: 0, maxLength: 20 }),
         (currentScore, player, asteroids) => {
+          const expectedBonus = asteroids
+            .filter((asteroid) => !asteroid.passed && hasAsteroidPassedPlayer(player, asteroid))
+            .reduce((totalBonus, asteroid) => totalBonus + getAsteroidPassBonus(asteroid), 0);
           const updatedScore = applyPassedAsteroidBonuses(currentScore, player, asteroids);
 
-          expect(updatedScore).toBeGreaterThanOrEqual(currentScore);
+          expect(updatedScore).toBe(currentScore + expectedBonus);
         },
       ),
       { numRuns: PROPERTY_RUNS },

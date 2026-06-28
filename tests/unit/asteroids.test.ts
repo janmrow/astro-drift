@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ASTEROID_MAX_ROTATION_SPEED,
+  ASTEROID_MIN_ROTATION_SPEED,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
   FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
   FIERY_ASTEROID_ROTATION_MULTIPLIER,
   FIERY_ASTEROID_SPEED_MULTIPLIER,
+  STANDARD_ASTEROID_DIAGONAL_CHANCE,
+  STANDARD_ASTEROID_MAX_VERTICAL_SPEED,
+  STANDARD_ASTEROID_MIN_VERTICAL_SPEED,
   createInitialAsteroidSpawnState,
   updateAsteroidSpawning,
   updateAsteroids,
@@ -31,6 +36,7 @@ function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
     y: 250,
     radius: 30,
     speed: 100,
+    verticalSpeed: 0,
     rotation: 0,
     rotationSpeed: 0.5,
     points: [],
@@ -43,8 +49,12 @@ type AsteroidRandomRolls = {
   variant: number;
   radius?: number;
   speed?: number;
+  rotationDirection?: number;
   rotationSpeed?: number;
   y?: number;
+  diagonal?: number;
+  verticalDirection?: number;
+  verticalSpeed?: number;
   rotation?: number;
   pointDistanceMultiplier?: number;
 };
@@ -53,20 +63,33 @@ function asteroidRandomValues({
   variant,
   radius = 0.5,
   speed = 0.5,
+  rotationDirection = 0.75,
   rotationSpeed = 0.75,
   y = 0.5,
+  diagonal = 1,
+  verticalDirection = 0.75,
+  verticalSpeed = 0.5,
   rotation = 0.5,
   pointDistanceMultiplier = 0.5,
 }: AsteroidRandomRolls): number[] {
-  return [
+  const values = [
     variant,
     radius,
     speed,
+    rotationDirection,
     rotationSpeed,
     y,
-    rotation,
-    ...Array(9).fill(pointDistanceMultiplier),
   ];
+
+  if (variant >= FIERY_ASTEROID_CHANCE) {
+    values.push(diagonal);
+
+    if (diagonal < STANDARD_ASTEROID_DIAGONAL_CHANCE) {
+      values.push(verticalDirection, verticalSpeed);
+    }
+  }
+
+  return [...values, rotation, ...Array(9).fill(pointDistanceMultiplier)];
 }
 
 describe("asteroid logic", () => {
@@ -172,8 +195,9 @@ describe("asteroid logic", () => {
       x: GAME_WIDTH + radius,
       y: GAME_HEIGHT / 2,
       speed: (ASTEROID_BASE_MIN_SPEED + ASTEROID_BASE_MAX_SPEED) / 2 + speedBonus,
+      verticalSpeed: 0,
       rotation: Math.PI,
-      rotationSpeed: 0,
+      rotationSpeed: (ASTEROID_MIN_ROTATION_SPEED + ASTEROID_MAX_ROTATION_SPEED) / 2,
       passed: false,
     });
     expect(asteroids[0].points).toHaveLength(9);
@@ -242,6 +266,91 @@ describe("asteroid logic", () => {
     expect(fieryAsteroids[0].rotationSpeed).toBeCloseTo(
       standardAsteroids[0].rotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER,
     );
+    expect(fieryAsteroids[0].verticalSpeed).toBe(0);
+  });
+
+  it("creates diagonal standard asteroids when the diagonal movement roll hits", () => {
+    const randomValues = asteroidRandomValues({
+      variant: FIERY_ASTEROID_CHANCE + 0.01,
+      diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE - 0.01,
+      verticalDirection: 0.75,
+      verticalSpeed: 0.5,
+    });
+    const expectedVerticalSpeed =
+      (STANDARD_ASTEROID_MIN_VERTICAL_SPEED + STANDARD_ASTEROID_MAX_VERTICAL_SPEED) / 2;
+
+    vi.spyOn(Math, "random").mockImplementation(() => randomValues.shift() ?? 0.5);
+
+    const asteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      asteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+    );
+
+    expect(asteroids[0].variant).toBe("standard");
+    expect(asteroids[0].verticalSpeed).toBe(expectedVerticalSpeed);
+  });
+
+  it("keeps standard asteroids moving straight when the diagonal movement roll misses", () => {
+    const randomValues = asteroidRandomValues({
+      variant: FIERY_ASTEROID_CHANCE + 0.01,
+      diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE + 0.01,
+    });
+
+    vi.spyOn(Math, "random").mockImplementation(() => randomValues.shift() ?? 0.5);
+
+    const asteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      asteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+    );
+
+    expect(asteroids[0].variant).toBe("standard");
+    expect(asteroids[0].verticalSpeed).toBe(0);
+  });
+
+  it("creates asteroid rotation speeds with noticeable but bounded spin", () => {
+    const leftSpinRolls = asteroidRandomValues({
+      variant: FIERY_ASTEROID_CHANCE + 0.01,
+      rotationDirection: 0.25,
+      rotationSpeed: 0,
+    });
+    const rightSpinRolls = asteroidRandomValues({
+      variant: FIERY_ASTEROID_CHANCE + 0.01,
+      rotationDirection: 0.75,
+      rotationSpeed: 1,
+    });
+
+    vi.spyOn(Math, "random").mockImplementation(() => leftSpinRolls.shift() ?? 0.5);
+
+    const leftSpinAsteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      leftSpinAsteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+    );
+
+    vi.spyOn(Math, "random").mockImplementation(() => rightSpinRolls.shift() ?? 0.5);
+
+    const rightSpinAsteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      rightSpinAsteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+    );
+
+    expect(leftSpinAsteroids[0].rotationSpeed).toBe(-ASTEROID_MIN_ROTATION_SPEED);
+    expect(rightSpinAsteroids[0].rotationSpeed).toBe(ASTEROID_MAX_ROTATION_SPEED);
   });
 
   it("moves asteroids to the left according to their speed", () => {
@@ -255,6 +364,41 @@ describe("asteroid logic", () => {
     updateAsteroids(asteroids, 0.5);
 
     expect(asteroids[0].x).toBe(440);
+  });
+
+  it("moves asteroids vertically according to their vertical speed", () => {
+    const asteroids = [
+      createAsteroid({
+        y: 250,
+        verticalSpeed: 30,
+      }),
+    ];
+
+    updateAsteroids(asteroids, 0.5);
+
+    expect(asteroids[0].y).toBe(265);
+  });
+
+  it("bounces asteroids away from the top and bottom movement bounds", () => {
+    const topAsteroid = createAsteroid({
+      y: 10,
+      radius: 30,
+      verticalSpeed: -30,
+    });
+    const bottomAsteroid = createAsteroid({
+      y: GAME_HEIGHT - 10,
+      radius: 30,
+      verticalSpeed: 30,
+    });
+
+    const asteroids = [topAsteroid, bottomAsteroid];
+
+    updateAsteroids(asteroids, 0.5);
+
+    expect(topAsteroid.y).toBe(46);
+    expect(topAsteroid.verticalSpeed).toBe(30);
+    expect(bottomAsteroid.y).toBe(GAME_HEIGHT - 46);
+    expect(bottomAsteroid.verticalSpeed).toBe(-30);
   });
 
   it("updates asteroid rotation", () => {

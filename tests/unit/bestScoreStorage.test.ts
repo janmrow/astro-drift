@@ -81,6 +81,24 @@ describe("best score storage", () => {
     expect(readBestScore()).toBe(0);
   });
 
+  it("returns zero when localStorage.getItem throws", () => {
+    vi.stubGlobal("localStorage", {
+      ...createLocalStorageMock(),
+      getItem: () => { throw new Error("QuotaExceededError"); },
+    });
+
+    expect(readBestScore()).toBe(0);
+  });
+
+  it("returns the computed best score when localStorage.setItem throws", () => {
+    vi.stubGlobal("localStorage", {
+      ...createLocalStorageMock(),
+      setItem: () => { throw new Error("QuotaExceededError"); },
+    })
+
+    expect(saveBestScore(150)).toBe(150);
+  });
+
   it("saves score as best score when it is higher than current best", () => {
     localStorage.setItem("astro-drift-best-score", "100");
 

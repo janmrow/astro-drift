@@ -68,6 +68,8 @@ npm run test:e2e
 npm run build
 ```
 
+`npm run test:coverage` reports unit test coverage. There is no enforced threshold yet — it exists as a backstop to catch silent coverage regressions.
+
 Current unit test areas:
 
 - `src/game/engine.ts`;

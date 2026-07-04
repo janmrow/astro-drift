@@ -200,7 +200,7 @@ function drawPlayer(
 
   ctx.save();
   ctx.shadowColor = PALETTE.magentaSoft;
-  ctx.shadowBlur = ambientMotionSuppressed ? 13 : getPulse(frameTime, 8, 18, 0.002);
+  ctx.shadowBlur = getPulse(frameTime, 8, 18, 0.002, ambientMotionSuppressed);
 
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
@@ -405,7 +405,7 @@ function drawPlayerAreaGuide(
   ambientMotionSuppressed: boolean,
 ): void {
   const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
-  const guideOpacity = ambientMotionSuppressed ? 0.22 : getPulse(frameTime, 0.14, 0.3, 0.0016);
+  const guideOpacity = getPulse(frameTime, 0.14, 0.3, 0.0016, ambientMotionSuppressed);
 
   ctx.strokeStyle = `rgba(125, 249, 255, ${guideOpacity})`;
   ctx.lineWidth = 2;
@@ -458,8 +458,19 @@ function drawVignette(ctx: CanvasRenderingContext2D): void {
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 }
 
-function getPulse(frameTime: number, min: number, max: number, speed: number): number {
+function getPulse(
+  frameTime: number,
+  min: number,
+  max: number,
+  speed: number,
+  frozen: boolean,
+): number {
   const midpoint = (min + max) / 2;
+
+  if (frozen) {
+    return midpoint;
+  }
+
   const amplitude = (max - min) / 2;
 
   return midpoint + Math.sin(frameTime * speed) * amplitude;

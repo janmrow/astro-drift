@@ -42,6 +42,8 @@ const STAR_COUNT = 90;
 const MAX_FRAME_DELTA_SECONDS = 0.033;
 const BONUS_FEEDBACK_DURATION = 0.65;
 
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const stars = createStars(STAR_COUNT);
 const input = createInputState();
 let player = createInitialPlayer();
@@ -68,7 +70,9 @@ function runGameLoop(currentFrameTime: number): void {
 
   previousFrameTime = currentFrameTime;
 
-  updateStars(stars, deltaTime);
+  const ambientMotionSuppressed = prefersReducedMotion && gameStatus !== "running";
+
+  updateStars(stars, ambientMotionSuppressed ? 0 : deltaTime);
 
   if (gameStatus === "running") {
     survivalTime += deltaTime;
@@ -103,6 +107,7 @@ function runGameLoop(currentFrameTime: number): void {
     bestScore,
     bonusFeedbackTimeLeft > 0 ? bonusFeedbackText : null,
     currentFrameTime,
+    ambientMotionSuppressed,
   );
   updateDomStatus();
 
@@ -146,11 +151,37 @@ function restartGame(): void {
   previousFrameTime = performance.now();
 }
 
+let lastStatusText = "";
+let lastScoreText = "";
+let lastTimeText = "";
+let lastAsteroidCountText = "";
+
 function updateDomStatus(): void {
-  statusElement.textContent = gameStatus;
-  scoreElement.textContent = formatScore(score);
-  timeElement.textContent = formatTime(survivalTime);
-  asteroidCountElement.textContent = asteroids.length.toString();
+  if (gameStatus !== lastStatusText) {
+    statusElement.textContent = gameStatus;
+    lastStatusText = gameStatus;
+  }
+
+  const scoreText = formatScore(score);
+
+  if (scoreText !== lastScoreText) {
+    scoreElement.textContent = scoreText;
+    lastScoreText = scoreText;
+  }
+
+  const timeText = formatTime(survivalTime);
+
+  if (timeText !== lastTimeText) {
+    timeElement.textContent = timeText;
+    lastTimeText = timeText;
+  }
+
+  const asteroidCountText = asteroids.length.toString();
+
+  if (asteroidCountText !== lastAsteroidCountText) {
+    asteroidCountElement.textContent = asteroidCountText;
+    lastAsteroidCountText = asteroidCountText;
+  }
 }
 
 function getRequiredElement(selector: string): HTMLElement {

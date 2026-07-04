@@ -93,7 +93,6 @@ const PALETTE = {
   magenta: "#d83b86",
   magentaSoft: "rgba(216, 59, 134, 0.42)",
   amber: "#ffb86c",
-  amberSoft: "rgba(255, 184, 108, 0.58)",
   rust: "#a34a38",
   darkGold: "#b98b3f",
   asteroidFill: "#211936",
@@ -101,7 +100,6 @@ const PALETTE = {
   fieryAsteroidFill: "#4b1723",
   fieryAsteroidStroke: "#ff6b45",
   fieryAsteroidGlow: "rgba(255, 91, 53, 0.38)",
-  fieryAsteroidTrail: "rgba(255, 91, 53, 0.32)",
 };
 
 export function createStars(count: number): Star[] {
@@ -144,12 +142,13 @@ export function renderFrame(
   currentBestScore: number,
   bonusFeedbackText: string | null,
   frameTime: number,
+  ambientMotionSuppressed = false,
 ): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
-  drawPlayerAreaGuide(ctx, frameTime);
+  drawPlayerAreaGuide(ctx, frameTime, ambientMotionSuppressed);
   drawAsteroids(ctx, currentAsteroids);
-  drawPlayer(ctx, currentPlayer, currentStatus, frameTime);
+  drawPlayer(ctx, currentPlayer, frameTime, ambientMotionSuppressed);
   drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime, currentBestScore);
 
   if (bonusFeedbackText) {
@@ -192,20 +191,16 @@ function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
 function drawPlayer(
   ctx: CanvasRenderingContext2D,
   currentPlayer: Player,
-  currentStatus: GameStatus,
   frameTime: number,
+  ambientMotionSuppressed: boolean,
 ): void {
   const noseX = currentPlayer.x + currentPlayer.width / 2;
   const tailX = currentPlayer.x - currentPlayer.width / 2;
   const centerY = currentPlayer.y;
 
-  if (currentStatus === "running") {
-    drawShipThrust(ctx, tailX, centerY);
-  }
-
   ctx.save();
   ctx.shadowColor = PALETTE.magentaSoft;
-  ctx.shadowBlur = getPulse(frameTime, 8, 18, 0.002);
+  ctx.shadowBlur = getPulse(frameTime, 8, 18, 0.002, ambientMotionSuppressed);
 
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
@@ -230,36 +225,8 @@ function drawPlayer(
   ctx.fill();
 }
 
-function drawShipThrust(ctx: CanvasRenderingContext2D, tailX: number, centerY: number): void {
-  ctx.save();
-  ctx.shadowColor = PALETTE.amberSoft;
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = "rgba(255, 111, 64, 0.52)";
-  ctx.beginPath();
-  ctx.moveTo(tailX - 4, centerY - 9);
-  ctx.lineTo(tailX - 30, centerY);
-  ctx.lineTo(tailX - 4, centerY + 9);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.fillStyle = "rgba(255, 240, 188, 0.82)";
-  ctx.beginPath();
-  ctx.moveTo(tailX - 4, centerY - 4);
-  ctx.lineTo(tailX - 18, centerY);
-  ctx.lineTo(tailX - 4, centerY + 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
 function drawAsteroids(ctx: CanvasRenderingContext2D, currentAsteroids: Asteroid[]): void {
   for (const asteroid of currentAsteroids) {
-    if (asteroid.variant === "fiery") {
-      drawFieryAsteroidTrail(ctx, asteroid);
-    }
-
     drawAsteroid(ctx, asteroid);
   }
 }
@@ -296,30 +263,6 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   ctx.lineWidth = asteroid.variant === "fiery" ? 3 : 2;
   ctx.stroke();
 
-  ctx.restore();
-}
-
-function drawFieryAsteroidTrail(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
-  const trailLength = asteroid.radius * 2.45;
-  const trailStartX = asteroid.x + asteroid.radius * 0.25;
-  const trailEndX = asteroid.x + asteroid.radius + trailLength;
-  const trailGradient = ctx.createLinearGradient(trailStartX, asteroid.y, trailEndX, asteroid.y);
-
-  trailGradient.addColorStop(0, "rgba(255, 205, 125, 0.42)");
-  trailGradient.addColorStop(0.34, PALETTE.fieryAsteroidTrail);
-  trailGradient.addColorStop(0.72, "rgba(255, 91, 53, 0.16)");
-  trailGradient.addColorStop(1, "rgba(255, 91, 53, 0)");
-
-  ctx.save();
-  ctx.shadowColor = PALETTE.fieryAsteroidGlow;
-  ctx.shadowBlur = 10;
-  ctx.fillStyle = trailGradient;
-  ctx.beginPath();
-  ctx.moveTo(trailStartX, asteroid.y - asteroid.radius * 0.5);
-  ctx.lineTo(trailEndX, asteroid.y);
-  ctx.lineTo(trailStartX, asteroid.y + asteroid.radius * 0.5);
-  ctx.closePath();
-  ctx.fill();
   ctx.restore();
 }
 
@@ -456,9 +399,13 @@ function drawGameOverOverlay(
   ctx.textAlign = "start";
 }
 
-function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D, frameTime: number): void {
+function drawPlayerAreaGuide(
+  ctx: CanvasRenderingContext2D,
+  frameTime: number,
+  ambientMotionSuppressed: boolean,
+): void {
   const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
-  const guideOpacity = getPulse(frameTime, 0.14, 0.3, 0.0016);
+  const guideOpacity = getPulse(frameTime, 0.14, 0.3, 0.0016, ambientMotionSuppressed);
 
   ctx.strokeStyle = `rgba(125, 249, 255, ${guideOpacity})`;
   ctx.lineWidth = 2;
@@ -511,8 +458,19 @@ function drawVignette(ctx: CanvasRenderingContext2D): void {
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 }
 
-function getPulse(frameTime: number, min: number, max: number, speed: number): number {
+function getPulse(
+  frameTime: number,
+  min: number,
+  max: number,
+  speed: number,
+  frozen: boolean,
+): number {
   const midpoint = (min + max) / 2;
+
+  if (frozen) {
+    return midpoint;
+  }
+
   const amplitude = (max - min) / 2;
 
   return midpoint + Math.sin(frameTime * speed) * amplitude;

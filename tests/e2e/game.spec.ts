@@ -104,11 +104,13 @@ test("only writes status text nodes when the value actually changes", async ({ p
     throw new Error("Mutation counts were not recorded.");
   }
 
-  // The status flips exactly once (idle -> running). At 60fps for ~1.5s the loop
-  // runs roughly 90 times; if text were written every frame regardless of change,
-  // score/time mutation counts would track that. Change-only writes keep them far
-  // lower, bounded by how many whole-number ticks actually occurred.
-  expect(counts.status).toBe(1);
+  // Status flips idle -> running, and possibly -> gameOver if a random collision
+  // happens within the window, so 1 or 2 changes are both valid. At 60fps for
+  // ~1.5s the loop runs roughly 90 times; if text were written every frame
+  // regardless of change, all counts would track that. Change-only writes keep
+  // them far lower, bounded by how many whole-number ticks actually occurred.
+  expect(counts.status).toBeGreaterThanOrEqual(1);
+  expect(counts.status).toBeLessThanOrEqual(2);
   expect(counts.score).toBeGreaterThan(0);
   expect(counts.score).toBeLessThan(60);
   expect(counts.time).toBeGreaterThan(0);

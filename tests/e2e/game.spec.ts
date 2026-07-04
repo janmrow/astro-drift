@@ -22,6 +22,16 @@ test("starts the game with keyboard action keys", async ({ page }) => {
   }
 });
 
+test("does not start the game with the restart key", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByTestId("game-status")).toHaveText("idle");
+
+  await page.keyboard.press("r");
+
+  await expect(page.getByTestId("game-status")).toHaveText("idle");
+});
+
 test("updates the browser status while running", async ({ page }) => {
   await page.goto("/");
 

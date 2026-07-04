@@ -110,8 +110,14 @@ function runGameLoop(currentFrameTime: number): void {
   requestAnimationFrame(runGameLoop);
 }
 
-function handleGameAction(): boolean {
+const START_KEYS = ["enter", " "];
+
+function handleGameAction(key: string): boolean {
   if (gameStatus === "idle") {
+    if (!START_KEYS.includes(key.toLowerCase())) {
+      return false;
+    }
+
     startGame();
     return true;
   }

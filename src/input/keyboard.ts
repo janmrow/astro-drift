@@ -1,14 +1,15 @@
 import type { InputState } from "../game/types";
 
-type GameActionHandler = () => boolean;
+type GameActionHandler = (key: string) => boolean;
 
 export function setupKeyboardControls(
   currentInput: InputState,
   onGameActionRequested: GameActionHandler,
 ): void {
   window.addEventListener("keydown", (event) => {
-    if (isActionKey(event.key) && onGameActionRequested()) {
+    if (isActionKey(event.key)) {
       event.preventDefault();
+      onGameActionRequested(event.key);
       return;
     }
 
@@ -25,6 +26,13 @@ export function setupKeyboardControls(
     if (isMovementKey(event.key)) {
       event.preventDefault();
     }
+  });
+
+  window.addEventListener("blur", () => {
+    currentInput.up = false;
+    currentInput.down = false;
+    currentInput.left = false;
+    currentInput.right = false;
   });
 }
 

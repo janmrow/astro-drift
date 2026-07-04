@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { updateAsteroids } from "../../src/game/asteroids";
 import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
+  ASTEROID_REMOVE_PADDING,
   ASTEROID_SPAWN_RAMP,
   ASTEROID_PASS_BONUS,
   FIERY_ASTEROID_PASS_BONUS,
@@ -444,6 +446,44 @@ describe("game engine", () => {
       const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100);
+    });
+
+    it("still credits the bonus when a large frame delta would otherwise remove the asteroid in the same frame", () => {
+      const player = createInitialPlayer();
+      const playerLeftEdge = player.x - player.width / 2;
+      // Just short of "passed" before this frame's movement, but fast/large enough
+      // that a single frame's updateAsteroids would move it fully off screen.
+      const asteroid = createAsteroid({
+        x: playerLeftEdge - 21,
+        radius: 20,
+        speed: 5000,
+      });
+      const largeDeltaTime = 1;
+
+      const scoreAfterBonus = applyPassedAsteroidBonuses(100, player, [asteroid]);
+      updateAsteroids([asteroid], largeDeltaTime);
+
+      expect(scoreAfterBonus).toBe(100 + ASTEROID_PASS_BONUS);
+      expect(asteroid.passed).toBe(true);
+      expect(asteroid.x).toBeLessThan(-ASTEROID_REMOVE_PADDING);
+    });
+
+    it("loses the bonus if bonuses are applied after asteroids are removed (documents the pre-fix ordering bug)", () => {
+      const player = createInitialPlayer();
+      const playerLeftEdge = player.x - player.width / 2;
+      const asteroid = createAsteroid({
+        x: playerLeftEdge - 21,
+        radius: 20,
+        speed: 5000,
+      });
+      const asteroids = [asteroid];
+      const largeDeltaTime = 1;
+
+      updateAsteroids(asteroids, largeDeltaTime);
+      const scoreAfterBonus = applyPassedAsteroidBonuses(100, player, asteroids);
+
+      expect(asteroids).toHaveLength(0);
+      expect(scoreAfterBonus).toBe(100);
     });
   });
 });

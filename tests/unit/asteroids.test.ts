@@ -20,6 +20,7 @@ import {
   ASTEROID_BASE_MIN_SPEED,
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MAX_RADIUS,
+  ASTEROID_MAX_SPEED,
   ASTEROID_MIN_RADIUS,
   ASTEROID_REMOVE_PADDING,
   ASTEROID_SPEED_RAMP,
@@ -261,6 +262,21 @@ describe("asteroid logic", () => {
     );
 
     expect(laterAsteroids[0].speed).toBeGreaterThan(earlyAsteroids[0].speed);
+  });
+
+  it("does not exceed the maximum asteroid speed after long survival times", () => {
+    vi.spyOn(Math, "random").mockReturnValue(1);
+
+    const asteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      asteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      10_000,
+    );
+
+    expect(asteroids[0].speed).toBe(ASTEROID_MAX_SPEED);
   });
 
   it("creates fiery asteroids with faster speed and rotation when the variant roll hits", () => {

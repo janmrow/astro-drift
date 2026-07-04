@@ -2,11 +2,13 @@ import {
   ASTEROID_BASE_MAX_SPEED,
   ASTEROID_BASE_MIN_SPEED,
   ASTEROID_MAX_RADIUS,
+  ASTEROID_MAX_SPEED,
   ASTEROID_MIN_RADIUS,
   ASTEROID_REMOVE_PADDING,
   ASTEROID_SPEED_RAMP,
   GAME_HEIGHT,
   GAME_WIDTH,
+  clamp,
   getAsteroidSpawnInterval,
 } from "./engine";
 import type { Asteroid, AsteroidPoint, AsteroidVariant } from "./types";
@@ -93,9 +95,10 @@ function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
   const baseRadius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
   const radius = getAsteroidRadius(baseRadius, variant);
   const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
-  const speed = randomBetween(
-    ASTEROID_BASE_MIN_SPEED + speedBonus,
-    ASTEROID_BASE_MAX_SPEED + speedBonus,
+  const speed = clamp(
+    randomBetween(ASTEROID_BASE_MIN_SPEED + speedBonus, ASTEROID_BASE_MAX_SPEED + speedBonus),
+    ASTEROID_BASE_MIN_SPEED,
+    ASTEROID_MAX_SPEED,
   );
   const rotationSpeed = createAsteroidRotationSpeed(variant);
 

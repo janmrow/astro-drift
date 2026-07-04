@@ -17,6 +17,7 @@ export const ASTEROID_MAX_RADIUS = 42;
 export const ASTEROID_BASE_MIN_SPEED = 165;
 export const ASTEROID_BASE_MAX_SPEED = 245;
 export const ASTEROID_SPEED_RAMP = 1.5;
+export const ASTEROID_MAX_SPEED = 580;
 export const ASTEROID_REMOVE_PADDING = 80;
 
 export const SCORE_PER_SECOND = 10;

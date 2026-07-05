@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { updateAsteroids } from "../../src/game/asteroids";
 import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_REMOVE_PADDING,
   ASTEROID_SPAWN_RAMP,
+  getAsteroidSpawnInterval,
+  updateAsteroids,
+} from "../../src/game/asteroids";
+import {
   ASTEROID_PASS_BONUS,
   FIERY_ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
@@ -13,13 +16,10 @@ import {
   PLAYER_AREA_MAX_X,
   PLAYER_SCREEN_PADDING,
   PLAYER_SPEED,
-  applyPassedAsteroidBonuses,
+  collectPassBonuses,
   capFrameDelta,
   createInputState,
   createInitialPlayer,
-  formatScore,
-  formatTime,
-  getAsteroidSpawnInterval,
   getPlayerHitbox,
   hasAsteroidPassedPlayer,
   hasPlayerCollision,
@@ -356,7 +356,7 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+      const updatedScore = collectPassBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS);
       expect(asteroid.passed).toBe(true);
@@ -370,7 +370,7 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+      const updatedScore = collectPassBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100 + FIERY_ASTEROID_PASS_BONUS);
       expect(asteroid.passed).toBe(true);
@@ -390,7 +390,7 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = applyPassedAsteroidBonuses(100, player, [firstAsteroid, secondAsteroid]);
+      const updatedScore = collectPassBonuses(100, player, [firstAsteroid, secondAsteroid]);
 
       expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS + FIERY_ASTEROID_PASS_BONUS);
       expect(firstAsteroid.passed).toBe(true);
@@ -404,7 +404,7 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+      const updatedScore = collectPassBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100);
       expect(asteroid.passed).toBe(false);
@@ -418,7 +418,7 @@ describe("game engine", () => {
         passed: true,
       });
 
-      const updatedScore = applyPassedAsteroidBonuses(100, player, [asteroid]);
+      const updatedScore = collectPassBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100);
     });
@@ -435,7 +435,7 @@ describe("game engine", () => {
       });
       const largeDeltaTime = 1;
 
-      const scoreAfterBonus = applyPassedAsteroidBonuses(100, player, [asteroid]);
+      const scoreAfterBonus = collectPassBonuses(100, player, [asteroid]);
       updateAsteroids([asteroid], largeDeltaTime);
 
       expect(scoreAfterBonus).toBe(100 + ASTEROID_PASS_BONUS);
@@ -455,7 +455,7 @@ describe("game engine", () => {
       const largeDeltaTime = 1;
 
       updateAsteroids(asteroids, largeDeltaTime);
-      const scoreAfterBonus = applyPassedAsteroidBonuses(100, player, asteroids);
+      const scoreAfterBonus = collectPassBonuses(100, player, asteroids);
 
       expect(asteroids).toHaveLength(0);
       expect(scoreAfterBonus).toBe(100);

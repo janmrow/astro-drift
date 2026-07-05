@@ -2,16 +2,12 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import {
-  ASTEROID_BASE_SPAWN_INTERVAL,
-  ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_PASS_BONUS,
-  ASTEROID_REMOVE_PADDING,
   FIERY_ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
   PLAYER_AREA_MAX_X,
   PLAYER_SCREEN_PADDING,
-  applyPassedAsteroidBonuses,
-  getAsteroidSpawnInterval,
+  collectPassBonuses,
   getAsteroidPassBonus,
   getPlayerHitbox,
   hasAsteroidPassedPlayer,
@@ -19,7 +15,14 @@ import {
   updatePlayer,
   updateScore,
 } from "../../src/game/engine";
-import { ASTEROID_VERTICAL_SPAWN_PADDING, updateAsteroids } from "../../src/game/asteroids";
+import {
+  ASTEROID_BASE_SPAWN_INTERVAL,
+  ASTEROID_MIN_SPAWN_INTERVAL,
+  ASTEROID_REMOVE_PADDING,
+  ASTEROID_VERTICAL_SPAWN_PADDING,
+  getAsteroidSpawnInterval,
+  updateAsteroids,
+} from "../../src/game/asteroids";
 import { createAsteroid } from "./helpers";
 import type { Asteroid, InputState, Player } from "../../src/game/types";
 
@@ -201,7 +204,7 @@ describe("game engine properties", () => {
           const expectedBonus = asteroids
             .filter((asteroid) => !asteroid.passed && hasAsteroidPassedPlayer(player, asteroid))
             .reduce((totalBonus, asteroid) => totalBonus + getAsteroidPassBonus(asteroid), 0);
-          const updatedScore = applyPassedAsteroidBonuses(currentScore, player, asteroids);
+          const updatedScore = collectPassBonuses(currentScore, player, asteroids);
 
           expect(updatedScore).toBe(currentScore + expectedBonus);
         },
@@ -223,7 +226,7 @@ describe("game engine properties", () => {
             passed: true,
           }));
 
-          expect(applyPassedAsteroidBonuses(currentScore, player, asteroids)).toBe(currentScore);
+          expect(collectPassBonuses(currentScore, player, asteroids)).toBe(currentScore);
         },
       ),
       { numRuns: PROPERTY_RUNS },
@@ -249,7 +252,7 @@ describe("game engine properties", () => {
             );
           }, 0);
 
-          expect(applyPassedAsteroidBonuses(currentScore, player, asteroids)).toBe(
+          expect(collectPassBonuses(currentScore, player, asteroids)).toBe(
             currentScore + expectedBonus,
           );
         },

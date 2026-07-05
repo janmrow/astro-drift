@@ -1,4 +1,4 @@
-import { applyPassedAsteroidBonuses, createInitialPlayer } from "./engine";
+import { collectPassBonuses, createInitialPlayer } from "./engine";
 import { createInitialAsteroidSpawnState, type AsteroidSpawnState } from "./asteroids";
 import type { Asteroid, Player } from "./types";
 
@@ -38,7 +38,7 @@ export function applyScoreBonuses(
   currentBonusFeedbackTimeLeft: number,
   bonusFeedbackDuration: number,
 ): ScoreBonusResult {
-  const scoreAfterBonus = applyPassedAsteroidBonuses(currentScore, currentPlayer, currentAsteroids);
+  const scoreAfterBonus = collectPassBonuses(currentScore, currentPlayer, currentAsteroids);
   const bonusPoints = Math.floor(scoreAfterBonus - currentScore);
 
   if (bonusPoints <= 0) {

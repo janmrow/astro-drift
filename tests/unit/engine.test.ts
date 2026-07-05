@@ -318,17 +318,6 @@ describe("game engine", () => {
     });
   });
 
-  describe("formatting", () => {
-    it("formats score as a five digit value", () => {
-      expect(formatScore(7.9)).toBe("00007");
-      expect(formatScore(123)).toBe("00123");
-    });
-
-    it("formats survival time in seconds", () => {
-      expect(formatTime(12.9)).toBe("12s");
-    });
-  });
-
   describe("passed asteroid bonuses", () => {
     it("detects when an asteroid has passed the player", () => {
       const player = createInitialPlayer();

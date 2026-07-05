@@ -3,12 +3,11 @@ import "./style.css";
 import {
   capFrameDelta,
   createInputState,
-  formatScore,
-  formatTime,
   hasPlayerCollision,
   updatePlayer,
   updateScore,
 } from "./game/engine";
+import { formatScore, formatTime } from "./game/format";
 import { updateAsteroidSpawning, updateAsteroids } from "./game/asteroids";
 import { createSeededRng } from "./game/rng";
 import {

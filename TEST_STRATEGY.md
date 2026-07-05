@@ -45,6 +45,17 @@ Current focus:
 
 These tests should stay fast and independent from the browser.
 
+### Property-based tests
+
+`engine.properties.test.ts` uses `fast-check` to check invariants that hold across
+many generated inputs, not just hand-picked examples — e.g. player movement always
+stays within its bounds, score never decreases, and collision detection always
+triggers when an asteroid's center is inside the player hitbox and never triggers
+once it is farther than its hit radius away. Where an invariant is meant to reflect
+actual single-frame gameplay (not just the pure function's general robustness), the
+delta-time arbitrary is bounded to the runtime's ~0.033s frame cap rather than the
+wider range used elsewhere.
+
 ### E2E tests
 
 E2E tests cover the main browser contract:
@@ -75,6 +86,9 @@ Current unit test areas:
 - `src/game/engine.ts`;
 - `src/game/asteroids.ts`;
 - `src/storage/bestScoreStorage.ts`.
+
+### CI
+
 CI should run these checks on pull requests and main branch updates:
 
 ```text

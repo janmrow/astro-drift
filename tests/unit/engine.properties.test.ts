@@ -13,18 +13,29 @@ import {
   applyPassedAsteroidBonuses,
   getAsteroidSpawnInterval,
   getAsteroidPassBonus,
+  getPlayerHitbox,
   hasAsteroidPassedPlayer,
+  isPlayerCollidingWithAsteroid,
   updatePlayer,
   updateScore,
 } from "../../src/game/engine";
 import { ASTEROID_VERTICAL_SPAWN_PADDING, updateAsteroids } from "../../src/game/asteroids";
+import { createAsteroid } from "./helpers";
 import type { Asteroid, InputState, Player } from "../../src/game/types";
 
 const PROPERTY_RUNS = 100;
 
+// Runtime caps a single frame's elapsed time at ~0.033s (see main.ts); this wide
+// range stays too, since it stress-tests the pure functions beyond real gameplay.
 const deltaTimeArbitrary = fc
   .integer({ min: 0, max: 10_000 })
   .map((milliseconds) => milliseconds / 1_000);
+
+const realisticDeltaTimeArbitrary = fc
+  .integer({ min: 0, max: 33 })
+  .map((milliseconds) => milliseconds / 1_000);
+
+const unitIntervalArbitrary = fc.float({ min: 0, max: 1, noNaN: true });
 
 const inputArbitrary: fc.Arbitrary<InputState> = fc.record({
   up: fc.boolean(),
@@ -73,6 +84,29 @@ describe("game engine properties", () => {
         playerArbitrary,
         inputArbitrary,
         deltaTimeArbitrary,
+        (player, input, deltaTime) => {
+          const updatedPlayer = updatePlayer(player, input, deltaTime);
+
+          expect(updatedPlayer.x).toBeGreaterThanOrEqual(player.width / 2 + PLAYER_SCREEN_PADDING);
+          expect(updatedPlayer.x).toBeLessThanOrEqual(PLAYER_AREA_MAX_X);
+          expect(updatedPlayer.y).toBeGreaterThanOrEqual(
+            player.height / 2 + PLAYER_SCREEN_PADDING,
+          );
+          expect(updatedPlayer.y).toBeLessThanOrEqual(
+            GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING,
+          );
+        },
+      ),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it("keeps an in-bounds player inside the playable movement bounds over a real frame", () => {
+    fc.assert(
+      fc.property(
+        playerArbitrary,
+        inputArbitrary,
+        realisticDeltaTimeArbitrary,
         (player, input, deltaTime) => {
           const updatedPlayer = updatePlayer(player, input, deltaTime);
 
@@ -218,6 +252,53 @@ describe("game engine properties", () => {
           expect(applyPassedAsteroidBonuses(currentScore, player, asteroids)).toBe(
             currentScore + expectedBonus,
           );
+        },
+      ),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it("always collides when the asteroid center is inside the player hitbox", () => {
+    fc.assert(
+      fc.property(
+        playerArbitrary,
+        fc.integer({ min: 0, max: 80 }),
+        unitIntervalArbitrary,
+        unitIntervalArbitrary,
+        (player, radius, xFraction, yFraction) => {
+          const hitbox = getPlayerHitbox(player);
+          const asteroid = createAsteroid({
+            x: hitbox.left + (hitbox.right - hitbox.left) * xFraction,
+            y: hitbox.top + (hitbox.bottom - hitbox.top) * yFraction,
+            radius,
+          });
+
+          expect(isPlayerCollidingWithAsteroid(player, asteroid)).toBe(true);
+        },
+      ),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it("never collides when the asteroid is farther than its hit radius from the hitbox", () => {
+    fc.assert(
+      fc.property(
+        playerArbitrary,
+        fc.integer({ min: 0, max: 80 }),
+        fc.integer({ min: 1, max: 500 }),
+        (player, radius, extraDistance) => {
+          const hitbox = getPlayerHitbox(player);
+          // Collision uses radius * 0.82 as the effective hit radius (see
+          // ASTEROID_COLLISION_RADIUS_RATIO in engine.ts); anything farther than
+          // that from the hitbox edge can never collide.
+          const asteroidHitRadius = radius * 0.82;
+          const asteroid = createAsteroid({
+            x: hitbox.right + asteroidHitRadius + extraDistance,
+            y: player.y,
+            radius,
+          });
+
+          expect(isPlayerCollidingWithAsteroid(player, asteroid)).toBe(false);
         },
       ),
       { numRuns: PROPERTY_RUNS },

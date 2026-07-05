@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   ASTEROID_MAX_ROTATION_SPEED,
@@ -77,11 +77,13 @@ function asteroidRandomValues({
   return [...values, rotation, ...Array<number>(9).fill(pointDistanceMultiplier)];
 }
 
-describe("asteroid logic", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+function createAsteroidRng(rolls: AsteroidRandomRolls): () => number {
+  const values = asteroidRandomValues(rolls);
 
+  return () => values.shift() ?? 0.5;
+}
+
+describe("asteroid logic", () => {
   it("creates the initial asteroid spawn state", () => {
     const spawnState = createInitialAsteroidSpawnState();
 
@@ -192,8 +194,6 @@ describe("asteroid logic", () => {
   });
 
   it("creates spawned asteroids inside the expected gameplay ranges", () => {
-    vi.spyOn(Math, "random").mockReturnValue(0.5);
-
     const asteroids: Asteroid[] = [];
     const survivalTime = 20;
     const radius = (ASTEROID_MIN_RADIUS + ASTEROID_MAX_RADIUS) / 2;
@@ -204,6 +204,7 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       survivalTime,
+      () => 0.5,
     );
 
     expect(asteroids).toHaveLength(1);
@@ -227,8 +228,6 @@ describe("asteroid logic", () => {
   });
 
   it("increases spawned asteroid speed as survival time grows", () => {
-    vi.spyOn(Math, "random").mockReturnValue(0.5);
-
     const earlyAsteroids: Asteroid[] = [];
     const laterAsteroids: Asteroid[] = [];
 
@@ -237,20 +236,20 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       0,
+      () => 0.5,
     );
     updateAsteroidSpawning(
       laterAsteroids,
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       60,
+      () => 0.5,
     );
 
     expect(laterAsteroids[0].speed).toBeGreaterThan(earlyAsteroids[0].speed);
   });
 
   it("does not exceed the maximum asteroid speed after long survival times", () => {
-    vi.spyOn(Math, "random").mockReturnValue(1);
-
     const asteroids: Asteroid[] = [];
 
     updateAsteroidSpawning(
@@ -258,20 +257,15 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       10_000,
+      () => 1,
     );
 
     expect(asteroids[0].speed).toBe(ASTEROID_MAX_SPEED);
   });
 
   it("creates fiery asteroids with faster speed and rotation when the variant roll hits", () => {
-    const randomValues = [
-      ...asteroidRandomValues({ variant: FIERY_ASTEROID_CHANCE + 0.01 }),
-      ...asteroidRandomValues({ variant: FIERY_ASTEROID_CHANCE - 0.01 }),
-    ];
     const expectedRadiusMultiplier =
       (FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER + FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER) / 2;
-
-    vi.spyOn(Math, "random").mockImplementation(() => randomValues.shift() ?? 0.5);
 
     const standardAsteroids: Asteroid[] = [];
     const fieryAsteroids: Asteroid[] = [];
@@ -281,12 +275,14 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       0,
+      createAsteroidRng({ variant: FIERY_ASTEROID_CHANCE + 0.01 }),
     );
     updateAsteroidSpawning(
       fieryAsteroids,
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       0,
+      createAsteroidRng({ variant: FIERY_ASTEROID_CHANCE - 0.01 }),
     );
 
     expect(standardAsteroids[0].variant).toBe("standard");
@@ -304,16 +300,8 @@ describe("asteroid logic", () => {
   });
 
   it("creates diagonal standard asteroids when the diagonal movement roll hits", () => {
-    const randomValues = asteroidRandomValues({
-      variant: FIERY_ASTEROID_CHANCE + 0.01,
-      diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE - 0.01,
-      verticalDirection: 0.75,
-      verticalSpeed: 0.5,
-    });
     const expectedVerticalSpeed =
       (STANDARD_ASTEROID_MIN_VERTICAL_SPEED + STANDARD_ASTEROID_MAX_VERTICAL_SPEED) / 2;
-
-    vi.spyOn(Math, "random").mockImplementation(() => randomValues.shift() ?? 0.5);
 
     const asteroids: Asteroid[] = [];
 
@@ -322,6 +310,12 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       0,
+      createAsteroidRng({
+        variant: FIERY_ASTEROID_CHANCE + 0.01,
+        diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE - 0.01,
+        verticalDirection: 0.75,
+        verticalSpeed: 0.5,
+      }),
     );
 
     expect(asteroids[0].variant).toBe("standard");
@@ -329,13 +323,6 @@ describe("asteroid logic", () => {
   });
 
   it("keeps standard asteroids moving straight when the diagonal movement roll misses", () => {
-    const randomValues = asteroidRandomValues({
-      variant: FIERY_ASTEROID_CHANCE + 0.01,
-      diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE + 0.01,
-    });
-
-    vi.spyOn(Math, "random").mockImplementation(() => randomValues.shift() ?? 0.5);
-
     const asteroids: Asteroid[] = [];
 
     updateAsteroidSpawning(
@@ -343,6 +330,10 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       0,
+      createAsteroidRng({
+        variant: FIERY_ASTEROID_CHANCE + 0.01,
+        diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE + 0.01,
+      }),
     );
 
     expect(asteroids[0].variant).toBe("standard");
@@ -350,19 +341,6 @@ describe("asteroid logic", () => {
   });
 
   it("creates asteroid rotation speeds with noticeable but bounded spin", () => {
-    const leftSpinRolls = asteroidRandomValues({
-      variant: FIERY_ASTEROID_CHANCE + 0.01,
-      rotationDirection: 0.25,
-      rotationSpeed: 0,
-    });
-    const rightSpinRolls = asteroidRandomValues({
-      variant: FIERY_ASTEROID_CHANCE + 0.01,
-      rotationDirection: 0.75,
-      rotationSpeed: 1,
-    });
-
-    vi.spyOn(Math, "random").mockImplementation(() => leftSpinRolls.shift() ?? 0.5);
-
     const leftSpinAsteroids: Asteroid[] = [];
 
     updateAsteroidSpawning(
@@ -370,9 +348,12 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       0,
+      createAsteroidRng({
+        variant: FIERY_ASTEROID_CHANCE + 0.01,
+        rotationDirection: 0.25,
+        rotationSpeed: 0,
+      }),
     );
-
-    vi.spyOn(Math, "random").mockImplementation(() => rightSpinRolls.shift() ?? 0.5);
 
     const rightSpinAsteroids: Asteroid[] = [];
 
@@ -381,6 +362,11 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       ASTEROID_BASE_SPAWN_INTERVAL,
       0,
+      createAsteroidRng({
+        variant: FIERY_ASTEROID_CHANCE + 0.01,
+        rotationDirection: 0.75,
+        rotationSpeed: 1,
+      }),
     );
 
     expect(leftSpinAsteroids[0].rotationSpeed).toBe(-ASTEROID_MIN_ROTATION_SPEED);

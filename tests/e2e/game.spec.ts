@@ -19,7 +19,7 @@ test("loads the initial game contract", async ({ page }) => {
   await expect(page.getByTestId("game-canvas")).toBeVisible();
   await expect(page.getByTestId("game-status")).toHaveText("idle");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
-  await expect(page.getByTestId("game-time")).toHaveText("0s");
+  await expect(page.getByTestId("game-time")).toHaveText("0:00");
   await expect(page.getByTestId("asteroid-count")).toHaveText("0");
 });
 
@@ -58,7 +58,7 @@ test("updates the browser status while running", async ({ page }) => {
   await expect
     .poll(async () => Number(await score.textContent()))
     .toBeGreaterThan(0);
-  await expect(survivalTime).not.toHaveText("0s");
+  await expect(survivalTime).not.toHaveText("0:00");
   await expect
     .poll(async () => Number(await asteroidCount.textContent()))
     .toBeGreaterThan(0);
@@ -85,7 +85,7 @@ test("goes to gameOver on collision and restarts cleanly with R", async ({ page 
 
   await expect(page.getByTestId("game-status")).toHaveText("running");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
-  await expect(page.getByTestId("game-time")).toHaveText("0s");
+  await expect(page.getByTestId("game-time")).toHaveText("0:00");
 });
 
 test("scopes aria-live to the status announcement only", async ({ page }) => {

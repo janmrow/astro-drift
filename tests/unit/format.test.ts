@@ -8,7 +8,9 @@ describe("formatting", () => {
     expect(formatScore(123)).toBe("00123");
   });
 
-  it("formats survival time in seconds", () => {
-    expect(formatTime(12.9)).toBe("12s");
+  it("formats survival time as m:ss", () => {
+    expect(formatTime(12.9)).toBe("0:12");
+    expect(formatTime(65)).toBe("1:05");
+    expect(formatTime(125)).toBe("2:05");
   });
 });

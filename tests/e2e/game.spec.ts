@@ -19,7 +19,7 @@ test("loads the initial game contract", async ({ page }) => {
   await expect(page.getByTestId("game-canvas")).toBeVisible();
   await expect(page.getByTestId("game-status")).toHaveText("idle");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
-  await expect(page.getByTestId("game-time")).toHaveText("0s");
+  await expect(page.getByTestId("game-time")).toHaveText("0:00");
   await expect(page.getByTestId("asteroid-count")).toHaveText("0");
 });
 
@@ -58,7 +58,7 @@ test("updates the browser status while running", async ({ page }) => {
   await expect
     .poll(async () => Number(await score.textContent()))
     .toBeGreaterThan(0);
-  await expect(survivalTime).not.toHaveText("0s");
+  await expect(survivalTime).not.toHaveText("0:00");
   await expect
     .poll(async () => Number(await asteroidCount.textContent()))
     .toBeGreaterThan(0);
@@ -85,7 +85,7 @@ test("goes to gameOver on collision and restarts cleanly with R", async ({ page 
 
   await expect(page.getByTestId("game-status")).toHaveText("running");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
-  await expect(page.getByTestId("game-time")).toHaveText("0s");
+  await expect(page.getByTestId("game-time")).toHaveText("0:00");
 });
 
 test("scopes aria-live to the status announcement only", async ({ page }) => {
@@ -141,4 +141,27 @@ test("only writes status text nodes when the value actually changes", async ({ p
   expect(counts.score).toBeLessThan(60);
   expect(counts.time).toBeGreaterThan(0);
   expect(counts.time).toBeLessThan(60);
+});
+
+test("saves the best score when the tab is hidden mid-run", async ({ page }) => {
+  await page.goto("/");
+
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("game-status")).toHaveText("running");
+  await expect
+    .poll(async () => Number(await page.getByTestId("game-score").textContent()))
+    .toBeGreaterThan(0);
+
+  const scoreBeforeHiding = Number(await page.getByTestId("game-score").textContent());
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+
+  const storedBestScore = await page.evaluate(() =>
+    Number(localStorage.getItem("astro-drift-best-score")),
+  );
+
+  expect(storedBestScore).toBeGreaterThanOrEqual(scoreBeforeHiding);
 });

@@ -32,6 +32,8 @@ export const FIERY_ASTEROID_SPEED_MULTIPLIER = 1.7;
 export const FIERY_ASTEROID_ROTATION_MULTIPLIER = 1.7;
 export const FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER = 1.2;
 export const FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER = 1.3;
+export const FIERY_ASTEROID_MIN_VERTICAL_SPEED = 6;
+export const FIERY_ASTEROID_MAX_VERTICAL_SPEED = 14;
 
 export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   return {
@@ -150,7 +152,7 @@ function getAsteroidSpeed(baseSpeed: number, variant: AsteroidVariant): number {
 function createAsteroidVerticalSpeed(variant: AsteroidVariant, rng: () => number): number {
   switch (variant) {
     case "fiery":
-      return 0;
+      return createFieryAsteroidVerticalSpeed(rng);
     case "standard":
       return createStandardAsteroidVerticalSpeed(rng);
     default:
@@ -158,20 +160,22 @@ function createAsteroidVerticalSpeed(variant: AsteroidVariant, rng: () => number
   }
 }
 
+function createFieryAsteroidVerticalSpeed(rng: () => number): number {
+  return randomSign(rng) * randomBetween(FIERY_ASTEROID_MIN_VERTICAL_SPEED, FIERY_ASTEROID_MAX_VERTICAL_SPEED, rng);
+}
+
 function createStandardAsteroidVerticalSpeed(rng: () => number): number {
   if (rng() >= STANDARD_ASTEROID_DIAGONAL_CHANCE) {
     return 0;
   }
 
-  const direction = rng() < 0.5 ? -1 : 1;
   return (
-    direction * randomBetween(STANDARD_ASTEROID_MIN_VERTICAL_SPEED, STANDARD_ASTEROID_MAX_VERTICAL_SPEED, rng)
+    randomSign(rng) * randomBetween(STANDARD_ASTEROID_MIN_VERTICAL_SPEED, STANDARD_ASTEROID_MAX_VERTICAL_SPEED, rng)
   );
 }
 
 function createAsteroidRotationSpeed(variant: AsteroidVariant, rng: () => number): number {
-  const direction = rng() < 0.5 ? -1 : 1;
-  const rotationSpeed = direction * randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED, rng);
+  const rotationSpeed = randomSign(rng) * randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED, rng);
 
   return getAsteroidRotationSpeed(rotationSpeed, variant);
 }
@@ -224,4 +228,8 @@ function createAsteroidPoints(count: number, rng: () => number): AsteroidPoint[]
 
 function randomBetween(min: number, max: number, rng: () => number): number {
   return rng() * (max - min) + min;
+}
+
+function randomSign(rng: () => number): 1 | -1 {
+  return rng() < 0.5 ? -1 : 1;
 }

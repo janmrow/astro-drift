@@ -13,7 +13,9 @@ import {
   ASTEROID_SPEED_RAMP,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
+  FIERY_ASTEROID_MAX_VERTICAL_SPEED,
   FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
+  FIERY_ASTEROID_MIN_VERTICAL_SPEED,
   FIERY_ASTEROID_ROTATION_MULTIPLIER,
   FIERY_ASTEROID_SPEED_MULTIPLIER,
   STANDARD_ASTEROID_DIAGONAL_CHANCE,
@@ -63,7 +65,9 @@ function asteroidRandomValues({
     y,
   ];
 
-  if (variant >= FIERY_ASTEROID_CHANCE) {
+  if (variant < FIERY_ASTEROID_CHANCE) {
+    values.push(verticalDirection, verticalSpeed);
+  } else {
     values.push(diagonal);
 
     if (diagonal < STANDARD_ASTEROID_DIAGONAL_CHANCE) {
@@ -293,7 +297,24 @@ describe("asteroid logic", () => {
     expect(fieryAsteroids[0].rotationSpeed).toBeCloseTo(
       standardAsteroids[0].rotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER,
     );
-    expect(fieryAsteroids[0].verticalSpeed).toBe(0);
+    expect(fieryAsteroids[0].verticalSpeed).toBeCloseTo(
+      (FIERY_ASTEROID_MIN_VERTICAL_SPEED + FIERY_ASTEROID_MAX_VERTICAL_SPEED) / 2,
+    );
+  });
+
+  it("keeps fiery asteroid vertical drift small compared to standard diagonal drift", () => {
+    const fieryAsteroids: Asteroid[] = [];
+
+    updateAsteroidSpawning(
+      fieryAsteroids,
+      createInitialAsteroidSpawnState(),
+      ASTEROID_BASE_SPAWN_INTERVAL,
+      0,
+      createAsteroidRng({ variant: FIERY_ASTEROID_CHANCE - 0.01, verticalSpeed: 1 }),
+    );
+
+    expect(Math.abs(fieryAsteroids[0].verticalSpeed)).toBe(FIERY_ASTEROID_MAX_VERTICAL_SPEED);
+    expect(FIERY_ASTEROID_MAX_VERTICAL_SPEED).toBeLessThan(STANDARD_ASTEROID_MIN_VERTICAL_SPEED);
   });
 
   it("creates diagonal standard asteroids when the diagonal movement roll hits", () => {

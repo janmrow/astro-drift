@@ -59,7 +59,18 @@ let bonusFeedbackText = initialGameState.bonusFeedbackText;
 let bonusFeedbackTimeLeft = initialGameState.bonusFeedbackTimeLeft;
 
 setupKeyboardControls(input, handleGameAction);
+document.addEventListener("visibilitychange", handleVisibilityChange);
 requestAnimationFrame(runGameLoop);
+
+function handleVisibilityChange(): void {
+  if (document.visibilityState === "hidden" && gameStatus === "running") {
+    persistBestScore();
+  }
+}
+
+function persistBestScore(): void {
+  bestScore = saveBestScore(score);
+}
 
 function runGameLoop(currentFrameTime: number): void {
   const deltaTime = capFrameDelta((currentFrameTime - previousFrameTime) / 1000);
@@ -98,7 +109,7 @@ function runGameLoop(currentFrameTime: number): void {
 
     if (hasPlayerCollision(player, asteroids)) {
       gameStatus = "gameOver";
-      bestScore = saveBestScore(score);
+      persistBestScore();
     } else {
       score = updateScore(score, deltaTime);
 

@@ -39,11 +39,6 @@ export function createInputState(): InputState {
   };
 }
 
-// Mutation contract: `updateX` mutates its subject in place (perf-motivated, avoids
-// per-frame allocation in the game loop); `createX`/`getX`/`collectX` and everything
-// else return a new value without touching their inputs. `collectPassBonuses` mutates
-// `asteroid.passed` while also returning the updated score — the `collect` verb signals
-// that side effect explicitly.
 export function updatePlayer(
   currentPlayer: Player,
   currentInput: InputState,
@@ -79,6 +74,11 @@ export function updateScore(currentScore: number, deltaTime: number): number {
   return currentScore + SCORE_PER_SECOND * deltaTime;
 }
 
+// Mutation contract: `updateX` mutates its subject in place (perf-motivated, avoids
+// per-frame allocation in the game loop); `createX`/`getX`/`collectX` and everything
+// else return a new value without touching their inputs. `collectPassBonuses` mutates
+// `asteroid.passed` while also returning the updated score — the `collect` verb signals
+// that side effect explicitly.
 export function collectPassBonuses(
   currentScore: number,
   currentPlayer: Player,

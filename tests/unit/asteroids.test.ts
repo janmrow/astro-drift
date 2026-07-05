@@ -74,7 +74,7 @@ function asteroidRandomValues({
     }
   }
 
-  return [...values, rotation, ...Array(9).fill(pointDistanceMultiplier)];
+  return [...values, rotation, ...Array<number>(9).fill(pointDistanceMultiplier)];
 }
 
 describe("asteroid logic", () => {

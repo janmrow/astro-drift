@@ -31,11 +31,7 @@ const scoreElement = getRequiredElement("[data-testid='game-score']");
 const timeElement = getRequiredElement("[data-testid='game-time']");
 const asteroidCountElement = getRequiredElement("[data-testid='asteroid-count']");
 
-const context = canvas.getContext("2d") as CanvasRenderingContext2D;
-
-if (!context) {
-  throw new Error("Canvas 2D context is not available.");
-}
+const context = getRequiredContext(canvas);
 
 const STAR_COUNT = 90;
 // Caps long frames after tab switches so movement does not jump across the field.
@@ -182,6 +178,16 @@ function updateDomStatus(): void {
     asteroidCountElement.textContent = asteroidCountText;
     lastAsteroidCountText = asteroidCountText;
   }
+}
+
+function getRequiredContext(canvasElement: HTMLCanvasElement): CanvasRenderingContext2D {
+  const context = canvasElement.getContext("2d");
+
+  if (!context) {
+    throw new Error("Canvas 2D context is not available.");
+  }
+
+  return context;
 }
 
 function getRequiredElement(selector: string): HTMLElement {

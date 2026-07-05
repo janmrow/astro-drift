@@ -5,7 +5,13 @@ import {
   formatScore,
   formatTime,
 } from "../game/engine";
-import type { Asteroid, GameStatus, Player } from "../game/types";
+import {
+  assertNever,
+  type Asteroid,
+  type AsteroidVariant,
+  type GameStatus,
+  type Player,
+} from "../game/types";
 
 export type Star = {
   x: number;
@@ -51,6 +57,11 @@ const STAR_LAYER_SETTINGS: Record<
 
 const NEAR_STAR_RATIO = 0.32;
 
+const HUD_SCORE_BASELINE = 92;
+// Best-score uses a smaller font than score, so it needs a 1px nudge to look
+// baseline-aligned with it.
+const HUD_BEST_SCORE_BASELINE_OFFSET = 1;
+
 const HUD_PANEL = {
   x: 560,
   y: 32,
@@ -59,8 +70,8 @@ const HUD_PANEL = {
   padding: 20,
   statusBaseline: 32,
   labelBaseline: 64,
-  scoreBaseline: 92,
-  bestScoreBaseline: 91,
+  scoreBaseline: HUD_SCORE_BASELINE,
+  bestScoreBaseline: HUD_SCORE_BASELINE - HUD_BEST_SCORE_BASELINE_OFFSET,
   detailsBaseline: 118,
   asteroidCountXOffset: 198,
 };
@@ -70,6 +81,20 @@ const PLAYER_SECTOR_GUIDE = {
   verticalPadding: 36,
   labelX: 48,
   labelBaselineFromBottom: 32,
+};
+
+const STATUS_TEXT: Record<GameStatus, string> = {
+  idle: "Ready to drift",
+  running: "Avoid the asteroids",
+  gameOver: "Collision detected",
+};
+
+const PLAYER_SHIP = {
+  hullNotchInset: 12,
+  hullOutlineWidth: 3,
+  hullOutlineBlur: 4,
+  cockpitXOffset: 6,
+  cockpitRadius: 5,
 };
 
 const BONUS_BADGE = {
@@ -205,23 +230,23 @@ function drawPlayer(
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
   ctx.lineTo(tailX, centerY - currentPlayer.height / 2);
-  ctx.lineTo(tailX + 12, centerY);
+  ctx.lineTo(tailX + PLAYER_SHIP.hullNotchInset, centerY);
   ctx.lineTo(tailX, centerY + currentPlayer.height / 2);
   ctx.closePath();
 
   ctx.fillStyle = PALETTE.magenta;
   ctx.fill();
 
-  ctx.shadowBlur = 4;
+  ctx.shadowBlur = PLAYER_SHIP.hullOutlineBlur;
   ctx.strokeStyle = PALETTE.rust;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = PLAYER_SHIP.hullOutlineWidth;
   ctx.stroke();
 
   ctx.restore();
 
   ctx.beginPath();
   ctx.fillStyle = PALETTE.darkGold;
-  ctx.arc(currentPlayer.x - 6, centerY, 5, 0, Math.PI * 2);
+  ctx.arc(currentPlayer.x - PLAYER_SHIP.cockpitXOffset, centerY, PLAYER_SHIP.cockpitRadius, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -260,7 +285,7 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   ctx.fill();
 
   ctx.strokeStyle = asteroidStyle.stroke;
-  ctx.lineWidth = asteroid.variant === "fiery" ? 3 : 2;
+  ctx.lineWidth = getAsteroidStrokeWidth(asteroid.variant);
   ctx.stroke();
 
   ctx.restore();
@@ -271,19 +296,33 @@ function getAsteroidStyle(asteroid: Asteroid): {
   stroke: string;
   glow: string;
 } {
-  if (asteroid.variant === "fiery") {
-    return {
-      fill: PALETTE.fieryAsteroidFill,
-      stroke: PALETTE.fieryAsteroidStroke,
-      glow: PALETTE.fieryAsteroidGlow,
-    };
+  switch (asteroid.variant) {
+    case "fiery":
+      return {
+        fill: PALETTE.fieryAsteroidFill,
+        stroke: PALETTE.fieryAsteroidStroke,
+        glow: PALETTE.fieryAsteroidGlow,
+      };
+    case "standard":
+      return {
+        fill: PALETTE.asteroidFill,
+        stroke: PALETTE.asteroidStroke,
+        glow: "rgba(125, 249, 255, 0.24)",
+      };
+    default:
+      return assertNever(asteroid.variant);
   }
+}
 
-  return {
-    fill: PALETTE.asteroidFill,
-    stroke: PALETTE.asteroidStroke,
-    glow: "rgba(125, 249, 255, 0.24)",
-  };
+function getAsteroidStrokeWidth(variant: AsteroidVariant): number {
+  switch (variant) {
+    case "fiery":
+      return 3;
+    case "standard":
+      return 2;
+    default:
+      return assertNever(variant);
+  }
 }
 
 function drawStatusText(
@@ -306,14 +345,7 @@ function drawStatusText(
   ctx.fillStyle = PALETTE.text;
   ctx.font = "700 24px system-ui, sans-serif";
 
-  const statusText =
-    currentStatus === "idle"
-      ? "Ready to drift"
-      : currentStatus === "gameOver"
-        ? "Collision detected"
-        : "Avoid the asteroids";
-
-  ctx.fillText(statusText, x + padding, y + HUD_PANEL.statusBaseline);
+  ctx.fillText(STATUS_TEXT[currentStatus], x + padding, y + HUD_PANEL.statusBaseline);
 
   ctx.fillStyle = "rgba(201, 191, 232, 0.74)";
   ctx.font = "700 11px system-ui, sans-serif";
@@ -346,9 +378,11 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
   ctx.fillStyle = "rgba(7, 4, 23, 0.68)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+  ctx.save();
+  ctx.textAlign = "center";
+
   ctx.fillStyle = PALETTE.text;
   ctx.font = "700 58px system-ui, sans-serif";
-  ctx.textAlign = "center";
   ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
 
   ctx.fillStyle = PALETTE.mutedText;
@@ -363,7 +397,7 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
   ctx.font = "400 17px system-ui, sans-serif";
   ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
-  ctx.textAlign = "start";
+  ctx.restore();
 }
 
 function drawGameOverOverlay(
@@ -375,9 +409,11 @@ function drawGameOverOverlay(
   ctx.fillStyle = PALETTE.surfaceStrong;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+  ctx.save();
+  ctx.textAlign = "center";
+
   ctx.fillStyle = PALETTE.text;
   ctx.font = "700 56px system-ui, sans-serif";
-  ctx.textAlign = "center";
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
   ctx.fillStyle = PALETTE.amber;
@@ -396,7 +432,7 @@ function drawGameOverOverlay(
   ctx.font = "700 19px system-ui, sans-serif";
   ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
-  ctx.textAlign = "start";
+  ctx.restore();
 }
 
 function drawPlayerAreaGuide(
@@ -433,11 +469,12 @@ function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
   ctx.lineWidth = 1;
   ctx.strokeRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
 
+  ctx.save();
   ctx.fillStyle = PALETTE.amber;
   ctx.font = "700 11px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(text, BONUS_BADGE.x + BONUS_BADGE.width / 2, BONUS_BADGE.y + 12);
-  ctx.textAlign = "start";
+  ctx.restore();
 }
 
 function drawVignette(ctx: CanvasRenderingContext2D): void {

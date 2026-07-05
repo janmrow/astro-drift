@@ -64,8 +64,12 @@ requestAnimationFrame(runGameLoop);
 
 function handleVisibilityChange(): void {
   if (document.visibilityState === "hidden" && gameStatus === "running") {
-    bestScore = saveBestScore(score);
+    persistBestScore();
   }
+}
+
+function persistBestScore(): void {
+  bestScore = saveBestScore(score);
 }
 
 function runGameLoop(currentFrameTime: number): void {
@@ -105,7 +109,7 @@ function runGameLoop(currentFrameTime: number): void {
 
     if (hasPlayerCollision(player, asteroids)) {
       gameStatus = "gameOver";
-      bestScore = saveBestScore(score);
+      persistBestScore();
     } else {
       score = updateScore(score, deltaTime);
 

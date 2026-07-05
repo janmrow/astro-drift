@@ -161,8 +161,7 @@ function createAsteroidVerticalSpeed(variant: AsteroidVariant, rng: () => number
 }
 
 function createFieryAsteroidVerticalSpeed(rng: () => number): number {
-  const direction = rng() < 0.5 ? -1 : 1;
-  return direction * randomBetween(FIERY_ASTEROID_MIN_VERTICAL_SPEED, FIERY_ASTEROID_MAX_VERTICAL_SPEED, rng);
+  return randomSign(rng) * randomBetween(FIERY_ASTEROID_MIN_VERTICAL_SPEED, FIERY_ASTEROID_MAX_VERTICAL_SPEED, rng);
 }
 
 function createStandardAsteroidVerticalSpeed(rng: () => number): number {
@@ -170,15 +169,13 @@ function createStandardAsteroidVerticalSpeed(rng: () => number): number {
     return 0;
   }
 
-  const direction = rng() < 0.5 ? -1 : 1;
   return (
-    direction * randomBetween(STANDARD_ASTEROID_MIN_VERTICAL_SPEED, STANDARD_ASTEROID_MAX_VERTICAL_SPEED, rng)
+    randomSign(rng) * randomBetween(STANDARD_ASTEROID_MIN_VERTICAL_SPEED, STANDARD_ASTEROID_MAX_VERTICAL_SPEED, rng)
   );
 }
 
 function createAsteroidRotationSpeed(variant: AsteroidVariant, rng: () => number): number {
-  const direction = rng() < 0.5 ? -1 : 1;
-  const rotationSpeed = direction * randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED, rng);
+  const rotationSpeed = randomSign(rng) * randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED, rng);
 
   return getAsteroidRotationSpeed(rotationSpeed, variant);
 }
@@ -231,4 +228,8 @@ function createAsteroidPoints(count: number, rng: () => number): AsteroidPoint[]
 
 function randomBetween(min: number, max: number, rng: () => number): number {
   return rng() * (max - min) + min;
+}
+
+function randomSign(rng: () => number): 1 | -1 {
+  return rng() < 0.5 ? -1 : 1;
 }

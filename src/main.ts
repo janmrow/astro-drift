@@ -59,7 +59,14 @@ let bonusFeedbackText = initialGameState.bonusFeedbackText;
 let bonusFeedbackTimeLeft = initialGameState.bonusFeedbackTimeLeft;
 
 setupKeyboardControls(input, handleGameAction);
+document.addEventListener("visibilitychange", handleVisibilityChange);
 requestAnimationFrame(runGameLoop);
+
+function handleVisibilityChange(): void {
+  if (document.visibilityState === "hidden" && gameStatus === "running") {
+    bestScore = saveBestScore(score);
+  }
+}
 
 function runGameLoop(currentFrameTime: number): void {
   const deltaTime = capFrameDelta((currentFrameTime - previousFrameTime) / 1000);

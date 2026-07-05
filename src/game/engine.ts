@@ -8,18 +8,6 @@ export const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
 export const PLAYER_START_X = 170;
 export const PLAYER_START_Y = GAME_HEIGHT / 2;
 
-export const ASTEROID_BASE_SPAWN_INTERVAL = 1.2;
-export const ASTEROID_MIN_SPAWN_INTERVAL = 0.62;
-export const ASTEROID_SPAWN_RAMP = 0.006;
-
-export const ASTEROID_MIN_RADIUS = 18;
-export const ASTEROID_MAX_RADIUS = 42;
-export const ASTEROID_BASE_MIN_SPEED = 165;
-export const ASTEROID_BASE_MAX_SPEED = 245;
-export const ASTEROID_SPEED_RAMP = 1.5;
-export const ASTEROID_MAX_SPEED = 580;
-export const ASTEROID_REMOVE_PADDING = 80;
-
 export const SCORE_PER_SECOND = 10;
 export const ASTEROID_PASS_BONUS = 25;
 export const FIERY_ASTEROID_PASS_BONUS = 100;
@@ -86,7 +74,12 @@ export function updateScore(currentScore: number, deltaTime: number): number {
   return currentScore + SCORE_PER_SECOND * deltaTime;
 }
 
-export function applyPassedAsteroidBonuses(
+// Mutation contract: `updateX` mutates its subject in place (perf-motivated, avoids
+// per-frame allocation in the game loop); `createX`/`getX`/`collectX` and everything
+// else return a new value without touching their inputs. `collectPassBonuses` mutates
+// `asteroid.passed` while also returning the updated score — the `collect` verb signals
+// that side effect explicitly.
+export function collectPassBonuses(
   currentScore: number,
   currentPlayer: Player,
   currentAsteroids: Asteroid[],
@@ -110,14 +103,6 @@ export function getAsteroidPassBonus(asteroid: Asteroid): number {
 export function hasAsteroidPassedPlayer(currentPlayer: Player, asteroid: Asteroid): boolean {
   const playerLeftEdge = currentPlayer.x - currentPlayer.width / 2;
   return asteroid.x + asteroid.radius < playerLeftEdge;
-}
-
-export function getAsteroidSpawnInterval(currentSurvivalTime: number): number {
-  return clamp(
-    ASTEROID_BASE_SPAWN_INTERVAL - currentSurvivalTime * ASTEROID_SPAWN_RAMP,
-    ASTEROID_MIN_SPAWN_INTERVAL,
-    ASTEROID_BASE_SPAWN_INTERVAL,
-  );
 }
 
 export function hasPlayerCollision(currentPlayer: Player, currentAsteroids: Asteroid[]): boolean {
@@ -147,14 +132,6 @@ export function getPlayerHitbox(currentPlayer: Player): PlayerHitbox {
     top: currentPlayer.y - hitboxHeight / 2,
     bottom: currentPlayer.y + hitboxHeight / 2,
   };
-}
-
-export function formatScore(currentScore: number): string {
-  return Math.floor(currentScore).toString().padStart(5, "0");
-}
-
-export function formatTime(seconds: number): string {
-  return `${Math.floor(seconds)}s`;
 }
 
 export function clamp(value: number, min: number, max: number): number {

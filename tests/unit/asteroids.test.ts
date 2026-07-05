@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ASTEROID_BASE_MAX_SPEED,
+  ASTEROID_BASE_MIN_SPEED,
+  ASTEROID_BASE_SPAWN_INTERVAL,
+  ASTEROID_MAX_RADIUS,
   ASTEROID_MAX_ROTATION_SPEED,
+  ASTEROID_MAX_SPEED,
+  ASTEROID_MIN_RADIUS,
   ASTEROID_MIN_ROTATION_SPEED,
+  ASTEROID_REMOVE_PADDING,
+  ASTEROID_SPEED_RAMP,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
   FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
@@ -15,18 +23,7 @@ import {
   updateAsteroidSpawning,
   updateAsteroids,
 } from "../../src/game/asteroids";
-import {
-  ASTEROID_BASE_MAX_SPEED,
-  ASTEROID_BASE_MIN_SPEED,
-  ASTEROID_BASE_SPAWN_INTERVAL,
-  ASTEROID_MAX_RADIUS,
-  ASTEROID_MAX_SPEED,
-  ASTEROID_MIN_RADIUS,
-  ASTEROID_REMOVE_PADDING,
-  ASTEROID_SPEED_RAMP,
-  GAME_HEIGHT,
-  GAME_WIDTH,
-} from "../../src/game/engine";
+import { GAME_HEIGHT, GAME_WIDTH } from "../../src/game/engine";
 import type { Asteroid } from "../../src/game/types";
 import { createAsteroid } from "./helpers";
 

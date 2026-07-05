@@ -1,10 +1,5 @@
-import {
-  GAME_HEIGHT,
-  GAME_WIDTH,
-  PLAYER_AREA_MAX_X,
-  formatScore,
-  formatTime,
-} from "../game/engine";
+import { GAME_HEIGHT, GAME_WIDTH, PLAYER_AREA_MAX_X } from "../game/engine";
+import { formatScore, formatTime } from "../game/format";
 import {
   assertNever,
   type Asteroid,

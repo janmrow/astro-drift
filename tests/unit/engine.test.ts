@@ -9,10 +9,12 @@ import {
   ASTEROID_PASS_BONUS,
   FIERY_ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
+  MAX_FRAME_DELTA_SECONDS,
   PLAYER_AREA_MAX_X,
   PLAYER_SCREEN_PADDING,
   PLAYER_SPEED,
   applyPassedAsteroidBonuses,
+  capFrameDelta,
   createInputState,
   createInitialPlayer,
   formatScore,
@@ -468,6 +470,20 @@ describe("game engine", () => {
 
       expect(asteroids).toHaveLength(0);
       expect(scoreAfterBonus).toBe(100);
+    });
+  });
+
+  describe("frame delta cap", () => {
+    it("passes short deltas through unchanged", () => {
+      expect(capFrameDelta(0.016)).toBe(0.016);
+    });
+
+    it("caps long deltas at the maximum frame delta", () => {
+      expect(capFrameDelta(1)).toBe(MAX_FRAME_DELTA_SECONDS);
+    });
+
+    it("does not cap a delta exactly at the maximum", () => {
+      expect(capFrameDelta(MAX_FRAME_DELTA_SECONDS)).toBe(MAX_FRAME_DELTA_SECONDS);
     });
   });
 });

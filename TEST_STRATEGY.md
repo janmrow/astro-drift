@@ -64,7 +64,9 @@ E2E tests cover the main browser contract:
 - canvas exists;
 - game starts with Enter or Space;
 - game status changes from `idle` to `running`;
-- score, time, and asteroid count update while playing.
+- score, time, and asteroid count update while playing;
+- collision moves status to `gameOver`, and pressing `R` restarts into a clean state
+  (using a `?seed=` query param for a deterministic asteroid RNG, see `src/game/rng.ts`).
 
 E2E tests should use DOM status hooks where possible instead of reading Canvas pixels.
 
@@ -85,6 +87,8 @@ Current unit test areas:
 
 - `src/game/engine.ts`;
 - `src/game/asteroids.ts`;
+- `src/game/state.ts` (initial/restart state creation, score-bonus and bonus-feedback-timer math);
+- `src/game/rng.ts` (seeded RNG used for deterministic asteroid spawning);
 - `src/storage/bestScoreStorage.ts`.
 
 ### CI

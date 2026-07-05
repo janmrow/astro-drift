@@ -11,7 +11,7 @@ import {
   clamp,
   getAsteroidSpawnInterval,
 } from "./engine";
-import type { Asteroid, AsteroidPoint, AsteroidVariant } from "./types";
+import { assertNever, type Asteroid, type AsteroidPoint, type AsteroidVariant } from "./types";
 
 export type AsteroidSpawnState = {
   timer: number;
@@ -125,11 +125,29 @@ function createAsteroidVariant(): AsteroidVariant {
 }
 
 function getAsteroidSpeed(baseSpeed: number, variant: AsteroidVariant): number {
-  return variant === "fiery" ? baseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER : baseSpeed;
+  switch (variant) {
+    case "fiery":
+      return baseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER;
+    case "standard":
+      return baseSpeed;
+    default:
+      return assertNever(variant);
+  }
 }
 
 function createAsteroidVerticalSpeed(variant: AsteroidVariant): number {
-  if (variant === "fiery" || Math.random() >= STANDARD_ASTEROID_DIAGONAL_CHANCE) {
+  switch (variant) {
+    case "fiery":
+      return 0;
+    case "standard":
+      return createStandardAsteroidVerticalSpeed();
+    default:
+      return assertNever(variant);
+  }
+}
+
+function createStandardAsteroidVerticalSpeed(): number {
+  if (Math.random() >= STANDARD_ASTEROID_DIAGONAL_CHANCE) {
     return 0;
   }
 
@@ -145,22 +163,31 @@ function createAsteroidRotationSpeed(variant: AsteroidVariant): number {
 }
 
 function getAsteroidRadius(baseRadius: number, variant: AsteroidVariant): number {
-  if (variant === "standard") {
-    return baseRadius;
+  switch (variant) {
+    case "standard":
+      return baseRadius;
+    case "fiery": {
+      const radiusProgress = (baseRadius - ASTEROID_MIN_RADIUS) / (ASTEROID_MAX_RADIUS - ASTEROID_MIN_RADIUS);
+      const radiusMultiplier =
+        FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER -
+        radiusProgress * (FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER - FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER);
+
+      return baseRadius * radiusMultiplier;
+    }
+    default:
+      return assertNever(variant);
   }
-
-  const radiusProgress = (baseRadius - ASTEROID_MIN_RADIUS) / (ASTEROID_MAX_RADIUS - ASTEROID_MIN_RADIUS);
-  const radiusMultiplier =
-    FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER -
-    radiusProgress * (FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER - FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER);
-
-  return baseRadius * radiusMultiplier;
 }
 
 function getAsteroidRotationSpeed(baseRotationSpeed: number, variant: AsteroidVariant): number {
-  return variant === "fiery"
-    ? baseRotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER
-    : baseRotationSpeed;
+  switch (variant) {
+    case "fiery":
+      return baseRotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER;
+    case "standard":
+      return baseRotationSpeed;
+    default:
+      return assertNever(variant);
+  }
 }
 
 function createAsteroidPoints(count: number): AsteroidPoint[] {

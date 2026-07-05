@@ -45,4 +45,19 @@ export default [
       },
     },
   },
+
+  ...tseslint.configs.recommendedTypeChecked.map((config) => ({
+    ...config,
+    files: ["src/**/*.ts", "tests/**/*.ts"],
+  })),
+
+  {
+    files: ["src/**/*.ts", "tests/**/*.ts"],
+    languageOptions: {
+      parserOptions: {
+        project: ["./tsconfig.json", "./tsconfig.tests.json"],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 ];

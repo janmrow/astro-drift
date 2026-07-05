@@ -1,5 +1,9 @@
 export type GameStatus = "idle" | "running" | "gameOver";
 
+export function assertNever(value: never): never {
+  throw new Error(`Unhandled case: ${JSON.stringify(value)}`);
+}
+
 export type Player = {
   x: number;
   y: number;

@@ -1,8 +1,7 @@
 import "./style.css";
 
 import {
-  applyPassedAsteroidBonuses,
-  createInitialPlayer,
+  capFrameDelta,
   createInputState,
   formatScore,
   formatTime,
@@ -10,12 +9,14 @@ import {
   updatePlayer,
   updateScore,
 } from "./game/engine";
+import { updateAsteroidSpawning, updateAsteroids } from "./game/asteroids";
+import { createSeededRng } from "./game/rng";
 import {
-  createInitialAsteroidSpawnState,
-  updateAsteroidSpawning,
-  updateAsteroids,
-} from "./game/asteroids";
-import type { Asteroid, GameStatus } from "./game/types";
+  applyScoreBonuses,
+  createInitialGameState,
+  updateBonusFeedbackTimer,
+} from "./game/state";
+import type { GameStatus } from "./game/types";
 import { setupKeyboardControls } from "./input/keyboard";
 import { createStars, renderFrame, updateStars } from "./rendering/canvasRenderer";
 import { readBestScore, saveBestScore } from "./storage/bestScoreStorage";
@@ -34,35 +35,35 @@ const asteroidCountElement = getRequiredElement("[data-testid='asteroid-count']"
 const context = getRequiredContext(canvas);
 
 const STAR_COUNT = 90;
-// Caps long frames after tab switches so movement does not jump across the field.
-const MAX_FRAME_DELTA_SECONDS = 0.033;
 const BONUS_FEEDBACK_DURATION = 0.65;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+const seedParam = new URLSearchParams(window.location.search).get("seed");
+const asteroidRng = seedParam !== null ? createSeededRng(Number(seedParam)) : Math.random;
+
 const stars = createStars(STAR_COUNT);
 const input = createInputState();
-let player = createInitialPlayer();
-
-const asteroids: Asteroid[] = [];
 
 let gameStatus: GameStatus = "idle";
 let previousFrameTime = performance.now();
-let asteroidSpawnState = createInitialAsteroidSpawnState();
-let score = 0;
-let survivalTime = 0;
 let bestScore = readBestScore();
-let bonusFeedbackText: string | null = null;
-let bonusFeedbackTimeLeft = 0;
+
+const initialGameState = createInitialGameState();
+const asteroids = initialGameState.asteroids;
+
+let player = initialGameState.player;
+let asteroidSpawnState = initialGameState.asteroidSpawnState;
+let score = initialGameState.score;
+let survivalTime = initialGameState.survivalTime;
+let bonusFeedbackText = initialGameState.bonusFeedbackText;
+let bonusFeedbackTimeLeft = initialGameState.bonusFeedbackTimeLeft;
 
 setupKeyboardControls(input, handleGameAction);
 requestAnimationFrame(runGameLoop);
 
 function runGameLoop(currentFrameTime: number): void {
-  const deltaTime = Math.min(
-    (currentFrameTime - previousFrameTime) / 1000,
-    MAX_FRAME_DELTA_SECONDS,
-  );
+  const deltaTime = capFrameDelta((currentFrameTime - previousFrameTime) / 1000);
 
   previousFrameTime = currentFrameTime;
 
@@ -79,8 +80,21 @@ function runGameLoop(currentFrameTime: number): void {
       asteroidSpawnState,
       deltaTime,
       survivalTime,
+      asteroidRng,
     );
-    score = applyScoreBonuses(score);
+
+    const bonusResult = applyScoreBonuses(
+      score,
+      player,
+      asteroids,
+      bonusFeedbackText,
+      bonusFeedbackTimeLeft,
+      BONUS_FEEDBACK_DURATION,
+    );
+    score = bonusResult.score;
+    bonusFeedbackText = bonusResult.bonusFeedbackText;
+    bonusFeedbackTimeLeft = bonusResult.bonusFeedbackTimeLeft;
+
     updateAsteroids(asteroids, deltaTime);
 
     if (hasPlayerCollision(player, asteroids)) {
@@ -88,7 +102,10 @@ function runGameLoop(currentFrameTime: number): void {
       bestScore = saveBestScore(score);
     } else {
       score = updateScore(score, deltaTime);
-      updateBonusFeedbackTimer(deltaTime);
+
+      const timerResult = updateBonusFeedbackTimer(bonusFeedbackText, bonusFeedbackTimeLeft, deltaTime);
+      bonusFeedbackText = timerResult.bonusFeedbackText;
+      bonusFeedbackTimeLeft = timerResult.bonusFeedbackTimeLeft;
     }
   }
 
@@ -137,13 +154,17 @@ function startGame(): void {
 
 function restartGame(): void {
   gameStatus = "running";
-  player = createInitialPlayer();
+
+  const freshState = createInitialGameState();
+  player = freshState.player;
   asteroids.length = 0;
-  asteroidSpawnState = createInitialAsteroidSpawnState();
-  score = 0;
-  survivalTime = 0;
-  bonusFeedbackText = null;
-  bonusFeedbackTimeLeft = 0;
+  asteroids.push(...freshState.asteroids);
+  asteroidSpawnState = freshState.asteroidSpawnState;
+  score = freshState.score;
+  survivalTime = freshState.survivalTime;
+  bonusFeedbackText = freshState.bonusFeedbackText;
+  bonusFeedbackTimeLeft = freshState.bonusFeedbackTimeLeft;
+
   previousFrameTime = performance.now();
 }
 
@@ -198,29 +219,4 @@ function getRequiredElement(selector: string): HTMLElement {
   }
 
   return element;
-}
-
-function applyScoreBonuses(currentScore: number): number {
-  const scoreBeforeBonus = currentScore;
-  const scoreAfterBonus = applyPassedAsteroidBonuses(currentScore, player, asteroids);
-  const bonusPoints = Math.floor(scoreAfterBonus - scoreBeforeBonus);
-
-  if (bonusPoints > 0) {
-    bonusFeedbackText = `+${bonusPoints}`;
-    bonusFeedbackTimeLeft = BONUS_FEEDBACK_DURATION;
-  }
-
-  return scoreAfterBonus;
-}
-
-function updateBonusFeedbackTimer(deltaTime: number): void {
-  if (bonusFeedbackTimeLeft <= 0) {
-    return;
-  }
-
-  bonusFeedbackTimeLeft = Math.max(0, bonusFeedbackTimeLeft - deltaTime);
-
-  if (bonusFeedbackTimeLeft === 0) {
-    bonusFeedbackText = null;
-  }
 }

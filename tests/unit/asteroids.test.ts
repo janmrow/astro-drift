@@ -28,23 +28,7 @@ import {
   GAME_WIDTH,
 } from "../../src/game/engine";
 import type { Asteroid } from "../../src/game/types";
-
-function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
-  return {
-    id: "asteroid-test",
-    variant: "standard",
-    x: 500,
-    y: 250,
-    radius: 30,
-    speed: 100,
-    verticalSpeed: 0,
-    rotation: 0,
-    rotationSpeed: 0.5,
-    points: [],
-    passed: false,
-    ...overrides,
-  };
-}
+import { createAsteroid } from "./helpers";
 
 type AsteroidRandomRolls = {
   variant: number;

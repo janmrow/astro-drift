@@ -23,8 +23,8 @@ test("loads the initial game contract", async ({ page }) => {
   await expect(page.getByTestId("asteroid-count")).toHaveText("0");
 });
 
-test("starts the game with keyboard action keys", async ({ page }) => {
-  for (const actionKey of ["Enter", "Space"]) {
+for (const actionKey of ["Enter", "Space"]) {
+  test(`starts the game with the ${actionKey} key`, async ({ page }) => {
     await page.goto("/");
 
     await expect(page.getByTestId("game-status")).toHaveText("idle");
@@ -32,8 +32,8 @@ test("starts the game with keyboard action keys", async ({ page }) => {
     await page.keyboard.press(actionKey);
 
     await expect(page.getByTestId("game-status")).toHaveText("running");
-  }
-});
+  });
+}
 
 test("does not start the game with the restart key", async ({ page }) => {
   await page.goto("/");
@@ -55,7 +55,9 @@ test("updates the browser status while running", async ({ page }) => {
   await page.keyboard.press("Enter");
 
   await expect(page.getByTestId("game-status")).toHaveText("running");
-  await expect(score).not.toHaveText("00000");
+  await expect
+    .poll(async () => Number(await score.textContent()))
+    .toBeGreaterThan(0);
   await expect(survivalTime).not.toHaveText("0s");
   await expect
     .poll(async () => Number(await asteroidCount.textContent()))

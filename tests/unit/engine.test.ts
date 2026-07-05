@@ -25,7 +25,8 @@ import {
   updatePlayer,
   updateScore,
 } from "../../src/game/engine";
-import type { Asteroid, InputState, Player } from "../../src/game/types";
+import type { InputState, Player } from "../../src/game/types";
+import { createAsteroid } from "./helpers";
 
 function idleInput(): InputState {
   return {
@@ -33,23 +34,6 @@ function idleInput(): InputState {
     down: false,
     left: false,
     right: false,
-  };
-}
-
-function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
-  return {
-    id: "asteroid-test",
-    variant: "standard",
-    x: 500,
-    y: 250,
-    radius: 30,
-    speed: 180,
-    verticalSpeed: 0,
-    rotation: 0,
-    rotationSpeed: 0,
-    points: [],
-    passed: false,
-    ...overrides,
   };
 }
 

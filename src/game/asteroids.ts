@@ -1,22 +1,22 @@
-import {
-  ASTEROID_BASE_MAX_SPEED,
-  ASTEROID_BASE_MIN_SPEED,
-  ASTEROID_MAX_RADIUS,
-  ASTEROID_MAX_SPEED,
-  ASTEROID_MIN_RADIUS,
-  ASTEROID_REMOVE_PADDING,
-  ASTEROID_SPEED_RAMP,
-  GAME_HEIGHT,
-  GAME_WIDTH,
-  clamp,
-  getAsteroidSpawnInterval,
-} from "./engine";
+import { GAME_HEIGHT, GAME_WIDTH, clamp } from "./engine";
 import { assertNever, type Asteroid, type AsteroidPoint, type AsteroidVariant } from "./types";
 
 export type AsteroidSpawnState = {
   timer: number;
   nextId: number;
 };
+
+export const ASTEROID_BASE_SPAWN_INTERVAL = 1.2;
+export const ASTEROID_MIN_SPAWN_INTERVAL = 0.62;
+export const ASTEROID_SPAWN_RAMP = 0.006;
+
+export const ASTEROID_MIN_RADIUS = 18;
+export const ASTEROID_MAX_RADIUS = 42;
+export const ASTEROID_BASE_MIN_SPEED = 165;
+export const ASTEROID_BASE_MAX_SPEED = 245;
+export const ASTEROID_SPEED_RAMP = 1.5;
+export const ASTEROID_MAX_SPEED = 580;
+export const ASTEROID_REMOVE_PADDING = 80;
 
 export const ASTEROID_VERTICAL_SPAWN_PADDING = 16;
 const ASTEROID_POINT_COUNT = 9;
@@ -38,6 +38,14 @@ export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
     timer: 0,
     nextId: 1,
   };
+}
+
+export function getAsteroidSpawnInterval(currentSurvivalTime: number): number {
+  return clamp(
+    ASTEROID_BASE_SPAWN_INTERVAL - currentSurvivalTime * ASTEROID_SPAWN_RAMP,
+    ASTEROID_MIN_SPAWN_INTERVAL,
+    ASTEROID_BASE_SPAWN_INTERVAL,
+  );
 }
 
 // TODO(deterministic-rng): swap this default for a seedable generator (e.g. mulberry32)

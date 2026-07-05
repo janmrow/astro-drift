@@ -40,11 +40,14 @@ export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   };
 }
 
+// TODO(deterministic-rng): swap this default for a seedable generator (e.g. mulberry32)
+// wired up in main.ts once we need fully deterministic gameplay/E2E runs, not just testable units.
 export function updateAsteroidSpawning(
   currentAsteroids: Asteroid[],
   currentSpawnState: AsteroidSpawnState,
   deltaTime: number,
   currentSurvivalTime: number,
+  rng: () => number = Math.random,
 ): AsteroidSpawnState {
   let nextTimer = currentSpawnState.timer + deltaTime;
   let nextId = currentSpawnState.nextId;
@@ -52,7 +55,7 @@ export function updateAsteroidSpawning(
   const spawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
 
   while (nextTimer >= spawnInterval) {
-    currentAsteroids.push(createAsteroid(currentSurvivalTime, nextId));
+    currentAsteroids.push(createAsteroid(currentSurvivalTime, nextId, rng));
     nextId += 1;
     nextTimer -= spawnInterval;
   }
@@ -90,17 +93,17 @@ export function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number)
   }
 }
 
-function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
-  const variant = createAsteroidVariant();
-  const baseRadius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS);
+function createAsteroid(currentSurvivalTime: number, id: number, rng: () => number): Asteroid {
+  const variant = createAsteroidVariant(rng);
+  const baseRadius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS, rng);
   const radius = getAsteroidRadius(baseRadius, variant);
   const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
   const speed = clamp(
-    randomBetween(ASTEROID_BASE_MIN_SPEED + speedBonus, ASTEROID_BASE_MAX_SPEED + speedBonus),
+    randomBetween(ASTEROID_BASE_MIN_SPEED + speedBonus, ASTEROID_BASE_MAX_SPEED + speedBonus, rng),
     ASTEROID_BASE_MIN_SPEED,
     ASTEROID_MAX_SPEED,
   );
-  const rotationSpeed = createAsteroidRotationSpeed(variant);
+  const rotationSpeed = createAsteroidRotationSpeed(variant, rng);
 
   return {
     id: `asteroid-${id}`,
@@ -109,19 +112,20 @@ function createAsteroid(currentSurvivalTime: number, id: number): Asteroid {
     y: randomBetween(
       radius + ASTEROID_VERTICAL_SPAWN_PADDING,
       GAME_HEIGHT - radius - ASTEROID_VERTICAL_SPAWN_PADDING,
+      rng,
     ),
     radius,
     speed: getAsteroidSpeed(speed, variant),
-    verticalSpeed: createAsteroidVerticalSpeed(variant),
-    rotation: randomBetween(0, Math.PI * 2),
+    verticalSpeed: createAsteroidVerticalSpeed(variant, rng),
+    rotation: randomBetween(0, Math.PI * 2, rng),
     rotationSpeed,
-    points: createAsteroidPoints(ASTEROID_POINT_COUNT),
+    points: createAsteroidPoints(ASTEROID_POINT_COUNT, rng),
     passed: false,
   };
 }
 
-function createAsteroidVariant(): AsteroidVariant {
-  return Math.random() < FIERY_ASTEROID_CHANCE ? "fiery" : "standard";
+function createAsteroidVariant(rng: () => number): AsteroidVariant {
+  return rng() < FIERY_ASTEROID_CHANCE ? "fiery" : "standard";
 }
 
 function getAsteroidSpeed(baseSpeed: number, variant: AsteroidVariant): number {
@@ -135,29 +139,31 @@ function getAsteroidSpeed(baseSpeed: number, variant: AsteroidVariant): number {
   }
 }
 
-function createAsteroidVerticalSpeed(variant: AsteroidVariant): number {
+function createAsteroidVerticalSpeed(variant: AsteroidVariant, rng: () => number): number {
   switch (variant) {
     case "fiery":
       return 0;
     case "standard":
-      return createStandardAsteroidVerticalSpeed();
+      return createStandardAsteroidVerticalSpeed(rng);
     default:
       return assertNever(variant);
   }
 }
 
-function createStandardAsteroidVerticalSpeed(): number {
-  if (Math.random() >= STANDARD_ASTEROID_DIAGONAL_CHANCE) {
+function createStandardAsteroidVerticalSpeed(rng: () => number): number {
+  if (rng() >= STANDARD_ASTEROID_DIAGONAL_CHANCE) {
     return 0;
   }
 
-  const direction = Math.random() < 0.5 ? -1 : 1;
-  return direction * randomBetween(STANDARD_ASTEROID_MIN_VERTICAL_SPEED, STANDARD_ASTEROID_MAX_VERTICAL_SPEED);
+  const direction = rng() < 0.5 ? -1 : 1;
+  return (
+    direction * randomBetween(STANDARD_ASTEROID_MIN_VERTICAL_SPEED, STANDARD_ASTEROID_MAX_VERTICAL_SPEED, rng)
+  );
 }
 
-function createAsteroidRotationSpeed(variant: AsteroidVariant): number {
-  const direction = Math.random() < 0.5 ? -1 : 1;
-  const rotationSpeed = direction * randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED);
+function createAsteroidRotationSpeed(variant: AsteroidVariant, rng: () => number): number {
+  const direction = rng() < 0.5 ? -1 : 1;
+  const rotationSpeed = direction * randomBetween(ASTEROID_MIN_ROTATION_SPEED, ASTEROID_MAX_ROTATION_SPEED, rng);
 
   return getAsteroidRotationSpeed(rotationSpeed, variant);
 }
@@ -190,7 +196,7 @@ function getAsteroidRotationSpeed(baseRotationSpeed: number, variant: AsteroidVa
   }
 }
 
-function createAsteroidPoints(count: number): AsteroidPoint[] {
+function createAsteroidPoints(count: number, rng: () => number): AsteroidPoint[] {
   const points: AsteroidPoint[] = [];
   const angleStep = (Math.PI * 2) / count;
 
@@ -199,6 +205,7 @@ function createAsteroidPoints(count: number): AsteroidPoint[] {
     const distanceMultiplier = randomBetween(
       ASTEROID_MIN_POINT_RADIUS_RATIO,
       ASTEROID_MAX_POINT_RADIUS_RATIO,
+      rng,
     );
 
     points.push({ angle, distanceMultiplier });
@@ -207,6 +214,6 @@ function createAsteroidPoints(count: number): AsteroidPoint[] {
   return points;
 }
 
-function randomBetween(min: number, max: number): number {
-  return Math.random() * (max - min) + min;
+function randomBetween(min: number, max: number, rng: () => number): number {
+  return rng() * (max - min) + min;
 }

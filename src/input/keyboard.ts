@@ -1,3 +1,4 @@
+import { createInputState } from "../game/engine";
 import type { InputState } from "../game/types";
 
 type GameActionHandler = (key: string) => boolean;
@@ -29,19 +30,12 @@ export function setupKeyboardControls(
   });
 
   window.addEventListener("blur", () => {
-    resetFields(currentInput);
+    resetInputState(currentInput);
   });
 }
 
 export function resetInputState(currentInput: InputState): void {
-  resetFields(currentInput);
-}
-
-function resetFields(currentInput: InputState): void {
-  currentInput.up = false;
-  currentInput.down = false;
-  currentInput.left = false;
-  currentInput.right = false;
+  Object.assign(currentInput, createInputState());
 }
 
 function updateInputFromKey(key: string, isPressed: boolean, currentInput: InputState): void {

@@ -179,10 +179,16 @@ function restartGame(): void {
   bonusFeedbackText = freshState.bonusFeedbackText;
   bonusFeedbackTimeLeft = freshState.bonusFeedbackTimeLeft;
 
-  resetInputState(input);
-  asteroidRng = createAsteroidRngFromLocation();
+  resetPerRunState();
 
   previousFrameTime = performance.now();
+}
+
+// Resets run-scoped state that lives outside GameState (input, asteroid RNG),
+// so extending either concern only requires touching this one place.
+function resetPerRunState(): void {
+  resetInputState(input);
+  asteroidRng = createAsteroidRngFromLocation();
 }
 
 let lastStatusText = "";

@@ -99,6 +99,7 @@ describe("keyboard controls", () => {
 
   it("resets all movement fields via resetInputState", () => {
     const currentInput = {
+      ...createInputState(),
       up: true,
       down: true,
       left: true,

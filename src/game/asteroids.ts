@@ -50,8 +50,6 @@ export function getAsteroidSpawnInterval(currentSurvivalTime: number): number {
   );
 }
 
-// TODO(deterministic-rng): swap this default for a seedable generator (e.g. mulberry32)
-// wired up in main.ts once we need fully deterministic gameplay/E2E runs, not just testable units.
 export function updateAsteroidSpawning(
   currentAsteroids: Asteroid[],
   currentSpawnState: AsteroidSpawnState,

@@ -139,5 +139,6 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 export function capFrameDelta(rawDeltaSeconds: number): number {
-  return Math.min(rawDeltaSeconds, MAX_FRAME_DELTA_SECONDS);
+  if (!Number.isFinite(rawDeltaSeconds)) return 0;
+  return clamp(rawDeltaSeconds, 0, MAX_FRAME_DELTA_SECONDS);
 }

@@ -79,7 +79,11 @@ export function updateScore(currentScore: number, deltaTime: number): number {
 // per-frame allocation in the game loop); `createX`/`getX`/`collectX` and everything
 // else return a new value without touching their inputs. `collectPassBonuses` mutates
 // `asteroid.hasAwardedPassBonus` while also returning the updated score — the `collect`
-// verb signals that side effect explicitly.
+// verb signals that side effect explicitly. `advanceRunningGame` (state.ts) is a third,
+// deliberate shape: it takes the whole `GameState` and reassigns its fields in place
+// (calling the pure/updateX helpers above and writing their results back onto it),
+// because it's the per-frame orchestrator and allocating a new `GameState` every frame
+// would defeat the same perf motivation as the `updateX` exception.
 export function collectPassBonuses(
   currentScore: number,
   currentPlayer: Player,

@@ -3,19 +3,21 @@ import { describe, expect, it } from "vitest";
 import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
-  ASTEROID_REMOVE_PADDING,
   ASTEROID_SPAWN_RAMP,
+  ASTEROID_PASS_BONUS,
+  FIERY_ASTEROID_PASS_BONUS,
+  PLAYER_SPEED,
+} from "../../src/game/balance";
+import {
+  ASTEROID_REMOVE_PADDING,
   getAsteroidSpawnInterval,
   updateAsteroids,
 } from "../../src/game/asteroids";
 import {
-  ASTEROID_PASS_BONUS,
-  FIERY_ASTEROID_PASS_BONUS,
   GAME_HEIGHT,
   MAX_FRAME_DELTA_SECONDS,
   PLAYER_AREA_MAX_X,
   PLAYER_SCREEN_PADDING,
-  PLAYER_SPEED,
   collectPassBonuses,
   capFrameDelta,
   createInputState,
@@ -359,7 +361,7 @@ describe("game engine", () => {
       const updatedScore = collectPassBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS);
-      expect(asteroid.passed).toBe(true);
+      expect(asteroid.hasAwardedPassBonus).toBe(true);
     });
 
     it("adds the larger bonus score when a fiery asteroid passes the player", () => {
@@ -373,7 +375,7 @@ describe("game engine", () => {
       const updatedScore = collectPassBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100 + FIERY_ASTEROID_PASS_BONUS);
-      expect(asteroid.passed).toBe(true);
+      expect(asteroid.hasAwardedPassBonus).toBe(true);
     });
 
     it("adds bonus score for each newly passed asteroid", () => {
@@ -393,8 +395,8 @@ describe("game engine", () => {
       const updatedScore = collectPassBonuses(100, player, [firstAsteroid, secondAsteroid]);
 
       expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS + FIERY_ASTEROID_PASS_BONUS);
-      expect(firstAsteroid.passed).toBe(true);
-      expect(secondAsteroid.passed).toBe(true);
+      expect(firstAsteroid.hasAwardedPassBonus).toBe(true);
+      expect(secondAsteroid.hasAwardedPassBonus).toBe(true);
     });
 
     it("does not mark asteroids as passed before they pass the player", () => {
@@ -407,7 +409,7 @@ describe("game engine", () => {
       const updatedScore = collectPassBonuses(100, player, [asteroid]);
 
       expect(updatedScore).toBe(100);
-      expect(asteroid.passed).toBe(false);
+      expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
 
     it("does not add pass bonus twice for the same asteroid", () => {
@@ -415,7 +417,7 @@ describe("game engine", () => {
       const asteroid = createAsteroid({
         x: player.x - player.width / 2 - 40,
         radius: 20,
-        passed: true,
+        hasAwardedPassBonus: true,
       });
 
       const updatedScore = collectPassBonuses(100, player, [asteroid]);
@@ -439,7 +441,7 @@ describe("game engine", () => {
       updateAsteroids([asteroid], largeDeltaTime);
 
       expect(scoreAfterBonus).toBe(100 + ASTEROID_PASS_BONUS);
-      expect(asteroid.passed).toBe(true);
+      expect(asteroid.hasAwardedPassBonus).toBe(true);
       expect(asteroid.x).toBeLessThan(-ASTEROID_REMOVE_PADDING);
     });
 

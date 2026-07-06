@@ -1,16 +1,17 @@
+import {
+  ASTEROID_PASS_BONUS,
+  FIERY_ASTEROID_PASS_BONUS,
+  PLAYER_SPEED,
+  SCORE_PER_SECOND,
+} from "./balance";
 import type { Asteroid, InputState, Player, PlayerHitbox } from "./types";
 
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
 
-export const PLAYER_SPEED = 325;
 export const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
 export const PLAYER_START_X = 170;
 export const PLAYER_START_Y = GAME_HEIGHT / 2;
-
-export const SCORE_PER_SECOND = 10;
-export const ASTEROID_PASS_BONUS = 25;
-export const FIERY_ASTEROID_PASS_BONUS = 100;
 
 // Caps long frames after tab switches so movement does not jump across the field.
 export const MAX_FRAME_DELTA_SECONDS = 0.033;
@@ -77,8 +78,8 @@ export function updateScore(currentScore: number, deltaTime: number): number {
 // Mutation contract: `updateX` mutates its subject in place (perf-motivated, avoids
 // per-frame allocation in the game loop); `createX`/`getX`/`collectX` and everything
 // else return a new value without touching their inputs. `collectPassBonuses` mutates
-// `asteroid.passed` while also returning the updated score — the `collect` verb signals
-// that side effect explicitly.
+// `asteroid.hasAwardedPassBonus` while also returning the updated score — the `collect`
+// verb signals that side effect explicitly.
 export function collectPassBonuses(
   currentScore: number,
   currentPlayer: Player,
@@ -87,8 +88,8 @@ export function collectPassBonuses(
   let nextScore = currentScore;
 
   for (const asteroid of currentAsteroids) {
-    if (!asteroid.passed && hasAsteroidPassedPlayer(currentPlayer, asteroid)) {
-      asteroid.passed = true;
+    if (!asteroid.hasAwardedPassBonus && hasAsteroidPassedPlayer(currentPlayer, asteroid)) {
+      asteroid.hasAwardedPassBonus = true;
       nextScore += getAsteroidPassBonus(asteroid);
     }
   }

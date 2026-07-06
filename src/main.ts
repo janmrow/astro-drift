@@ -7,6 +7,7 @@ import {
   updatePlayer,
   updateScore,
 } from "./game/engine";
+import { BONUS_FEEDBACK_DURATION } from "./game/balance";
 import { formatScore, formatTime } from "./game/format";
 import { updateAsteroidSpawning, updateAsteroids } from "./game/asteroids";
 import { createSeededRng } from "./game/rng";
@@ -34,7 +35,6 @@ const asteroidCountElement = getRequiredElement("[data-testid='asteroid-count']"
 const context = getRequiredContext(canvas);
 
 const STAR_COUNT = 90;
-const BONUS_FEEDBACK_DURATION = 0.65;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 

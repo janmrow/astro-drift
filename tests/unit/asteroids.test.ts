@@ -6,10 +6,9 @@ import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MAX_RADIUS,
   ASTEROID_MAX_ROTATION_SPEED,
-  ASTEROID_MAX_SPEED,
+  ASTEROID_MAX_BASE_SPEED,
   ASTEROID_MIN_RADIUS,
   ASTEROID_MIN_ROTATION_SPEED,
-  ASTEROID_REMOVE_PADDING,
   ASTEROID_SPEED_RAMP,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
@@ -21,6 +20,9 @@ import {
   STANDARD_ASTEROID_DIAGONAL_CHANCE,
   STANDARD_ASTEROID_MAX_VERTICAL_SPEED,
   STANDARD_ASTEROID_MIN_VERTICAL_SPEED,
+} from "../../src/game/balance";
+import {
+  ASTEROID_REMOVE_PADDING,
   createInitialAsteroidSpawnState,
   updateAsteroidSpawning,
   updateAsteroids,
@@ -107,7 +109,7 @@ describe("asteroid logic", () => {
 
     expect(asteroids).toHaveLength(1);
     expect(asteroids[0].id).toBe("asteroid-1");
-    expect(asteroids[0].passed).toBe(false);
+    expect(asteroids[0].hasAwardedPassBonus).toBe(false);
     expect(updatedSpawnState.nextId).toBe(2);
     expect(updatedSpawnState.timer).toBeCloseTo(0.1);
   });
@@ -219,7 +221,7 @@ describe("asteroid logic", () => {
       verticalSpeed: 0,
       rotation: Math.PI,
       rotationSpeed: (ASTEROID_MIN_ROTATION_SPEED + ASTEROID_MAX_ROTATION_SPEED) / 2,
-      passed: false,
+      hasAwardedPassBonus: false,
     });
     expect(asteroids[0].points).toHaveLength(9);
     expect(asteroids[0].points[0]).toEqual({
@@ -261,7 +263,7 @@ describe("asteroid logic", () => {
       () => 1,
     );
 
-    expect(asteroids[0].speed).toBe(ASTEROID_MAX_SPEED);
+    expect(asteroids[0].speed).toBe(ASTEROID_MAX_BASE_SPEED);
   });
 
   it("creates fiery asteroids with faster speed and rotation when the variant roll hits", () => {

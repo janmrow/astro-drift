@@ -36,7 +36,7 @@ export type Asteroid = {
   rotation: number;
   rotationSpeed: number;
   points: AsteroidPoint[];
-  passed: boolean;
+  hasAwardedPassBonus: boolean;
 };
 
 export type InputState = {

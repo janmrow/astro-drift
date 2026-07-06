@@ -1,6 +1,11 @@
-import { collectPassBonuses, createInitialPlayer } from "./engine";
-import { createInitialAsteroidSpawnState, type AsteroidSpawnState } from "./asteroids";
-import type { Asteroid, Player } from "./types";
+import { collectPassBonuses, createInitialPlayer, hasPlayerCollision, updatePlayer, updateScore } from "./engine";
+import {
+  createInitialAsteroidSpawnState,
+  updateAsteroidSpawning,
+  updateAsteroids,
+  type AsteroidSpawnState,
+} from "./asteroids";
+import type { Asteroid, InputState, Player } from "./types";
 
 export type GameState = {
   player: Player;
@@ -79,4 +84,55 @@ export function updateBonusFeedbackTimer(
     bonusFeedbackText: nextBonusFeedbackTimeLeft === 0 ? null : currentBonusFeedbackText,
     bonusFeedbackTimeLeft: nextBonusFeedbackTimeLeft,
   };
+}
+
+export type RunningGameResult = {
+  collided: boolean;
+};
+
+export function advanceRunningGame(
+  gameState: GameState,
+  input: InputState,
+  deltaTime: number,
+  rng: () => number,
+  bonusFeedbackDuration: number,
+): RunningGameResult {
+  gameState.survivalTime += deltaTime;
+  gameState.player = updatePlayer(gameState.player, input, deltaTime);
+  gameState.asteroidSpawnState = updateAsteroidSpawning(
+    gameState.asteroids,
+    gameState.asteroidSpawnState,
+    deltaTime,
+    gameState.survivalTime,
+    rng,
+  );
+
+  const bonusResult = applyScoreBonuses(
+    gameState.score,
+    gameState.player,
+    gameState.asteroids,
+    gameState.bonusFeedbackText,
+    gameState.bonusFeedbackTimeLeft,
+    bonusFeedbackDuration,
+  );
+  gameState.score = bonusResult.score;
+  gameState.bonusFeedbackText = bonusResult.bonusFeedbackText;
+  gameState.bonusFeedbackTimeLeft = bonusResult.bonusFeedbackTimeLeft;
+
+  updateAsteroids(gameState.asteroids, deltaTime);
+
+  if (hasPlayerCollision(gameState.player, gameState.asteroids)) {
+    return { collided: true };
+  }
+
+  gameState.score = updateScore(gameState.score, deltaTime);
+  const timerResult = updateBonusFeedbackTimer(
+    gameState.bonusFeedbackText,
+    gameState.bonusFeedbackTimeLeft,
+    deltaTime,
+  );
+  gameState.bonusFeedbackText = timerResult.bonusFeedbackText;
+  gameState.bonusFeedbackTimeLeft = timerResult.bonusFeedbackTimeLeft;
+
+  return { collided: false };
 }

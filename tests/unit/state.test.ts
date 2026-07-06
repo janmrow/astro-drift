@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { BONUS_FEEDBACK_DURATION } from "../../src/game/balance";
 import { createInitialPlayer } from "../../src/game/engine";
 import {
   applyScoreBonuses,
@@ -7,8 +8,6 @@ import {
   updateBonusFeedbackTimer,
 } from "../../src/game/state";
 import { createAsteroid } from "./helpers";
-
-const BONUS_FEEDBACK_DURATION = 0.65;
 
 describe("createInitialGameState", () => {
   it("returns a clean, freshly-created state", () => {

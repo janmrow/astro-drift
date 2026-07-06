@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInputState } from "../../src/game/engine";
-import { setupKeyboardControls } from "../../src/input/keyboard";
+import { resetInputState, setupKeyboardControls } from "../../src/input/keyboard";
 
 type FakeKeyboardEvent = { key: string; preventDefault: () => void };
 type Listener = (event: FakeKeyboardEvent) => void;
@@ -95,5 +95,22 @@ describe("keyboard controls", () => {
     expect(input.down).toBe(false);
     expect(input.left).toBe(false);
     expect(input.right).toBe(false);
+  });
+
+  it("resets all movement fields via resetInputState", () => {
+    const currentInput = {
+      ...createInputState(),
+      up: true,
+      down: true,
+      left: true,
+      right: true,
+    };
+
+    resetInputState(currentInput);
+
+    expect(currentInput.up).toBe(false);
+    expect(currentInput.down).toBe(false);
+    expect(currentInput.left).toBe(false);
+    expect(currentInput.right).toBe(false);
   });
 });

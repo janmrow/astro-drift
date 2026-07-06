@@ -474,5 +474,21 @@ describe("game engine", () => {
     it("does not cap a delta exactly at the maximum", () => {
       expect(capFrameDelta(MAX_FRAME_DELTA_SECONDS)).toBe(MAX_FRAME_DELTA_SECONDS);
     });
+
+    it("treats NaN as zero", () => {
+      expect(capFrameDelta(NaN)).toBe(0);
+    });
+
+    it("treats negative deltas as zero", () => {
+      expect(capFrameDelta(-1)).toBe(0);
+    });
+
+    it("treats -Infinity as zero", () => {
+      expect(capFrameDelta(-Infinity)).toBe(0);
+    });
+
+    it("treats Infinity as zero", () => {
+      expect(capFrameDelta(Infinity)).toBe(0);
+    });
   });
 });

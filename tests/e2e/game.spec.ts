@@ -86,6 +86,22 @@ test("goes to gameOver on collision and restarts cleanly with R", async ({ page 
   await expect(page.getByTestId("game-status")).toHaveText("running");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
   await expect(page.getByTestId("game-time")).toHaveText("0:00");
+
+  await expect(page.getByTestId("game-status")).toHaveText("gameOver", { timeout: 15_000 });
+
+  const secondRunScoreAtGameOver = await page.getByTestId("game-score").textContent();
+  const secondRunAsteroidCountAtGameOver = await page.getByTestId("asteroid-count").textContent();
+
+  // Real per-frame timing (not just the seeded RNG) affects the exact collision
+  // frame, so allow a tiny tolerance instead of requiring an exact match.
+  expect(Number(secondRunScoreAtGameOver)).toBeGreaterThanOrEqual(Number(scoreAtGameOver) - 1);
+  expect(Number(secondRunScoreAtGameOver)).toBeLessThanOrEqual(Number(scoreAtGameOver) + 1);
+  expect(Number(secondRunAsteroidCountAtGameOver)).toBeGreaterThanOrEqual(
+    Number(asteroidCountAtGameOver) - 1,
+  );
+  expect(Number(secondRunAsteroidCountAtGameOver)).toBeLessThanOrEqual(
+    Number(asteroidCountAtGameOver) + 1,
+  );
 });
 
 test("scopes aria-live to the status announcement only", async ({ page }) => {

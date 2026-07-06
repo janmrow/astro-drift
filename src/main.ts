@@ -16,7 +16,7 @@ import {
   updateBonusFeedbackTimer,
 } from "./game/state";
 import type { GameStatus } from "./game/types";
-import { setupKeyboardControls } from "./input/keyboard";
+import { resetInputState, setupKeyboardControls } from "./input/keyboard";
 import { createStars, renderFrame, updateStars } from "./rendering/canvasRenderer";
 import { readBestScore, saveBestScore } from "./storage/bestScoreStorage";
 
@@ -38,8 +38,12 @@ const BONUS_FEEDBACK_DURATION = 0.65;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const seedParam = new URLSearchParams(window.location.search).get("seed");
-const asteroidRng = seedParam !== null ? createSeededRng(Number(seedParam)) : Math.random;
+function createAsteroidRngFromLocation(): () => number {
+  const seedParam = new URLSearchParams(window.location.search).get("seed");
+  return seedParam !== null ? createSeededRng(Number(seedParam)) : Math.random;
+}
+
+let asteroidRng = createAsteroidRngFromLocation();
 
 const stars = createStars(STAR_COUNT);
 const input = createInputState();
@@ -175,7 +179,16 @@ function restartGame(): void {
   bonusFeedbackText = freshState.bonusFeedbackText;
   bonusFeedbackTimeLeft = freshState.bonusFeedbackTimeLeft;
 
+  resetPerRunState();
+
   previousFrameTime = performance.now();
+}
+
+// Resets run-scoped state that lives outside GameState (input, asteroid RNG),
+// so extending either concern only requires touching this one place.
+function resetPerRunState(): void {
+  resetInputState(input);
+  asteroidRng = createAsteroidRngFromLocation();
 }
 
 let lastStatusText = "";

@@ -1,19 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { BONUS_FEEDBACK_DURATION, SCORE_PER_SECOND } from "../../src/game/balance";
-import { createInitialPlayer } from "../../src/game/engine";
+import { createInitialPlayer, createInputState } from "../../src/game/engine";
 import {
   advanceRunningGame,
   applyScoreBonuses,
   createInitialGameState,
   updateBonusFeedbackTimer,
 } from "../../src/game/state";
-import type { InputState } from "../../src/game/types";
 import { createAsteroid } from "./helpers";
-
-function createInactiveInput(): InputState {
-  return { up: false, down: false, left: false, right: false };
-}
 
 describe("createInitialGameState", () => {
   it("returns a clean, freshly-created state", () => {
@@ -93,7 +88,7 @@ describe("advanceRunningGame", () => {
     const gameState = createInitialGameState();
     const deltaTime = 0.1;
 
-    const result = advanceRunningGame(gameState, createInactiveInput(), deltaTime, () => 1, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), deltaTime, () => 1, BONUS_FEEDBACK_DURATION);
 
     expect(result).toEqual({ collided: false });
     expect(gameState.survivalTime).toBeCloseTo(deltaTime);
@@ -106,7 +101,7 @@ describe("advanceRunningGame", () => {
     const passedAsteroid = createAsteroid({ x: playerLeftEdge - 31, hasAwardedPassBonus: false });
     gameState.asteroids.push(passedAsteroid);
 
-    const result = advanceRunningGame(gameState, createInactiveInput(), 0.1, () => 1, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1, BONUS_FEEDBACK_DURATION);
 
     expect(result).toEqual({ collided: false });
     expect(gameState.bonusFeedbackText).toBe("+25");
@@ -126,7 +121,7 @@ describe("advanceRunningGame", () => {
     });
     gameState.asteroids.push(collidingAsteroid);
 
-    const result = advanceRunningGame(gameState, createInactiveInput(), 0.1, () => 1, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1, BONUS_FEEDBACK_DURATION);
 
     expect(result).toEqual({ collided: true });
     expect(gameState.score).toBe(0);
@@ -137,7 +132,7 @@ describe("advanceRunningGame", () => {
   it("spawns asteroids once enough delta time has accumulated for a seeded rng", () => {
     const gameState = createInitialGameState();
 
-    const result = advanceRunningGame(gameState, createInactiveInput(), 1.5, () => 0.5, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), 1.5, () => 0.5, BONUS_FEEDBACK_DURATION);
 
     expect(result).toEqual({ collided: false });
     expect(gameState.asteroids.length).toBeGreaterThan(0);

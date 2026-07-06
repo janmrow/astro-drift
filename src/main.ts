@@ -15,6 +15,7 @@ import {
   applyScoreBonuses,
   createInitialGameState,
   updateBonusFeedbackTimer,
+  type GameState,
 } from "./game/state";
 import type { GameStatus } from "./game/types";
 import { resetInputState, setupKeyboardControls } from "./input/keyboard";
@@ -52,15 +53,7 @@ let gameStatus: GameStatus = "idle";
 let previousFrameTime = performance.now();
 let bestScore = readBestScore();
 
-const initialGameState = createInitialGameState();
-const asteroids = initialGameState.asteroids;
-
-let player = initialGameState.player;
-let asteroidSpawnState = initialGameState.asteroidSpawnState;
-let score = initialGameState.score;
-let survivalTime = initialGameState.survivalTime;
-let bonusFeedbackText = initialGameState.bonusFeedbackText;
-let bonusFeedbackTimeLeft = initialGameState.bonusFeedbackTimeLeft;
+let gameState: GameState = createInitialGameState();
 
 setupKeyboardControls(input, handleGameAction);
 document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -73,7 +66,7 @@ function handleVisibilityChange(): void {
 }
 
 function persistBestScore(): void {
-  bestScore = saveBestScore(score);
+  bestScore = saveBestScore(gameState.score);
 }
 
 function runGameLoop(currentFrameTime: number): void {
@@ -86,53 +79,57 @@ function runGameLoop(currentFrameTime: number): void {
   updateStars(stars, ambientMotionSuppressed ? 0 : deltaTime);
 
   if (gameStatus === "running") {
-    survivalTime += deltaTime;
+    gameState.survivalTime += deltaTime;
 
-    player = updatePlayer(player, input, deltaTime);
-    asteroidSpawnState = updateAsteroidSpawning(
-      asteroids,
-      asteroidSpawnState,
+    gameState.player = updatePlayer(gameState.player, input, deltaTime);
+    gameState.asteroidSpawnState = updateAsteroidSpawning(
+      gameState.asteroids,
+      gameState.asteroidSpawnState,
       deltaTime,
-      survivalTime,
+      gameState.survivalTime,
       asteroidRng,
     );
 
     const bonusResult = applyScoreBonuses(
-      score,
-      player,
-      asteroids,
-      bonusFeedbackText,
-      bonusFeedbackTimeLeft,
+      gameState.score,
+      gameState.player,
+      gameState.asteroids,
+      gameState.bonusFeedbackText,
+      gameState.bonusFeedbackTimeLeft,
       BONUS_FEEDBACK_DURATION,
     );
-    score = bonusResult.score;
-    bonusFeedbackText = bonusResult.bonusFeedbackText;
-    bonusFeedbackTimeLeft = bonusResult.bonusFeedbackTimeLeft;
+    gameState.score = bonusResult.score;
+    gameState.bonusFeedbackText = bonusResult.bonusFeedbackText;
+    gameState.bonusFeedbackTimeLeft = bonusResult.bonusFeedbackTimeLeft;
 
-    updateAsteroids(asteroids, deltaTime);
+    updateAsteroids(gameState.asteroids, deltaTime);
 
-    if (hasPlayerCollision(player, asteroids)) {
+    if (hasPlayerCollision(gameState.player, gameState.asteroids)) {
       gameStatus = "gameOver";
       persistBestScore();
     } else {
-      score = updateScore(score, deltaTime);
+      gameState.score = updateScore(gameState.score, deltaTime);
 
-      const timerResult = updateBonusFeedbackTimer(bonusFeedbackText, bonusFeedbackTimeLeft, deltaTime);
-      bonusFeedbackText = timerResult.bonusFeedbackText;
-      bonusFeedbackTimeLeft = timerResult.bonusFeedbackTimeLeft;
+      const timerResult = updateBonusFeedbackTimer(
+        gameState.bonusFeedbackText,
+        gameState.bonusFeedbackTimeLeft,
+        deltaTime,
+      );
+      gameState.bonusFeedbackText = timerResult.bonusFeedbackText;
+      gameState.bonusFeedbackTimeLeft = timerResult.bonusFeedbackTimeLeft;
     }
   }
 
   renderFrame(
     context,
     stars,
-    player,
-    asteroids,
+    gameState.player,
+    gameState.asteroids,
     gameStatus,
-    score,
-    survivalTime,
+    gameState.score,
+    gameState.survivalTime,
     bestScore,
-    bonusFeedbackTimeLeft > 0 ? bonusFeedbackText : null,
+    gameState.bonusFeedbackTimeLeft > 0 ? gameState.bonusFeedbackText : null,
     currentFrameTime,
     ambientMotionSuppressed,
   );
@@ -168,27 +165,10 @@ function startGame(): void {
 
 function restartGame(): void {
   gameStatus = "running";
-
-  const freshState = createInitialGameState();
-  player = freshState.player;
-  asteroids.length = 0;
-  asteroids.push(...freshState.asteroids);
-  asteroidSpawnState = freshState.asteroidSpawnState;
-  score = freshState.score;
-  survivalTime = freshState.survivalTime;
-  bonusFeedbackText = freshState.bonusFeedbackText;
-  bonusFeedbackTimeLeft = freshState.bonusFeedbackTimeLeft;
-
-  resetPerRunState();
-
-  previousFrameTime = performance.now();
-}
-
-// Resets run-scoped state that lives outside GameState (input, asteroid RNG),
-// so extending either concern only requires touching this one place.
-function resetPerRunState(): void {
+  gameState = createInitialGameState();
   resetInputState(input);
   asteroidRng = createAsteroidRngFromLocation();
+  previousFrameTime = performance.now();
 }
 
 let lastStatusText = "";
@@ -202,21 +182,21 @@ function updateDomStatus(): void {
     lastStatusText = gameStatus;
   }
 
-  const scoreText = formatScore(score);
+  const scoreText = formatScore(gameState.score);
 
   if (scoreText !== lastScoreText) {
     scoreElement.textContent = scoreText;
     lastScoreText = scoreText;
   }
 
-  const timeText = formatTime(survivalTime);
+  const timeText = formatTime(gameState.survivalTime);
 
   if (timeText !== lastTimeText) {
     timeElement.textContent = timeText;
     lastTimeText = timeText;
   }
 
-  const asteroidCountText = asteroids.length.toString();
+  const asteroidCountText = gameState.asteroids.length.toString();
 
   if (asteroidCountText !== lastAsteroidCountText) {
     asteroidCountElement.textContent = asteroidCountText;

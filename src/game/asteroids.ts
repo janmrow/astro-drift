@@ -1,3 +1,26 @@
+import {
+  ASTEROID_BASE_MAX_SPEED,
+  ASTEROID_BASE_MIN_SPEED,
+  ASTEROID_BASE_SPAWN_INTERVAL,
+  ASTEROID_MAX_BASE_SPEED,
+  ASTEROID_MAX_RADIUS,
+  ASTEROID_MAX_ROTATION_SPEED,
+  ASTEROID_MIN_RADIUS,
+  ASTEROID_MIN_ROTATION_SPEED,
+  ASTEROID_MIN_SPAWN_INTERVAL,
+  ASTEROID_SPEED_RAMP,
+  ASTEROID_SPAWN_RAMP,
+  FIERY_ASTEROID_CHANCE,
+  FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
+  FIERY_ASTEROID_MAX_VERTICAL_SPEED,
+  FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
+  FIERY_ASTEROID_MIN_VERTICAL_SPEED,
+  FIERY_ASTEROID_ROTATION_MULTIPLIER,
+  FIERY_ASTEROID_SPEED_MULTIPLIER,
+  STANDARD_ASTEROID_DIAGONAL_CHANCE,
+  STANDARD_ASTEROID_MAX_VERTICAL_SPEED,
+  STANDARD_ASTEROID_MIN_VERTICAL_SPEED,
+} from "./balance";
 import { GAME_HEIGHT, GAME_WIDTH, clamp } from "./engine";
 import { assertNever, type Asteroid, type AsteroidPoint, type AsteroidVariant } from "./types";
 
@@ -6,34 +29,12 @@ export type AsteroidSpawnState = {
   nextId: number;
 };
 
-export const ASTEROID_BASE_SPAWN_INTERVAL = 1.2;
-export const ASTEROID_MIN_SPAWN_INTERVAL = 0.62;
-export const ASTEROID_SPAWN_RAMP = 0.006;
-
-export const ASTEROID_MIN_RADIUS = 18;
-export const ASTEROID_MAX_RADIUS = 42;
-export const ASTEROID_BASE_MIN_SPEED = 165;
-export const ASTEROID_BASE_MAX_SPEED = 245;
-export const ASTEROID_SPEED_RAMP = 1.5;
-export const ASTEROID_MAX_SPEED = 580;
 export const ASTEROID_REMOVE_PADDING = 80;
 
 export const ASTEROID_VERTICAL_SPAWN_PADDING = 16;
 const ASTEROID_POINT_COUNT = 9;
 const ASTEROID_MIN_POINT_RADIUS_RATIO = 0.8;
 const ASTEROID_MAX_POINT_RADIUS_RATIO = 1.2;
-export const ASTEROID_MIN_ROTATION_SPEED = 0.35;
-export const ASTEROID_MAX_ROTATION_SPEED = 1.1;
-export const STANDARD_ASTEROID_DIAGONAL_CHANCE = 0.35;
-export const STANDARD_ASTEROID_MIN_VERTICAL_SPEED = 18;
-export const STANDARD_ASTEROID_MAX_VERTICAL_SPEED = 44;
-export const FIERY_ASTEROID_CHANCE = 0.12;
-export const FIERY_ASTEROID_SPEED_MULTIPLIER = 1.7;
-export const FIERY_ASTEROID_ROTATION_MULTIPLIER = 1.7;
-export const FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER = 1.2;
-export const FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER = 1.3;
-export const FIERY_ASTEROID_MIN_VERTICAL_SPEED = 6;
-export const FIERY_ASTEROID_MAX_VERTICAL_SPEED = 14;
 
 export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   return {
@@ -109,7 +110,7 @@ function createAsteroid(currentSurvivalTime: number, id: number, rng: () => numb
   const speed = clamp(
     randomBetween(ASTEROID_BASE_MIN_SPEED + speedBonus, ASTEROID_BASE_MAX_SPEED + speedBonus, rng),
     ASTEROID_BASE_MIN_SPEED,
-    ASTEROID_MAX_SPEED,
+    ASTEROID_MAX_BASE_SPEED,
   );
   const rotationSpeed = createAsteroidRotationSpeed(variant, rng);
 
@@ -128,7 +129,7 @@ function createAsteroid(currentSurvivalTime: number, id: number, rng: () => numb
     rotation: randomBetween(0, Math.PI * 2, rng),
     rotationSpeed,
     points: createAsteroidPoints(ASTEROID_POINT_COUNT, rng),
-    passed: false,
+    hasAwardedPassBonus: false,
   };
 }
 

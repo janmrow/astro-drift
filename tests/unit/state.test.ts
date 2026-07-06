@@ -38,7 +38,7 @@ describe("createInitialGameState", () => {
 describe("applyScoreBonuses", () => {
   it("leaves score and feedback untouched when no asteroid has just passed", () => {
     const player = createInitialPlayer();
-    const asteroids = [createAsteroid({ x: player.x + 500, passed: false })];
+    const asteroids = [createAsteroid({ x: player.x + 500, hasAwardedPassBonus: false })];
 
     const result = applyScoreBonuses(100, player, asteroids, "+25", 0.2, BONUS_FEEDBACK_DURATION);
 
@@ -52,14 +52,14 @@ describe("applyScoreBonuses", () => {
   it("adds the bonus to the score and starts fresh feedback when an asteroid just passed", () => {
     const player = createInitialPlayer();
     const playerLeftEdge = player.x - player.width / 2;
-    const asteroids = [createAsteroid({ x: playerLeftEdge - 31, passed: false })];
+    const asteroids = [createAsteroid({ x: playerLeftEdge - 31, hasAwardedPassBonus: false })];
 
     const result = applyScoreBonuses(100, player, asteroids, null, 0, BONUS_FEEDBACK_DURATION);
 
     expect(result.score).toBe(125);
     expect(result.bonusFeedbackText).toBe("+25");
     expect(result.bonusFeedbackTimeLeft).toBe(BONUS_FEEDBACK_DURATION);
-    expect(asteroids[0].passed).toBe(true);
+    expect(asteroids[0].hasAwardedPassBonus).toBe(true);
   });
 });
 

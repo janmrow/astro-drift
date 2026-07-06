@@ -12,7 +12,7 @@ export function createAsteroid(overrides: Partial<Asteroid> = {}): Asteroid {
     rotation: 0,
     rotationSpeed: 0,
     points: [],
-    passed: false,
+    hasAwardedPassBonus: false,
     ...overrides,
   };
 }

@@ -2,8 +2,12 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import {
+  ASTEROID_BASE_SPAWN_INTERVAL,
+  ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_PASS_BONUS,
   FIERY_ASTEROID_PASS_BONUS,
+} from "../../src/game/balance";
+import {
   GAME_HEIGHT,
   PLAYER_AREA_MAX_X,
   PLAYER_SCREEN_PADDING,
@@ -16,8 +20,6 @@ import {
   updateScore,
 } from "../../src/game/engine";
 import {
-  ASTEROID_BASE_SPAWN_INTERVAL,
-  ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_REMOVE_PADDING,
   ASTEROID_VERTICAL_SPAWN_PADDING,
   getAsteroidSpawnInterval,
@@ -77,7 +79,7 @@ const asteroidArbitrary: fc.Arbitrary<Asteroid> = fc.record({
   rotation: fc.integer({ min: -360, max: 360 }),
   rotationSpeed: fc.integer({ min: -10, max: 10 }),
   points: fc.constant([]),
-  passed: fc.boolean(),
+  hasAwardedPassBonus: fc.boolean(),
 });
 
 describe("game engine properties", () => {
@@ -202,7 +204,7 @@ describe("game engine properties", () => {
         fc.array(asteroidArbitrary, { minLength: 0, maxLength: 20 }),
         (currentScore, player, asteroids) => {
           const expectedBonus = asteroids
-            .filter((asteroid) => !asteroid.passed && hasAsteroidPassedPlayer(player, asteroid))
+            .filter((asteroid) => !asteroid.hasAwardedPassBonus && hasAsteroidPassedPlayer(player, asteroid))
             .reduce((totalBonus, asteroid) => totalBonus + getAsteroidPassBonus(asteroid), 0);
           const updatedScore = collectPassBonuses(currentScore, player, asteroids);
 
@@ -223,7 +225,7 @@ describe("game engine properties", () => {
           const asteroids = generatedAsteroids.map((asteroid) => ({
             ...asteroid,
             x: player.x - player.width / 2 - asteroid.radius - 1,
-            passed: true,
+            hasAwardedPassBonus: true,
           }));
 
           expect(collectPassBonuses(currentScore, player, asteroids)).toBe(currentScore);
@@ -243,7 +245,7 @@ describe("game engine properties", () => {
           const asteroids = generatedAsteroids.map((asteroid) => ({
             ...asteroid,
             x: player.x - player.width / 2 - asteroid.radius - 1,
-            passed: false,
+            hasAwardedPassBonus: false,
           }));
           const expectedBonus = asteroids.reduce((totalBonus, asteroid) => {
             return (

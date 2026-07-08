@@ -95,6 +95,8 @@ function runGameLoop(currentFrameTime: number): void {
     gameState.survivalTime,
     bestScore,
     gameState.bonusFeedbackTimeLeft > 0 ? gameState.bonusFeedbackText : null,
+    // Fraction of the bonus feedback's lifetime remaining (1 = just triggered, 0 = about to disappear).
+    Math.max(0, gameState.bonusFeedbackTimeLeft) / BONUS_FEEDBACK_DURATION,
     currentFrameTime,
     ambientMotionSuppressed,
   );

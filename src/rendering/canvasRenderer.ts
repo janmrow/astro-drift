@@ -53,23 +53,10 @@ const STAR_LAYER_SETTINGS: Record<
 
 const NEAR_STAR_RATIO = 0.32;
 
-const HUD_SCORE_BASELINE = 92;
-// Best-score uses a smaller font than score, so it needs a 1px nudge to look
-// baseline-aligned with it.
-const HUD_BEST_SCORE_BASELINE_OFFSET = 1;
-
-const HUD_PANEL = {
-  x: 560,
-  y: 32,
-  width: 352,
-  height: 124,
-  padding: 20,
-  statusBaseline: 32,
-  labelBaseline: 64,
-  scoreBaseline: HUD_SCORE_BASELINE,
-  bestScoreBaseline: HUD_SCORE_BASELINE - HUD_BEST_SCORE_BASELINE_OFFSET,
-  detailsBaseline: 118,
-  asteroidCountXOffset: 198,
+const HUD_CORNER = {
+  x: 24,
+  scoreBaseline: 48,
+  timeBaseline: 74,
 };
 
 const PLAYER_SECTOR_GUIDE = {
@@ -77,12 +64,6 @@ const PLAYER_SECTOR_GUIDE = {
   verticalPadding: 36,
   labelX: 48,
   labelBaselineFromBottom: 32,
-};
-
-const STATUS_TEXT: Record<GameStatus, string> = {
-  idle: "Ready to drift",
-  running: "Avoid the asteroids",
-  gameOver: "Collision detected",
 };
 
 const PLAYER_SHIP = {
@@ -94,24 +75,15 @@ const PLAYER_SHIP = {
   cockpitRadius: 5,
 };
 
-const BONUS_BADGE = {
-  x: 860,
-  y: 132,
-  width: 36,
-  height: 16,
-};
-
-// Colors for HUD/overlay elements that are out of scope for the PR1 palette
+// Colors for HUD/overlay elements that are out of scope for the palette
 // redesign (see docs/VISUAL-STYLE-CONSTRAINTS.md) and stay unchanged here.
 // text/mutedText resolve through PALETTE since those roles are shared with
 // the rest of the redesign; the rest have no equivalent PALETTE role yet.
 const UI_COLORS = {
-  surface: "rgba(7, 4, 23, 0.52)",
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
   text: PALETTE.textPrimary,
   mutedText: PALETTE.textMuted,
   cyan: "#7df9ff",
-  cyanDim: "rgba(125, 249, 255, 0.18)",
   amber: "#ffb86c",
 };
 
@@ -154,6 +126,7 @@ export function renderFrame(
   currentSurvivalTime: number,
   currentBestScore: number,
   bonusFeedbackText: string | null,
+  bonusFeedbackFraction: number,
   frameTime: number,
   ambientMotionSuppressed = false,
 ): void {
@@ -162,10 +135,10 @@ export function renderFrame(
   drawPlayerAreaGuide(ctx, frameTime, ambientMotionSuppressed);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer, frameTime, ambientMotionSuppressed);
-  drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime, currentBestScore);
+  drawScore(ctx, currentScore, currentSurvivalTime);
 
   if (bonusFeedbackText) {
-    drawBonusFeedback(ctx, bonusFeedbackText);
+    drawBonusFeedback(ctx, bonusFeedbackText, currentPlayer, bonusFeedbackFraction);
   }
 
   drawVignette(ctx);
@@ -336,53 +309,22 @@ function getAsteroidStrokeWidth(variant: AsteroidVariant): number {
   }
 }
 
-function drawStatusText(
-  ctx: CanvasRenderingContext2D,
-  currentStatus: GameStatus,
-  asteroidCount: number,
-  currentScore: number,
-  currentSurvivalTime: number,
-  currentBestScore: number,
-): void {
-  const { x, y, width, height, padding } = HUD_PANEL;
+function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentSurvivalTime: number): void {
+  const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
 
-  ctx.fillStyle = UI_COLORS.surface;
-  ctx.fillRect(x, y, width, height);
-
-  ctx.strokeStyle = UI_COLORS.cyanDim;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, width, height);
-
-  ctx.fillStyle = UI_COLORS.text;
   ctx.font = "700 24px system-ui, sans-serif";
+  ctx.strokeStyle = PALETTE.backgroundBottom;
+  ctx.lineWidth = 4;
+  ctx.strokeText(formatScore(currentScore), x, scoreBaseline);
+  ctx.fillStyle = PALETTE.textPrimary;
+  ctx.fillText(formatScore(currentScore), x, scoreBaseline);
 
-  ctx.fillText(STATUS_TEXT[currentStatus], x + padding, y + HUD_PANEL.statusBaseline);
-
-  ctx.fillStyle = "rgba(201, 191, 232, 0.74)";
-  ctx.font = "700 11px system-ui, sans-serif";
-  ctx.fillText("SCORE", x + padding, y + HUD_PANEL.labelBaseline);
-  ctx.textAlign = "right";
-  ctx.fillText("BEST", x + width - padding, y + HUD_PANEL.labelBaseline);
-  ctx.textAlign = "start";
-
-  ctx.fillStyle = UI_COLORS.cyan;
-  ctx.font = "700 24px system-ui, sans-serif";
-  ctx.fillText(formatScore(currentScore), x + padding, y + HUD_PANEL.scoreBaseline);
-
-  ctx.fillStyle = UI_COLORS.text;
-  ctx.font = "700 18px system-ui, sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText(formatScore(currentBestScore), x + width - padding, y + HUD_PANEL.bestScoreBaseline);
-  ctx.textAlign = "start";
-
-  ctx.fillStyle = UI_COLORS.mutedText;
   ctx.font = "400 15px system-ui, sans-serif";
-  ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, x + padding, y + HUD_PANEL.detailsBaseline);
-  ctx.fillText(
-    `Asteroids: ${asteroidCount}`,
-    x + HUD_PANEL.asteroidCountXOffset,
-    y + HUD_PANEL.detailsBaseline,
-  );
+  ctx.strokeStyle = PALETTE.backgroundBottom;
+  ctx.lineWidth = 3;
+  ctx.strokeText(formatTime(currentSurvivalTime), x, timeBaseline);
+  ctx.fillStyle = UI_COLORS.mutedText;
+  ctx.fillText(formatTime(currentSurvivalTime), x, timeBaseline);
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -476,19 +418,23 @@ function drawPlayerAreaGuide(
   );
 }
 
-function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
-  ctx.fillStyle = "rgba(255, 184, 108, 0.12)";
-  ctx.fillRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
+const BONUS_FEEDBACK_RISE_DISTANCE = 18;
 
-  ctx.strokeStyle = "rgba(255, 184, 108, 0.42)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
+function drawBonusFeedback(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  currentPlayer: Player,
+  feedbackFraction: number,
+): void {
+  const x = currentPlayer.x;
+  const y = currentPlayer.y - currentPlayer.height - feedbackFraction * BONUS_FEEDBACK_RISE_DISTANCE;
 
   ctx.save();
+  ctx.globalAlpha = feedbackFraction;
   ctx.fillStyle = UI_COLORS.amber;
   ctx.font = "700 11px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(text, BONUS_BADGE.x + BONUS_BADGE.width / 2, BONUS_BADGE.y + 12);
+  ctx.fillText(text, x, y);
   ctx.restore();
 }
 

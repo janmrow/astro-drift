@@ -419,6 +419,7 @@ function drawPlayerAreaGuide(
 }
 
 const BONUS_FEEDBACK_RISE_DISTANCE = 18;
+const BONUS_FEEDBACK_MIN_Y = 16;
 
 function drawBonusFeedback(
   ctx: CanvasRenderingContext2D,
@@ -427,7 +428,11 @@ function drawBonusFeedback(
   feedbackFraction: number,
 ): void {
   const x = currentPlayer.x;
-  const y = currentPlayer.y - currentPlayer.height - feedbackFraction * BONUS_FEEDBACK_RISE_DISTANCE;
+  const elapsedFraction = 1 - feedbackFraction;
+  const y = Math.max(
+    BONUS_FEEDBACK_MIN_Y,
+    currentPlayer.y - currentPlayer.height - elapsedFraction * BONUS_FEEDBACK_RISE_DISTANCE,
+  );
 
   ctx.save();
   ctx.globalAlpha = feedbackFraction;

@@ -72,8 +72,6 @@ const HUD_SCRIM = {
 const PLAYER_SECTOR_GUIDE = {
   xOffset: 24,
   verticalPadding: 36,
-  labelX: 48,
-  labelBaselineFromBottom: 32,
 };
 
 const PLAYER_SHIP = {
@@ -441,7 +439,6 @@ function drawGameOverOverlay(
 }
 
 const PLAYER_SECTOR_GUIDE_LINE_ALPHA = 0.22;
-const PLAYER_SECTOR_GUIDE_LABEL_ALPHA = 0.65;
 
 function drawPlayerAreaGuide(
   ctx: CanvasRenderingContext2D,
@@ -460,14 +457,6 @@ function drawPlayerAreaGuide(
   ctx.lineTo(guideX, GAME_HEIGHT - PLAYER_SECTOR_GUIDE.verticalPadding);
   ctx.stroke();
   ctx.setLineDash([]);
-
-  ctx.fillStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LABEL_ALPHA);
-  ctx.font = fontStyle("xs", 700);
-  ctx.fillText(
-    "player sector",
-    PLAYER_SECTOR_GUIDE.labelX,
-    GAME_HEIGHT - PLAYER_SECTOR_GUIDE.labelBaselineFromBottom,
-  );
 }
 
 const BONUS_FEEDBACK_RISE_DISTANCE = 18;

@@ -93,7 +93,17 @@ test("goes to gameOver on collision and restarts cleanly with R", async ({ page 
   const secondRunAsteroidCountAtGameOver = await page.getByTestId("asteroid-count").textContent();
 
   // Real per-frame timing (not just the seeded RNG) affects the exact collision
-  // frame, so allow a tiny tolerance instead of requiring an exact match.
+  // frame, so allow a tiny tolerance instead of requiring an exact match — the
+  // game loop has no fixed timestep, so deltaTime varies with real wall-clock
+  // time between frames and two runs won't be byte-identical even with a
+  // correctly-reset seed.
+  //
+  // This test still guards a real regression: before the seeded-RNG-reset fix,
+  // restarting reused the RNG's carried-over internal state instead of
+  // resetting it, so a same-seed restart produced an asteroid sequence that
+  // diverged by a lot more than +/-1 — not just a timing-sized nudge. The
+  // tolerance below is deliberately tight enough to catch that class of bug
+  // while tolerating normal frame-timing variance.
   expect(Number(secondRunScoreAtGameOver)).toBeGreaterThanOrEqual(Number(scoreAtGameOver) - 1);
   expect(Number(secondRunScoreAtGameOver)).toBeLessThanOrEqual(Number(scoreAtGameOver) + 1);
   expect(Number(secondRunAsteroidCountAtGameOver)).toBeGreaterThanOrEqual(

@@ -111,8 +111,12 @@ npx playwright install chromium
 src/
   main.ts
   game/
-    engine.ts
     asteroids.ts
+    balance.ts
+    engine.ts
+    format.ts
+    rng.ts
+    state.ts
     types.ts
   input/
     keyboard.ts
@@ -128,6 +132,10 @@ tests/
     engine.properties.test.ts
     asteroids.test.ts
     bestScoreStorage.test.ts
+    format.test.ts
+    keyboard.test.ts
+    rng.test.ts
+    state.test.ts
   e2e/
     game.spec.ts
 
@@ -155,6 +163,8 @@ Core gameplay rules live in `src/game/`:
 - asteroid spawning and movement
 - collision checks
 - score and time formatting
+- gameplay tuning constants (`balance.ts`)
+- per-frame game state orchestration (`state.ts`)
 
 Rendering lives in `src/rendering/canvasRenderer.ts`. It draws the background, stars, player, asteroids, HUD, bonus feedback, and game over overlay.
 

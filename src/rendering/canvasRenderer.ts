@@ -1,3 +1,4 @@
+import { BONUS_FEEDBACK_DURATION } from "../game/balance";
 import { GAME_HEIGHT, GAME_WIDTH, PLAYER_AREA_MAX_X } from "../game/engine";
 import { formatScore, formatTime } from "../game/format";
 import {
@@ -53,23 +54,19 @@ const STAR_LAYER_SETTINGS: Record<
 
 const NEAR_STAR_RATIO = 0.32;
 
-const HUD_SCORE_BASELINE = 92;
-// Best-score uses a smaller font than score, so it needs a 1px nudge to look
-// baseline-aligned with it.
-const HUD_BEST_SCORE_BASELINE_OFFSET = 1;
+const HUD_CORNER = {
+  x: 24,
+  scoreBaseline: 48,
+  timeBaseline: 74,
+};
 
-const HUD_PANEL = {
-  x: 560,
-  y: 32,
-  width: 352,
-  height: 124,
-  padding: 20,
-  statusBaseline: 32,
-  labelBaseline: 64,
-  scoreBaseline: HUD_SCORE_BASELINE,
-  bestScoreBaseline: HUD_SCORE_BASELINE - HUD_BEST_SCORE_BASELINE_OFFSET,
-  detailsBaseline: 118,
-  asteroidCountXOffset: 198,
+const HUD_SCRIM = {
+  centerX: 110,
+  centerY: 50,
+  radius: 140,
+  // Beyond this fraction of the radius the gradient has already faded to
+  // near-transparent, so the fill only needs to cover up to here.
+  visibleExtent: 0.8,
 };
 
 const PLAYER_SECTOR_GUIDE = {
@@ -77,12 +74,6 @@ const PLAYER_SECTOR_GUIDE = {
   verticalPadding: 36,
   labelX: 48,
   labelBaselineFromBottom: 32,
-};
-
-const STATUS_TEXT: Record<GameStatus, string> = {
-  idle: "Ready to drift",
-  running: "Avoid the asteroids",
-  gameOver: "Collision detected",
 };
 
 const PLAYER_SHIP = {
@@ -94,24 +85,15 @@ const PLAYER_SHIP = {
   cockpitRadius: 5,
 };
 
-const BONUS_BADGE = {
-  x: 860,
-  y: 132,
-  width: 36,
-  height: 16,
-};
-
-// Colors for HUD/overlay elements that are out of scope for the PR1 palette
+// Colors for HUD/overlay elements that are out of scope for the palette
 // redesign (see docs/VISUAL-STYLE-CONSTRAINTS.md) and stay unchanged here.
 // text/mutedText resolve through PALETTE since those roles are shared with
 // the rest of the redesign; the rest have no equivalent PALETTE role yet.
 const UI_COLORS = {
-  surface: "rgba(7, 4, 23, 0.52)",
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
   text: PALETTE.textPrimary,
   mutedText: PALETTE.textMuted,
   cyan: "#7df9ff",
-  cyanDim: "rgba(125, 249, 255, 0.18)",
   amber: "#ffb86c",
 };
 
@@ -154,6 +136,7 @@ export function renderFrame(
   currentSurvivalTime: number,
   currentBestScore: number,
   bonusFeedbackText: string | null,
+  bonusFeedbackTimeLeft: number,
   frameTime: number,
   ambientMotionSuppressed = false,
 ): void {
@@ -162,10 +145,10 @@ export function renderFrame(
   drawPlayerAreaGuide(ctx, frameTime, ambientMotionSuppressed);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer, frameTime, ambientMotionSuppressed);
-  drawStatusText(ctx, currentStatus, currentAsteroids.length, currentScore, currentSurvivalTime, currentBestScore);
+  drawScore(ctx, currentScore, currentSurvivalTime);
 
   if (bonusFeedbackText) {
-    drawBonusFeedback(ctx, bonusFeedbackText);
+    drawBonusFeedback(ctx, bonusFeedbackText, currentPlayer, bonusFeedbackTimeLeft);
   }
 
   drawVignette(ctx);
@@ -179,14 +162,19 @@ export function renderFrame(
   }
 }
 
+// Static geometry and colors, so this is built once on first use and reused
+// every frame rather than recreated per frame.
+let backgroundGradient: CanvasGradient | null = null;
+
 function drawBackground(ctx: CanvasRenderingContext2D): void {
-  const skyGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+  if (!backgroundGradient) {
+    backgroundGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+    backgroundGradient.addColorStop(0, PALETTE.backgroundTop);
+    backgroundGradient.addColorStop(0.56, PALETTE.backgroundMid);
+    backgroundGradient.addColorStop(1, PALETTE.backgroundBottom);
+  }
 
-  skyGradient.addColorStop(0, PALETTE.backgroundTop);
-  skyGradient.addColorStop(0.56, PALETTE.backgroundMid);
-  skyGradient.addColorStop(1, PALETTE.backgroundBottom);
-
-  ctx.fillStyle = skyGradient;
+  ctx.fillStyle = backgroundGradient;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 }
 
@@ -336,53 +324,59 @@ function getAsteroidStrokeWidth(variant: AsteroidVariant): number {
   }
 }
 
-function drawStatusText(
+// Draws text with a solid-color outline so it stays legible over the
+// starfield/asteroids, without a background panel.
+function drawOutlinedText(
   ctx: CanvasRenderingContext2D,
-  currentStatus: GameStatus,
-  asteroidCount: number,
-  currentScore: number,
-  currentSurvivalTime: number,
-  currentBestScore: number,
+  text: string,
+  x: number,
+  y: number,
+  font: string,
+  lineWidth: number,
+  fillColor: string,
 ): void {
-  const { x, y, width, height, padding } = HUD_PANEL;
+  ctx.font = font;
+  ctx.strokeStyle = PALETTE.backgroundBottom;
+  ctx.lineWidth = lineWidth;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = fillColor;
+  ctx.fillText(text, x, y);
+}
 
-  ctx.fillStyle = UI_COLORS.surface;
-  ctx.fillRect(x, y, width, height);
+// Static position, so the gradient is built once on first use and reused
+// every frame rather than recreated per frame (see the gradient cost note in
+// docs/VISUAL-STYLE-CONSTRAINTS.md).
+let hudScrimGradient: CanvasGradient | null = null;
 
-  ctx.strokeStyle = UI_COLORS.cyanDim;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, width, height);
+function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentSurvivalTime: number): void {
+  const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
 
-  ctx.fillStyle = UI_COLORS.text;
-  ctx.font = "700 24px system-ui, sans-serif";
+  if (!hudScrimGradient) {
+    hudScrimGradient = ctx.createRadialGradient(
+      HUD_SCRIM.centerX,
+      HUD_SCRIM.centerY,
+      0,
+      HUD_SCRIM.centerX,
+      HUD_SCRIM.centerY,
+      HUD_SCRIM.radius,
+    );
+    hudScrimGradient.addColorStop(0, withAlpha(PALETTE.backgroundBottom, 0.55));
+    hudScrimGradient.addColorStop(1, withAlpha(PALETTE.backgroundBottom, 0));
+  }
 
-  ctx.fillText(STATUS_TEXT[currentStatus], x + padding, y + HUD_PANEL.statusBaseline);
-
-  ctx.fillStyle = "rgba(201, 191, 232, 0.74)";
-  ctx.font = "700 11px system-ui, sans-serif";
-  ctx.fillText("SCORE", x + padding, y + HUD_PANEL.labelBaseline);
-  ctx.textAlign = "right";
-  ctx.fillText("BEST", x + width - padding, y + HUD_PANEL.labelBaseline);
-  ctx.textAlign = "start";
-
-  ctx.fillStyle = UI_COLORS.cyan;
-  ctx.font = "700 24px system-ui, sans-serif";
-  ctx.fillText(formatScore(currentScore), x + padding, y + HUD_PANEL.scoreBaseline);
-
-  ctx.fillStyle = UI_COLORS.text;
-  ctx.font = "700 18px system-ui, sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText(formatScore(currentBestScore), x + width - padding, y + HUD_PANEL.bestScoreBaseline);
-  ctx.textAlign = "start";
-
-  ctx.fillStyle = UI_COLORS.mutedText;
-  ctx.font = "400 15px system-ui, sans-serif";
-  ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, x + padding, y + HUD_PANEL.detailsBaseline);
-  ctx.fillText(
-    `Asteroids: ${asteroidCount}`,
-    x + HUD_PANEL.asteroidCountXOffset,
-    y + HUD_PANEL.detailsBaseline,
+  ctx.fillStyle = hudScrimGradient;
+  ctx.fillRect(
+    0,
+    0,
+    HUD_SCRIM.centerX + HUD_SCRIM.radius * HUD_SCRIM.visibleExtent,
+    HUD_SCRIM.centerY + HUD_SCRIM.radius * HUD_SCRIM.visibleExtent,
   );
+
+  const scoreText = formatScore(currentScore);
+  const timeText = formatTime(currentSurvivalTime);
+
+  drawOutlinedText(ctx, scoreText, x, scoreBaseline, "700 24px system-ui, sans-serif", 4, UI_COLORS.text);
+  drawOutlinedText(ctx, timeText, x, timeBaseline, "400 15px system-ui, sans-serif", 3, UI_COLORS.mutedText);
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -476,36 +470,52 @@ function drawPlayerAreaGuide(
   );
 }
 
-function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
-  ctx.fillStyle = "rgba(255, 184, 108, 0.12)";
-  ctx.fillRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
+const BONUS_FEEDBACK_RISE_DISTANCE = 18;
+// Keeps the popup clear of the HUD corner text/scrim when the player is near
+// the top-left of the play area.
+const BONUS_FEEDBACK_MIN_Y = HUD_CORNER.timeBaseline + 16;
 
-  ctx.strokeStyle = "rgba(255, 184, 108, 0.42)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
+function drawBonusFeedback(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  currentPlayer: Player,
+  feedbackTimeLeft: number,
+): void {
+  const feedbackFraction = Math.max(0, Math.min(1, feedbackTimeLeft / BONUS_FEEDBACK_DURATION));
+  const elapsedFraction = 1 - feedbackFraction;
+  const x = currentPlayer.x;
+  const y = Math.max(
+    BONUS_FEEDBACK_MIN_Y,
+    currentPlayer.y - currentPlayer.height - elapsedFraction * BONUS_FEEDBACK_RISE_DISTANCE,
+  );
 
   ctx.save();
-  ctx.fillStyle = UI_COLORS.amber;
-  ctx.font = "700 11px system-ui, sans-serif";
+  ctx.globalAlpha = feedbackFraction;
   ctx.textAlign = "center";
-  ctx.fillText(text, BONUS_BADGE.x + BONUS_BADGE.width / 2, BONUS_BADGE.y + 12);
+  drawOutlinedText(ctx, text, x, y, "700 11px system-ui, sans-serif", 2, UI_COLORS.amber);
   ctx.restore();
 }
 
+// Static geometry and colors, so this is built once on first use and reused
+// every frame rather than recreated per frame.
+let vignetteGradient: CanvasGradient | null = null;
+
 function drawVignette(ctx: CanvasRenderingContext2D): void {
-  const vignette = ctx.createRadialGradient(
-    GAME_WIDTH / 2,
-    GAME_HEIGHT / 2,
-    GAME_WIDTH * 0.24,
-    GAME_WIDTH / 2,
-    GAME_HEIGHT / 2,
-    GAME_WIDTH * 0.72,
-  );
+  if (!vignetteGradient) {
+    vignetteGradient = ctx.createRadialGradient(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH * 0.24,
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH * 0.72,
+    );
 
-  vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
-  vignette.addColorStop(0.72, "rgba(8, 3, 20, 0.14)");
-  vignette.addColorStop(1, "rgba(4, 1, 12, 0.42)");
+    vignetteGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
+    vignetteGradient.addColorStop(0.72, "rgba(8, 3, 20, 0.14)");
+    vignetteGradient.addColorStop(1, "rgba(4, 1, 12, 0.42)");
+  }
 
-  ctx.fillStyle = vignette;
+  ctx.fillStyle = vignetteGradient;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 }

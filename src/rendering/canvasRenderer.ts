@@ -59,6 +59,12 @@ const HUD_CORNER = {
   timeBaseline: 74,
 };
 
+const HUD_SCRIM = {
+  centerX: 110,
+  centerY: 50,
+  radius: 140,
+};
+
 const PLAYER_SECTOR_GUIDE = {
   xOffset: 24,
   verticalPadding: 36,
@@ -309,22 +315,50 @@ function getAsteroidStrokeWidth(variant: AsteroidVariant): number {
   }
 }
 
+// Static position, so the gradient is built once on first use and reused
+// every frame rather than recreated per frame (see the gradient cost note in
+// docs/VISUAL-STYLE-CONSTRAINTS.md).
+let hudScrimGradient: CanvasGradient | null = null;
+
+function getHudScrimGradient(ctx: CanvasRenderingContext2D): CanvasGradient {
+  if (!hudScrimGradient) {
+    hudScrimGradient = ctx.createRadialGradient(
+      HUD_SCRIM.centerX,
+      HUD_SCRIM.centerY,
+      0,
+      HUD_SCRIM.centerX,
+      HUD_SCRIM.centerY,
+      HUD_SCRIM.radius,
+    );
+    hudScrimGradient.addColorStop(0, withAlpha(PALETTE.backgroundBottom, 0.55));
+    hudScrimGradient.addColorStop(1, withAlpha(PALETTE.backgroundBottom, 0));
+  }
+
+  return hudScrimGradient;
+}
+
 function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentSurvivalTime: number): void {
   const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
+
+  ctx.fillStyle = getHudScrimGradient(ctx);
+  ctx.fillRect(0, 0, HUD_SCRIM.centerX + HUD_SCRIM.radius, HUD_SCRIM.centerY + HUD_SCRIM.radius);
+
+  const scoreText = formatScore(currentScore);
+  const timeText = formatTime(currentSurvivalTime);
 
   ctx.font = "700 24px system-ui, sans-serif";
   ctx.strokeStyle = PALETTE.backgroundBottom;
   ctx.lineWidth = 4;
-  ctx.strokeText(formatScore(currentScore), x, scoreBaseline);
+  ctx.strokeText(scoreText, x, scoreBaseline);
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.fillText(formatScore(currentScore), x, scoreBaseline);
+  ctx.fillText(scoreText, x, scoreBaseline);
 
   ctx.font = "400 15px system-ui, sans-serif";
   ctx.strokeStyle = PALETTE.backgroundBottom;
   ctx.lineWidth = 3;
-  ctx.strokeText(formatTime(currentSurvivalTime), x, timeBaseline);
+  ctx.strokeText(timeText, x, timeBaseline);
   ctx.fillStyle = UI_COLORS.mutedText;
-  ctx.fillText(formatTime(currentSurvivalTime), x, timeBaseline);
+  ctx.fillText(timeText, x, timeBaseline);
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {

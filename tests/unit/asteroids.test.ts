@@ -6,9 +6,9 @@ import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MAX_RADIUS,
   ASTEROID_MAX_ROTATION_SPEED,
-  ASTEROID_MAX_BASE_SPEED,
   ASTEROID_MIN_RADIUS,
   ASTEROID_MIN_ROTATION_SPEED,
+  ASTEROID_SPEED_HARD_CAP,
   ASTEROID_SPEED_RAMP,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
@@ -263,7 +263,7 @@ describe("asteroid logic", () => {
       () => 1,
     );
 
-    expect(asteroids[0].speed).toBe(ASTEROID_MAX_BASE_SPEED);
+    expect(asteroids[0].speed).toBe(ASTEROID_SPEED_HARD_CAP);
   });
 
   it("creates fiery asteroids with faster speed and rotation when the variant roll hits", () => {

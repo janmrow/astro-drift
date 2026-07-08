@@ -2,12 +2,12 @@ import {
   ASTEROID_BASE_MAX_SPEED,
   ASTEROID_BASE_MIN_SPEED,
   ASTEROID_BASE_SPAWN_INTERVAL,
-  ASTEROID_MAX_BASE_SPEED,
   ASTEROID_MAX_RADIUS,
   ASTEROID_MAX_ROTATION_SPEED,
   ASTEROID_MIN_RADIUS,
   ASTEROID_MIN_ROTATION_SPEED,
   ASTEROID_MIN_SPAWN_INTERVAL,
+  ASTEROID_SPEED_HARD_CAP,
   ASTEROID_SPEED_RAMP,
   ASTEROID_SPAWN_RAMP,
   FIERY_ASTEROID_CHANCE,
@@ -110,7 +110,7 @@ function createAsteroid(currentSurvivalTime: number, id: number, rng: () => numb
   const speed = clamp(
     randomBetween(ASTEROID_BASE_MIN_SPEED + speedBonus, ASTEROID_BASE_MAX_SPEED + speedBonus, rng),
     ASTEROID_BASE_MIN_SPEED,
-    ASTEROID_MAX_BASE_SPEED,
+    ASTEROID_SPEED_HARD_CAP,
   );
   const rotationSpeed = createAsteroidRotationSpeed(variant, rng);
 

@@ -1,3 +1,4 @@
+import { BONUS_FEEDBACK_DURATION } from "../game/balance";
 import { GAME_HEIGHT, GAME_WIDTH, PLAYER_AREA_MAX_X } from "../game/engine";
 import { formatScore, formatTime } from "../game/format";
 import {
@@ -63,6 +64,9 @@ const HUD_SCRIM = {
   centerX: 110,
   centerY: 50,
   radius: 140,
+  // Beyond this fraction of the radius the gradient has already faded to
+  // near-transparent, so the fill only needs to cover up to here.
+  visibleExtent: 0.8,
 };
 
 const PLAYER_SECTOR_GUIDE = {
@@ -132,7 +136,7 @@ export function renderFrame(
   currentSurvivalTime: number,
   currentBestScore: number,
   bonusFeedbackText: string | null,
-  bonusFeedbackFraction: number,
+  bonusFeedbackTimeLeft: number,
   frameTime: number,
   ambientMotionSuppressed = false,
 ): void {
@@ -144,7 +148,7 @@ export function renderFrame(
   drawScore(ctx, currentScore, currentSurvivalTime);
 
   if (bonusFeedbackText) {
-    drawBonusFeedback(ctx, bonusFeedbackText, currentPlayer, bonusFeedbackFraction);
+    drawBonusFeedback(ctx, bonusFeedbackText, currentPlayer, bonusFeedbackTimeLeft);
   }
 
   drawVignette(ctx);
@@ -158,14 +162,19 @@ export function renderFrame(
   }
 }
 
+// Static geometry and colors, so this is built once on first use and reused
+// every frame rather than recreated per frame.
+let backgroundGradient: CanvasGradient | null = null;
+
 function drawBackground(ctx: CanvasRenderingContext2D): void {
-  const skyGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+  if (!backgroundGradient) {
+    backgroundGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+    backgroundGradient.addColorStop(0, PALETTE.backgroundTop);
+    backgroundGradient.addColorStop(0.56, PALETTE.backgroundMid);
+    backgroundGradient.addColorStop(1, PALETTE.backgroundBottom);
+  }
 
-  skyGradient.addColorStop(0, PALETTE.backgroundTop);
-  skyGradient.addColorStop(0.56, PALETTE.backgroundMid);
-  skyGradient.addColorStop(1, PALETTE.backgroundBottom);
-
-  ctx.fillStyle = skyGradient;
+  ctx.fillStyle = backgroundGradient;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 }
 
@@ -315,12 +324,33 @@ function getAsteroidStrokeWidth(variant: AsteroidVariant): number {
   }
 }
 
+// Draws text with a solid-color outline so it stays legible over the
+// starfield/asteroids, without a background panel.
+function drawOutlinedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  font: string,
+  lineWidth: number,
+  fillColor: string,
+): void {
+  ctx.font = font;
+  ctx.strokeStyle = PALETTE.backgroundBottom;
+  ctx.lineWidth = lineWidth;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = fillColor;
+  ctx.fillText(text, x, y);
+}
+
 // Static position, so the gradient is built once on first use and reused
 // every frame rather than recreated per frame (see the gradient cost note in
 // docs/VISUAL-STYLE-CONSTRAINTS.md).
 let hudScrimGradient: CanvasGradient | null = null;
 
-function getHudScrimGradient(ctx: CanvasRenderingContext2D): CanvasGradient {
+function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentSurvivalTime: number): void {
+  const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
+
   if (!hudScrimGradient) {
     hudScrimGradient = ctx.createRadialGradient(
       HUD_SCRIM.centerX,
@@ -334,31 +364,19 @@ function getHudScrimGradient(ctx: CanvasRenderingContext2D): CanvasGradient {
     hudScrimGradient.addColorStop(1, withAlpha(PALETTE.backgroundBottom, 0));
   }
 
-  return hudScrimGradient;
-}
-
-function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentSurvivalTime: number): void {
-  const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
-
-  ctx.fillStyle = getHudScrimGradient(ctx);
-  ctx.fillRect(0, 0, HUD_SCRIM.centerX + HUD_SCRIM.radius, HUD_SCRIM.centerY + HUD_SCRIM.radius);
+  ctx.fillStyle = hudScrimGradient;
+  ctx.fillRect(
+    0,
+    0,
+    HUD_SCRIM.centerX + HUD_SCRIM.radius * HUD_SCRIM.visibleExtent,
+    HUD_SCRIM.centerY + HUD_SCRIM.radius * HUD_SCRIM.visibleExtent,
+  );
 
   const scoreText = formatScore(currentScore);
   const timeText = formatTime(currentSurvivalTime);
 
-  ctx.font = "700 24px system-ui, sans-serif";
-  ctx.strokeStyle = PALETTE.backgroundBottom;
-  ctx.lineWidth = 4;
-  ctx.strokeText(scoreText, x, scoreBaseline);
-  ctx.fillStyle = PALETTE.textPrimary;
-  ctx.fillText(scoreText, x, scoreBaseline);
-
-  ctx.font = "400 15px system-ui, sans-serif";
-  ctx.strokeStyle = PALETTE.backgroundBottom;
-  ctx.lineWidth = 3;
-  ctx.strokeText(timeText, x, timeBaseline);
-  ctx.fillStyle = UI_COLORS.mutedText;
-  ctx.fillText(timeText, x, timeBaseline);
+  drawOutlinedText(ctx, scoreText, x, scoreBaseline, "700 24px system-ui, sans-serif", 4, UI_COLORS.text);
+  drawOutlinedText(ctx, timeText, x, timeBaseline, "400 15px system-ui, sans-serif", 3, UI_COLORS.mutedText);
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -453,16 +471,19 @@ function drawPlayerAreaGuide(
 }
 
 const BONUS_FEEDBACK_RISE_DISTANCE = 18;
-const BONUS_FEEDBACK_MIN_Y = 16;
+// Keeps the popup clear of the HUD corner text/scrim when the player is near
+// the top-left of the play area.
+const BONUS_FEEDBACK_MIN_Y = HUD_CORNER.timeBaseline + 16;
 
 function drawBonusFeedback(
   ctx: CanvasRenderingContext2D,
   text: string,
   currentPlayer: Player,
-  feedbackFraction: number,
+  feedbackTimeLeft: number,
 ): void {
-  const x = currentPlayer.x;
+  const feedbackFraction = Math.max(0, Math.min(1, feedbackTimeLeft / BONUS_FEEDBACK_DURATION));
   const elapsedFraction = 1 - feedbackFraction;
+  const x = currentPlayer.x;
   const y = Math.max(
     BONUS_FEEDBACK_MIN_Y,
     currentPlayer.y - currentPlayer.height - elapsedFraction * BONUS_FEEDBACK_RISE_DISTANCE,
@@ -470,27 +491,31 @@ function drawBonusFeedback(
 
   ctx.save();
   ctx.globalAlpha = feedbackFraction;
-  ctx.fillStyle = UI_COLORS.amber;
-  ctx.font = "700 11px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(text, x, y);
+  drawOutlinedText(ctx, text, x, y, "700 11px system-ui, sans-serif", 2, UI_COLORS.amber);
   ctx.restore();
 }
 
+// Static geometry and colors, so this is built once on first use and reused
+// every frame rather than recreated per frame.
+let vignetteGradient: CanvasGradient | null = null;
+
 function drawVignette(ctx: CanvasRenderingContext2D): void {
-  const vignette = ctx.createRadialGradient(
-    GAME_WIDTH / 2,
-    GAME_HEIGHT / 2,
-    GAME_WIDTH * 0.24,
-    GAME_WIDTH / 2,
-    GAME_HEIGHT / 2,
-    GAME_WIDTH * 0.72,
-  );
+  if (!vignetteGradient) {
+    vignetteGradient = ctx.createRadialGradient(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH * 0.24,
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH * 0.72,
+    );
 
-  vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
-  vignette.addColorStop(0.72, "rgba(8, 3, 20, 0.14)");
-  vignette.addColorStop(1, "rgba(4, 1, 12, 0.42)");
+    vignetteGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
+    vignetteGradient.addColorStop(0.72, "rgba(8, 3, 20, 0.14)");
+    vignetteGradient.addColorStop(1, "rgba(4, 1, 12, 0.42)");
+  }
 
-  ctx.fillStyle = vignette;
+  ctx.fillStyle = vignetteGradient;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 }

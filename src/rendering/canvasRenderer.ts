@@ -7,6 +7,7 @@ import {
   type GameStatus,
   type Player,
 } from "../game/types";
+import { PALETTE } from "./theme";
 
 export type Star = {
   x: number;
@@ -87,7 +88,8 @@ const STATUS_TEXT: Record<GameStatus, string> = {
 const PLAYER_SHIP = {
   hullNotchInset: 12,
   hullOutlineWidth: 3,
-  hullOutlineBlur: 4,
+  hullShoulderXInset: 0.35,
+  hullShoulderYInset: 0.32,
   cockpitXOffset: 6,
   cockpitRadius: 5,
 };
@@ -99,27 +101,18 @@ const BONUS_BADGE = {
   height: 16,
 };
 
-const PALETTE = {
-  backgroundTop: "#22103a",
-  backgroundMid: "#29123a",
-  backgroundBottom: "#10071f",
+// Colors for HUD/overlay elements that are out of scope for the PR1 palette
+// redesign (see docs/VISUAL-STYLE-CONSTRAINTS.md) and stay unchanged here.
+// text/mutedText resolve through PALETTE since those roles are shared with
+// the rest of the redesign; the rest have no equivalent PALETTE role yet.
+const UI_COLORS = {
   surface: "rgba(7, 4, 23, 0.52)",
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
-  text: "#f6f0ff",
-  mutedText: "#c9bfe8",
+  text: PALETTE.textPrimary,
+  mutedText: PALETTE.textMuted,
   cyan: "#7df9ff",
-  cyanSoft: "rgba(125, 249, 255, 0.62)",
   cyanDim: "rgba(125, 249, 255, 0.18)",
-  magenta: "#d83b86",
-  magentaSoft: "rgba(216, 59, 134, 0.42)",
   amber: "#ffb86c",
-  rust: "#a34a38",
-  darkGold: "#b98b3f",
-  asteroidFill: "#211936",
-  asteroidStroke: "#78e6f0",
-  fieryAsteroidFill: "#4b1723",
-  fieryAsteroidStroke: "#ff6b45",
-  fieryAsteroidGlow: "rgba(255, 91, 53, 0.38)",
 };
 
 export function createStars(count: number): Star[] {
@@ -200,47 +193,71 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
 function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
   for (const star of starField) {
     const alphaMultiplier = star.layer === "near" ? 0.86 : 0.64;
+    const baseColor = star.layer === "near" ? PALETTE.starCool : PALETTE.starWarm;
 
     ctx.beginPath();
-    ctx.fillStyle = `rgba(246, 240, 255, ${star.alpha * alphaMultiplier})`;
+    ctx.fillStyle = withAlpha(baseColor, star.alpha * alphaMultiplier);
     ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const hexToRgbCache = new Map<string, [number, number, number]>();
+
+function withAlpha(hex: string, alpha: number): string {
+  let rgb = hexToRgbCache.get(hex);
+
+  if (!rgb) {
+    if (!HEX_COLOR_PATTERN.test(hex)) {
+      throw new Error(`withAlpha expects a "#rrggbb" hex color, got "${hex}"`);
+    }
+
+    rgb = [
+      Number.parseInt(hex.slice(1, 3), 16),
+      Number.parseInt(hex.slice(3, 5), 16),
+      Number.parseInt(hex.slice(5, 7), 16),
+    ];
+    hexToRgbCache.set(hex, rgb);
+  }
+
+  const [r, g, b] = rgb;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function drawPlayer(
   ctx: CanvasRenderingContext2D,
   currentPlayer: Player,
-  frameTime: number,
-  ambientMotionSuppressed: boolean,
+  // No longer used now that the glow pulse is gone; kept so the call site in
+  // main.ts (out of scope for this PR) doesn't need to change.
+  _frameTime: number,
+  _ambientMotionSuppressed: boolean,
 ): void {
   const noseX = currentPlayer.x + currentPlayer.width / 2;
   const tailX = currentPlayer.x - currentPlayer.width / 2;
   const centerY = currentPlayer.y;
-
-  ctx.save();
-  ctx.shadowColor = PALETTE.magentaSoft;
-  ctx.shadowBlur = getPulse(frameTime, 8, 18, 0.002, ambientMotionSuppressed);
+  const shoulderX = noseX - currentPlayer.width * PLAYER_SHIP.hullShoulderXInset;
+  const shoulderYOffset = currentPlayer.height * PLAYER_SHIP.hullShoulderYInset;
 
   ctx.beginPath();
   ctx.moveTo(noseX, centerY);
+  ctx.lineTo(shoulderX, centerY - shoulderYOffset);
   ctx.lineTo(tailX, centerY - currentPlayer.height / 2);
   ctx.lineTo(tailX + PLAYER_SHIP.hullNotchInset, centerY);
   ctx.lineTo(tailX, centerY + currentPlayer.height / 2);
+  ctx.lineTo(shoulderX, centerY + shoulderYOffset);
   ctx.closePath();
 
-  ctx.fillStyle = PALETTE.magenta;
+  ctx.fillStyle = PALETTE.playerAccent;
   ctx.fill();
 
-  ctx.shadowBlur = PLAYER_SHIP.hullOutlineBlur;
-  ctx.strokeStyle = PALETTE.rust;
+  ctx.strokeStyle = PALETTE.playerAccentDark;
   ctx.lineWidth = PLAYER_SHIP.hullOutlineWidth;
   ctx.stroke();
 
-  ctx.restore();
-
   ctx.beginPath();
-  ctx.fillStyle = PALETTE.darkGold;
+  ctx.fillStyle = PALETTE.playerAccentDark;
   ctx.arc(currentPlayer.x - PLAYER_SHIP.cockpitXOffset, centerY, PLAYER_SHIP.cockpitRadius, 0, Math.PI * 2);
   ctx.fill();
 }
@@ -274,8 +291,6 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
 
   ctx.closePath();
 
-  ctx.shadowColor = asteroidStyle.glow;
-  ctx.shadowBlur = 12;
   ctx.fillStyle = asteroidStyle.fill;
   ctx.fill();
 
@@ -286,23 +301,24 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   ctx.restore();
 }
 
+// High but not fully opaque, so the fill reads as a solid rock silhouette
+// (matching the pre-redesign look) rather than a background-dependent tint.
+const ASTEROID_FILL_ALPHA = 0.85;
+
 function getAsteroidStyle(asteroid: Asteroid): {
   fill: string;
   stroke: string;
-  glow: string;
 } {
   switch (asteroid.variant) {
     case "fiery":
       return {
-        fill: PALETTE.fieryAsteroidFill,
-        stroke: PALETTE.fieryAsteroidStroke,
-        glow: PALETTE.fieryAsteroidGlow,
+        fill: withAlpha(PALETTE.hazardEscalated, ASTEROID_FILL_ALPHA),
+        stroke: PALETTE.hazardEscalated,
       };
     case "standard":
       return {
-        fill: PALETTE.asteroidFill,
-        stroke: PALETTE.asteroidStroke,
-        glow: "rgba(125, 249, 255, 0.24)",
+        fill: withAlpha(PALETTE.hazardStandard, ASTEROID_FILL_ALPHA),
+        stroke: PALETTE.hazardStandard,
       };
     default:
       return assertNever(asteroid.variant);
@@ -330,14 +346,14 @@ function drawStatusText(
 ): void {
   const { x, y, width, height, padding } = HUD_PANEL;
 
-  ctx.fillStyle = PALETTE.surface;
+  ctx.fillStyle = UI_COLORS.surface;
   ctx.fillRect(x, y, width, height);
 
-  ctx.strokeStyle = PALETTE.cyanDim;
+  ctx.strokeStyle = UI_COLORS.cyanDim;
   ctx.lineWidth = 1;
   ctx.strokeRect(x, y, width, height);
 
-  ctx.fillStyle = PALETTE.text;
+  ctx.fillStyle = UI_COLORS.text;
   ctx.font = "700 24px system-ui, sans-serif";
 
   ctx.fillText(STATUS_TEXT[currentStatus], x + padding, y + HUD_PANEL.statusBaseline);
@@ -349,17 +365,17 @@ function drawStatusText(
   ctx.fillText("BEST", x + width - padding, y + HUD_PANEL.labelBaseline);
   ctx.textAlign = "start";
 
-  ctx.fillStyle = PALETTE.cyan;
+  ctx.fillStyle = UI_COLORS.cyan;
   ctx.font = "700 24px system-ui, sans-serif";
   ctx.fillText(formatScore(currentScore), x + padding, y + HUD_PANEL.scoreBaseline);
 
-  ctx.fillStyle = PALETTE.text;
+  ctx.fillStyle = UI_COLORS.text;
   ctx.font = "700 18px system-ui, sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(formatScore(currentBestScore), x + width - padding, y + HUD_PANEL.bestScoreBaseline);
   ctx.textAlign = "start";
 
-  ctx.fillStyle = PALETTE.mutedText;
+  ctx.fillStyle = UI_COLORS.mutedText;
   ctx.font = "400 15px system-ui, sans-serif";
   ctx.fillText(`Time: ${formatTime(currentSurvivalTime)}`, x + padding, y + HUD_PANEL.detailsBaseline);
   ctx.fillText(
@@ -376,19 +392,19 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
   ctx.save();
   ctx.textAlign = "center";
 
-  ctx.fillStyle = PALETTE.text;
+  ctx.fillStyle = UI_COLORS.text;
   ctx.font = "700 58px system-ui, sans-serif";
   ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
 
-  ctx.fillStyle = PALETTE.mutedText;
+  ctx.fillStyle = UI_COLORS.mutedText;
   ctx.font = "400 22px system-ui, sans-serif";
   ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
 
-  ctx.fillStyle = PALETTE.cyan;
+  ctx.fillStyle = UI_COLORS.cyan;
   ctx.font = "700 21px system-ui, sans-serif";
   ctx.fillText("Press Enter or Space to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
-  ctx.fillStyle = PALETTE.mutedText;
+  ctx.fillStyle = UI_COLORS.mutedText;
   ctx.font = "400 17px system-ui, sans-serif";
   ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
@@ -401,44 +417,48 @@ function drawGameOverOverlay(
   finalSurvivalTime: number,
   bestScore: number,
 ): void {
-  ctx.fillStyle = PALETTE.surfaceStrong;
+  ctx.fillStyle = UI_COLORS.surfaceStrong;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
   ctx.save();
   ctx.textAlign = "center";
 
-  ctx.fillStyle = PALETTE.text;
+  ctx.fillStyle = UI_COLORS.text;
   ctx.font = "700 56px system-ui, sans-serif";
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
-  ctx.fillStyle = PALETTE.amber;
+  ctx.fillStyle = UI_COLORS.amber;
   ctx.font = "700 30px system-ui, sans-serif";
   ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
 
-  ctx.fillStyle = PALETTE.text;
+  ctx.fillStyle = UI_COLORS.text;
   ctx.font = "700 22px system-ui, sans-serif";
   ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
 
-  ctx.fillStyle = PALETTE.mutedText;
+  ctx.fillStyle = UI_COLORS.mutedText;
   ctx.font = "400 21px system-ui, sans-serif";
   ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
 
-  ctx.fillStyle = PALETTE.text;
+  ctx.fillStyle = UI_COLORS.text;
   ctx.font = "700 19px system-ui, sans-serif";
   ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
   ctx.restore();
 }
 
+const PLAYER_SECTOR_GUIDE_LINE_ALPHA = 0.22;
+const PLAYER_SECTOR_GUIDE_LABEL_ALPHA = 0.65;
+
 function drawPlayerAreaGuide(
   ctx: CanvasRenderingContext2D,
-  frameTime: number,
-  ambientMotionSuppressed: boolean,
+  // No longer used now that the guide's pulse is gone; kept so the call site
+  // in main.ts (out of scope for this PR) doesn't need to change.
+  _frameTime: number,
+  _ambientMotionSuppressed: boolean,
 ): void {
   const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
-  const guideOpacity = getPulse(frameTime, 0.14, 0.3, 0.0016, ambientMotionSuppressed);
 
-  ctx.strokeStyle = `rgba(125, 249, 255, ${guideOpacity})`;
+  ctx.strokeStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LINE_ALPHA);
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 10]);
   ctx.beginPath();
@@ -447,7 +467,7 @@ function drawPlayerAreaGuide(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillStyle = PALETTE.cyanSoft;
+  ctx.fillStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LABEL_ALPHA);
   ctx.font = "600 14px system-ui, sans-serif";
   ctx.fillText(
     "player sector",
@@ -465,7 +485,7 @@ function drawBonusFeedback(ctx: CanvasRenderingContext2D, text: string): void {
   ctx.strokeRect(BONUS_BADGE.x, BONUS_BADGE.y, BONUS_BADGE.width, BONUS_BADGE.height);
 
   ctx.save();
-  ctx.fillStyle = PALETTE.amber;
+  ctx.fillStyle = UI_COLORS.amber;
   ctx.font = "700 11px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(text, BONUS_BADGE.x + BONUS_BADGE.width / 2, BONUS_BADGE.y + 12);
@@ -488,22 +508,4 @@ function drawVignette(ctx: CanvasRenderingContext2D): void {
 
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-}
-
-function getPulse(
-  frameTime: number,
-  min: number,
-  max: number,
-  speed: number,
-  frozen: boolean,
-): number {
-  const midpoint = (min + max) / 2;
-
-  if (frozen) {
-    return midpoint;
-  }
-
-  const amplitude = (max - min) / 2;
-
-  return midpoint + Math.sin(frameTime * speed) * amplitude;
 }

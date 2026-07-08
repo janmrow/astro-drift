@@ -103,11 +103,13 @@ const BONUS_BADGE = {
 
 // Colors for HUD/overlay elements that are out of scope for the PR1 palette
 // redesign (see docs/VISUAL-STYLE-CONSTRAINTS.md) and stay unchanged here.
+// text/mutedText resolve through PALETTE since those roles are shared with
+// the rest of the redesign; the rest have no equivalent PALETTE role yet.
 const UI_COLORS = {
   surface: "rgba(7, 4, 23, 0.52)",
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
-  text: "#f6f0ff",
-  mutedText: "#c9bfe8",
+  text: PALETTE.textPrimary,
+  mutedText: PALETTE.textMuted,
   cyan: "#7df9ff",
   cyanDim: "rgba(125, 249, 255, 0.18)",
   amber: "#ffb86c",
@@ -200,10 +202,26 @@ function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
   }
 }
 
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const hexToRgbCache = new Map<string, [number, number, number]>();
+
 function withAlpha(hex: string, alpha: number): string {
-  const r = Number.parseInt(hex.slice(1, 3), 16);
-  const g = Number.parseInt(hex.slice(3, 5), 16);
-  const b = Number.parseInt(hex.slice(5, 7), 16);
+  let rgb = hexToRgbCache.get(hex);
+
+  if (!rgb) {
+    if (!HEX_COLOR_PATTERN.test(hex)) {
+      throw new Error(`withAlpha expects a "#rrggbb" hex color, got "${hex}"`);
+    }
+
+    rgb = [
+      Number.parseInt(hex.slice(1, 3), 16),
+      Number.parseInt(hex.slice(3, 5), 16),
+      Number.parseInt(hex.slice(5, 7), 16),
+    ];
+    hexToRgbCache.set(hex, rgb);
+  }
+
+  const [r, g, b] = rgb;
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
@@ -283,7 +301,9 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   ctx.restore();
 }
 
-const ASTEROID_FILL_ALPHA = 0.28;
+// High but not fully opaque, so the fill reads as a solid rock silhouette
+// (matching the pre-redesign look) rather than a background-dependent tint.
+const ASTEROID_FILL_ALPHA = 0.85;
 
 function getAsteroidStyle(asteroid: Asteroid): {
   fill: string;
@@ -426,7 +446,8 @@ function drawGameOverOverlay(
   ctx.restore();
 }
 
-const PLAYER_SECTOR_GUIDE_ALPHA = 0.22;
+const PLAYER_SECTOR_GUIDE_LINE_ALPHA = 0.22;
+const PLAYER_SECTOR_GUIDE_LABEL_ALPHA = 0.65;
 
 function drawPlayerAreaGuide(
   ctx: CanvasRenderingContext2D,
@@ -437,7 +458,7 @@ function drawPlayerAreaGuide(
 ): void {
   const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
 
-  ctx.strokeStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_ALPHA);
+  ctx.strokeStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LINE_ALPHA);
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 10]);
   ctx.beginPath();
@@ -446,7 +467,7 @@ function drawPlayerAreaGuide(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillStyle = PALETTE.chrome;
+  ctx.fillStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LABEL_ALPHA);
   ctx.font = "600 14px system-ui, sans-serif";
   ctx.fillText(
     "player sector",

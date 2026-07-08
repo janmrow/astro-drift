@@ -8,7 +8,7 @@ import {
   type GameStatus,
   type Player,
 } from "../game/types";
-import { PALETTE } from "./theme";
+import { fontStyle, PALETTE } from "./theme";
 
 export type Star = {
   x: number;
@@ -375,8 +375,8 @@ function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentS
   const scoreText = formatScore(currentScore);
   const timeText = formatTime(currentSurvivalTime);
 
-  drawOutlinedText(ctx, scoreText, x, scoreBaseline, "700 24px system-ui, sans-serif", 4, UI_COLORS.text);
-  drawOutlinedText(ctx, timeText, x, timeBaseline, "400 15px system-ui, sans-serif", 3, UI_COLORS.mutedText);
+  drawOutlinedText(ctx, scoreText, x, scoreBaseline, fontStyle("md", 700), 4, UI_COLORS.text);
+  drawOutlinedText(ctx, timeText, x, timeBaseline, fontStyle("sm"), 3, UI_COLORS.mutedText);
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -387,19 +387,19 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
   ctx.textAlign = "center";
 
   ctx.fillStyle = UI_COLORS.text;
-  ctx.font = "700 58px system-ui, sans-serif";
+  ctx.font = fontStyle("xxl", 700);
   ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
 
   ctx.fillStyle = UI_COLORS.mutedText;
-  ctx.font = "400 22px system-ui, sans-serif";
+  ctx.font = fontStyle("md");
   ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
 
   ctx.fillStyle = UI_COLORS.cyan;
-  ctx.font = "700 21px system-ui, sans-serif";
+  ctx.font = fontStyle("md", 700);
   ctx.fillText("Press Enter or Space to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
   ctx.fillStyle = UI_COLORS.mutedText;
-  ctx.font = "400 17px system-ui, sans-serif";
+  ctx.font = fontStyle("sm");
   ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
   ctx.restore();
@@ -418,23 +418,23 @@ function drawGameOverOverlay(
   ctx.textAlign = "center";
 
   ctx.fillStyle = UI_COLORS.text;
-  ctx.font = "700 56px system-ui, sans-serif";
+  ctx.font = fontStyle("xxl", 700);
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
   ctx.fillStyle = UI_COLORS.amber;
-  ctx.font = "700 30px system-ui, sans-serif";
+  ctx.font = fontStyle("lg", 700);
   ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
 
   ctx.fillStyle = UI_COLORS.text;
-  ctx.font = "700 22px system-ui, sans-serif";
+  ctx.font = fontStyle("md", 700);
   ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
 
   ctx.fillStyle = UI_COLORS.mutedText;
-  ctx.font = "400 21px system-ui, sans-serif";
+  ctx.font = fontStyle("md");
   ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
 
   ctx.fillStyle = UI_COLORS.text;
-  ctx.font = "700 19px system-ui, sans-serif";
+  ctx.font = fontStyle("md", 700);
   ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
   ctx.restore();
@@ -462,7 +462,7 @@ function drawPlayerAreaGuide(
   ctx.setLineDash([]);
 
   ctx.fillStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LABEL_ALPHA);
-  ctx.font = "600 14px system-ui, sans-serif";
+  ctx.font = fontStyle("xs", 700);
   ctx.fillText(
     "player sector",
     PLAYER_SECTOR_GUIDE.labelX,
@@ -492,7 +492,7 @@ function drawBonusFeedback(
   ctx.save();
   ctx.globalAlpha = feedbackFraction;
   ctx.textAlign = "center";
-  drawOutlinedText(ctx, text, x, y, "700 11px system-ui, sans-serif", 2, UI_COLORS.amber);
+  drawOutlinedText(ctx, text, x, y, fontStyle("xs", 700), 2, UI_COLORS.amber);
   ctx.restore();
 }
 

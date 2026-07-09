@@ -84,14 +84,14 @@ const PLAYER_SHIP = {
 };
 
 // Colors for HUD/overlay elements with no equivalent PALETTE role yet.
-// text/mutedText resolve through PALETTE since those roles are shared with
-// the rest of the redesign. Reward-related text uses PALETTE.reward directly
-// instead of a UI_COLORS entry.
+// text/mutedText/cyan resolve through PALETTE since those roles are shared
+// with the rest of the redesign. Reward-related text uses PALETTE.reward
+// directly instead of a UI_COLORS entry.
 const UI_COLORS = {
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
   text: PALETTE.textPrimary,
   mutedText: PALETTE.textMuted,
-  cyan: "#7df9ff",
+  cyan: PALETTE.hazardStandard,
 };
 
 export function createStars(count: number): Star[] {
@@ -134,14 +134,12 @@ export function renderFrame(
   currentBestScore: number,
   bonusFeedbackText: string | null,
   bonusFeedbackTimeLeft: number,
-  frameTime: number,
-  ambientMotionSuppressed = false,
 ): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
-  drawPlayerAreaGuide(ctx, frameTime, ambientMotionSuppressed);
+  drawPlayerAreaGuide(ctx);
   drawAsteroids(ctx, currentAsteroids);
-  drawPlayer(ctx, currentPlayer, frameTime, ambientMotionSuppressed);
+  drawPlayer(ctx, currentPlayer);
   drawScore(ctx, currentScore, currentSurvivalTime);
 
   if (bonusFeedbackText) {
@@ -211,14 +209,7 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function drawPlayer(
-  ctx: CanvasRenderingContext2D,
-  currentPlayer: Player,
-  // No longer used now that the glow pulse is gone; kept so the call site in
-  // main.ts (out of scope for this PR) doesn't need to change.
-  _frameTime: number,
-  _ambientMotionSuppressed: boolean,
-): void {
+function drawPlayer(ctx: CanvasRenderingContext2D, currentPlayer: Player): void {
   const noseX = currentPlayer.x + currentPlayer.width / 2;
   const tailX = currentPlayer.x - currentPlayer.width / 2;
   const centerY = currentPlayer.y;
@@ -439,13 +430,7 @@ function drawGameOverOverlay(
 
 const PLAYER_SECTOR_GUIDE_LINE_ALPHA = 0.22;
 
-function drawPlayerAreaGuide(
-  ctx: CanvasRenderingContext2D,
-  // No longer used now that the guide's pulse is gone; kept so the call site
-  // in main.ts (out of scope for this PR) doesn't need to change.
-  _frameTime: number,
-  _ambientMotionSuppressed: boolean,
-): void {
+function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
   const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
 
   ctx.strokeStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LINE_ALPHA);

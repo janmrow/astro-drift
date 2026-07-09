@@ -93,16 +93,15 @@ not a side effect of a palette change:
   should be tuned/tested against actual gameplay speed (asteroid density and
   velocity from `engine.ts`), not judged from a slow mockup.
 
-  **Attempted 2026-07 and reverted** — see the `backup/motion-trails-attempt`
-  branch. Every existing draw call that is (a) translucent and (b) drawn at a
-  fixed screen position every frame silently compounds with its own residue
-  once the canvas stops being fully cleared each frame. This hit every
-  pre-existing fixed overlay in this file in turn — vignette, HUD scrim,
-  idle/game-over scrims, the player-area guide line — each discovered
-  reactively from a bug report, not caught by tests (Canvas pixel testing is
-  out of scope by design, see above) or by visual spot-checks that didn't
-  specifically cover state *transitions* (idle→running), which is where the
-  worst artifact showed up.
+  **Attempted 2026-07 and reverted.** Every existing draw call that is (a)
+  translucent and (b) drawn at a fixed screen position every frame silently
+  compounds with its own residue once the canvas stops being fully cleared
+  each frame. This hit every pre-existing fixed overlay in this file in turn
+  — vignette, HUD scrim, idle/game-over scrims, the player-area guide line —
+  each discovered reactively from a bug report, not caught by tests (Canvas
+  pixel testing is out of scope by design, see above) or by visual
+  spot-checks that didn't specifically cover state *transitions*
+  (idle→running), which is where the worst artifact showed up.
 
   Before attempting this again: grep the renderer for every `withAlpha(`,
   `globalAlpha`, and `rgba(...)`-with-alpha-under-1 call site, and classify

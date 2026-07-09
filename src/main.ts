@@ -97,8 +97,6 @@ function runGameLoop(currentFrameTime: number): void {
     gameState.bonusFeedbackTimeLeft > 0 ? gameState.bonusFeedbackText : null,
     // Raw time remaining; the renderer derives the fade/rise fraction so the animation curve stays a rendering concern.
     gameState.bonusFeedbackTimeLeft,
-    currentFrameTime,
-    ambientMotionSuppressed,
   );
   updateDomStatus();
 

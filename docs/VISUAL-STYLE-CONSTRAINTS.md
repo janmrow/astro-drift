@@ -63,10 +63,10 @@ a budget when evaluating any style proposal:
 | Expensive (use sparingly, budget explicitly) | `shadowBlur`/glow, `ctx.filter` (blur, etc.) | Cost scales with object count and blur radius; a handful of instances is fine, applying it per-asteroid at scale is not |
 | Avoid at current scale | full-frame software filters, per-frame `getImageData`/pixel manipulation | Disproportionate cost for a 2D arcade game of this scope |
 
-Known existing debt in this tier system (from the June 2026 code audit): gradients
-in `canvasRenderer.ts` are currently recreated every frame instead of cached. Any
-style work that adds *more* gradients should not ship before this is fixed, or the
-same class of problem is being multiplied instead of resolved.
+Gradients in `canvasRenderer.ts` (`backgroundGradient`, `hudScrimGradient`,
+`vignetteGradient`) are cached as module-level variables built once behind
+`if (!x)` guards, not recreated per frame. Keep new gradient work to that same
+pattern.
 
 ## Style-neutral degrees of freedom
 
@@ -92,6 +92,16 @@ not a side effect of a palette change:
   does not violate ADR-001, but it's a real change to the render loop's contract and
   should be tuned/tested against actual gameplay speed (asteroid density and
   velocity from `engine.ts`), not judged from a slow mockup.
+
+  **Attempted 2026-07 and reverted.** Every existing draw call that is (a)
+  translucent and (b) drawn at a fixed screen position every frame silently
+  compounds with its own residue once the canvas stops being fully cleared
+  each frame — it hit every pre-existing fixed overlay in this file in turn
+  (vignette, HUD scrim, idle/game-over scrims, the player-area guide line),
+  each discovered reactively from a bug report rather than up front. Before
+  attempting this again, audit every translucent, fixed-position draw call
+  in this file first and decide how each is excluded from the trail — don't
+  discover them one at a time from bug reports.
 - **`roundRect()`** is Baseline widely available (since October 2025) and safe to
   use without a polyfill.
 - Any technique that would require reading pixels back (`getImageData`) or
@@ -107,34 +117,30 @@ not a side effect of a palette change:
   (e.g., a easing/interpolation helper, a color-mixing function), those are
   legitimate unit test candidates — same standard as any pure function elsewhere in
   the repo. Drawing calls themselves remain untested, as already decided.
-- `prefers-reduced-motion` is still an open gap (noted in the June 2026 audit) and
-  becomes more relevant, not less, if motion becomes a bigger part of the style —
-  worth closing alongside any redesign that leans on animation.
-
-## Adjacent refactor ideas worth doing alongside a redesign
-
-Not required to start style work, but likely to pay off if done together with it
-rather than after:
-
-- **Fix per-frame gradient creation** before adding more gradients (see cost model
-  above).
-- **Extract style constants into a single module** (e.g. a `theme`/`palette` object
-  in the rendering layer) rather than hex values scattered across
-  `canvasRenderer.ts`, so future palette changes are a one-file edit.
-- **Close the `prefers-reduced-motion` gap** if the new style adds meaningful motion.
+- `prefers-reduced-motion` is already read via `window.matchMedia` in `src/main.ts`
+  and gates star motion through `ambientMotionSuppressed`. Any new motion-based
+  style work should route through the same flag rather than adding a parallel
+  check.
 
 ## Open decisions log
 
 Running list of things intentionally left unresolved — revisit when doing concrete
 style work, don't assume an answer by default:
 
-- Faceted vs rounded shape language (or a deliberate mix, e.g. smooth player vs
-  jagged hazards for semantic contrast)
-- Outlined silhouettes vs stroke-free flat shapes
-- Boxed HUD panel vs boxless/floating status text
+- ~~Faceted vs rounded shape language~~ — resolved: faceted. Player hull has an
+  added shoulder/notch bevel (`PLAYER_SHIP` geometry, `canvasRenderer.ts:77-83,222-234`)
+  and asteroids are irregular polygons via per-point `distanceMultiplier`
+  (`asteroids.ts:210-226`).
+- ~~Outlined silhouettes vs stroke-free flat shapes~~ — resolved: outlined. Ship,
+  asteroids, and all HUD/overlay text use stroke+fill (`drawPlayer`, `drawAsteroid`,
+  `drawOutlinedText`).
+- ~~Boxed HUD panel vs boxless/floating status text~~ — resolved: boxless. The HUD
+  redesign removed `HUD_PANEL` and related bounding-box constants.
 - Extent of idle motion (none / subtle / prominent) and its performance budget
 - Whether motion trails (see above) are worth their added render-loop complexity
-- Typeface family and weight strategy (uniform weight vs deliberate contrast)
+- ~~Typeface family and weight strategy~~ — resolved: deliberate contrast.
+  `fontStyle(size, 700)` is used for titles/emphasis, default `400` for body/muted
+  text throughout `canvasRenderer.ts`.
 
 ## References
 

@@ -83,16 +83,15 @@ const PLAYER_SHIP = {
   cockpitRadius: 5,
 };
 
-// Colors for HUD/overlay elements that are out of scope for the palette
-// redesign (see docs/VISUAL-STYLE-CONSTRAINTS.md) and stay unchanged here.
+// Colors for HUD/overlay elements with no equivalent PALETTE role yet.
 // text/mutedText resolve through PALETTE since those roles are shared with
-// the rest of the redesign; the rest have no equivalent PALETTE role yet.
+// the rest of the redesign. Reward-related text uses PALETTE.reward directly
+// instead of a UI_COLORS entry.
 const UI_COLORS = {
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
   text: PALETTE.textPrimary,
   mutedText: PALETTE.textMuted,
   cyan: "#7df9ff",
-  amber: "#ffb86c",
 };
 
 export function createStars(count: number): Star[] {
@@ -419,7 +418,7 @@ function drawGameOverOverlay(
   ctx.font = fontStyle("xxl", 700);
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
-  ctx.fillStyle = UI_COLORS.amber;
+  ctx.fillStyle = PALETTE.reward;
   ctx.font = fontStyle("lg", 700);
   ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
 
@@ -481,7 +480,7 @@ function drawBonusFeedback(
   ctx.save();
   ctx.globalAlpha = feedbackFraction;
   ctx.textAlign = "center";
-  drawOutlinedText(ctx, text, x, y, fontStyle("xs", 700), 2, UI_COLORS.amber);
+  drawOutlinedText(ctx, text, x, y, fontStyle("xs", 700), 2, PALETTE.reward);
   ctx.restore();
 }
 

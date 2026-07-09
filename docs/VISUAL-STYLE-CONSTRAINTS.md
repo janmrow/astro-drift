@@ -92,6 +92,27 @@ not a side effect of a palette change:
   does not violate ADR-001, but it's a real change to the render loop's contract and
   should be tuned/tested against actual gameplay speed (asteroid density and
   velocity from `engine.ts`), not judged from a slow mockup.
+
+  **Attempted 2026-07 and reverted** — see the `backup/motion-trails-attempt`
+  branch. Every existing draw call that is (a) translucent and (b) drawn at a
+  fixed screen position every frame silently compounds with its own residue
+  once the canvas stops being fully cleared each frame. This hit every
+  pre-existing fixed overlay in this file in turn — vignette, HUD scrim,
+  idle/game-over scrims, the player-area guide line — each discovered
+  reactively from a bug report, not caught by tests (Canvas pixel testing is
+  out of scope by design, see above) or by visual spot-checks that didn't
+  specifically cover state *transitions* (idle→running), which is where the
+  worst artifact showed up.
+
+  Before attempting this again: grep the renderer for every `withAlpha(`,
+  `globalAlpha`, and `rgba(...)`-with-alpha-under-1 call site, and classify
+  each as trail-eligible (moves with a game object) or static (fixed
+  position, redrawn identically every frame). Decide up front how every
+  static one is excluded from the trail — don't discover them one at a time
+  from bug reports. If that list is long, or a case can't be cleanly excluded
+  without an offscreen buffer/second canvas (out of scope per the next
+  bullet), treat that as a signal the technique doesn't fit this renderer's
+  current shape, not as a punch list to patch through.
 - **`roundRect()`** is Baseline widely available (since October 2025) and safe to
   use without a polyfill.
 - Any technique that would require reading pixels back (`getImageData`) or

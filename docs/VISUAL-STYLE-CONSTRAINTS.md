@@ -99,9 +99,9 @@ not a side effect of a palette change:
   each frame — it hit every pre-existing fixed overlay in this file in turn
   (vignette, HUD scrim, idle/game-over scrims, the player-area guide line),
   each discovered reactively from a bug report rather than up front. Before
-  attempting this again, follow `CLAUDE.md`'s "audit invariant dependents
-  before implementing" guardrail against every translucent, fixed-position
-  draw call in this file, not just the ones a quick look happens to catch.
+  attempting this again, audit every translucent, fixed-position draw call
+  in this file first and decide how each is excluded from the trail — don't
+  discover them one at a time from bug reports.
 - **`roundRect()`** is Baseline widely available (since October 2025) and safe to
   use without a polyfill.
 - Any technique that would require reading pixels back (`getImageData`) or

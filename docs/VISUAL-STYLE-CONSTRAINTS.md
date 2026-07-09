@@ -96,22 +96,12 @@ not a side effect of a palette change:
   **Attempted 2026-07 and reverted.** Every existing draw call that is (a)
   translucent and (b) drawn at a fixed screen position every frame silently
   compounds with its own residue once the canvas stops being fully cleared
-  each frame. This hit every pre-existing fixed overlay in this file in turn
-  — vignette, HUD scrim, idle/game-over scrims, the player-area guide line —
-  each discovered reactively from a bug report, not caught by tests (Canvas
-  pixel testing is out of scope by design, see above) or by visual
-  spot-checks that didn't specifically cover state *transitions*
-  (idle→running), which is where the worst artifact showed up.
-
-  Before attempting this again: grep the renderer for every `withAlpha(`,
-  `globalAlpha`, and `rgba(...)`-with-alpha-under-1 call site, and classify
-  each as trail-eligible (moves with a game object) or static (fixed
-  position, redrawn identically every frame). Decide up front how every
-  static one is excluded from the trail — don't discover them one at a time
-  from bug reports. If that list is long, or a case can't be cleanly excluded
-  without an offscreen buffer/second canvas (out of scope per the next
-  bullet), treat that as a signal the technique doesn't fit this renderer's
-  current shape, not as a punch list to patch through.
+  each frame — it hit every pre-existing fixed overlay in this file in turn
+  (vignette, HUD scrim, idle/game-over scrims, the player-area guide line),
+  each discovered reactively from a bug report rather than up front. Before
+  attempting this again, follow `CLAUDE.md`'s "audit invariant dependents
+  before implementing" guardrail against every translucent, fixed-position
+  draw call in this file, not just the ones a quick look happens to catch.
 - **`roundRect()`** is Baseline widely available (since October 2025) and safe to
   use without a polyfill.
 - Any technique that would require reading pixels back (`getImageData`) or
@@ -132,21 +122,13 @@ not a side effect of a palette change:
   style work should route through the same flag rather than adding a parallel
   check.
 
-## Adjacent refactor ideas worth doing alongside a redesign
-
-Not required to start style work, but likely to pay off if done together with it
-rather than after:
-
-- Gradient caching and style-constant extraction (`src/rendering/theme.ts`) are
-  already done — nothing further needed here.
-
 ## Open decisions log
 
 Running list of things intentionally left unresolved — revisit when doing concrete
 style work, don't assume an answer by default:
 
 - ~~Faceted vs rounded shape language~~ — resolved: faceted. Player hull has an
-  added shoulder/notch bevel (`PLAYER_SHIP` geometry, `canvasRenderer.ts:77-84,226-236`)
+  added shoulder/notch bevel (`PLAYER_SHIP` geometry, `canvasRenderer.ts:77-83,222-234`)
   and asteroids are irregular polygons via per-point `distanceMultiplier`
   (`asteroids.ts:210-226`).
 - ~~Outlined silhouettes vs stroke-free flat shapes~~ — resolved: outlined. Ship,

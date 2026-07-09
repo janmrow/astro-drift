@@ -84,14 +84,14 @@ const PLAYER_SHIP = {
 };
 
 // Colors for HUD/overlay elements with no equivalent PALETTE role yet.
-// text/mutedText resolve through PALETTE since those roles are shared with
-// the rest of the redesign. Reward-related text uses PALETTE.reward directly
-// instead of a UI_COLORS entry.
+// text/mutedText/cyan resolve through PALETTE since those roles are shared
+// with the rest of the redesign. Reward-related text uses PALETTE.reward
+// directly instead of a UI_COLORS entry.
 const UI_COLORS = {
   surfaceStrong: "rgba(7, 4, 23, 0.76)",
   text: PALETTE.textPrimary,
   mutedText: PALETTE.textMuted,
-  cyan: "#7df9ff",
+  cyan: PALETTE.hazardStandard,
 };
 
 export function createStars(count: number): Star[] {

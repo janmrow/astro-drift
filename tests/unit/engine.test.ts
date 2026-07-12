@@ -8,11 +8,7 @@ import {
   FIERY_ASTEROID_PASS_BONUS,
   PLAYER_SPEED,
 } from "../../src/game/balance";
-import {
-  ASTEROID_REMOVE_PADDING,
-  getAsteroidSpawnInterval,
-  updateAsteroids,
-} from "../../src/game/asteroids";
+import { getAsteroidSpawnInterval, updateAsteroids } from "../../src/game/asteroids";
 import {
   GAME_HEIGHT,
   MAX_FRAME_DELTA_SECONDS,
@@ -358,10 +354,11 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = collectPassBonuses(100, player, [asteroid]);
+      const result = collectPassBonuses(100, player, [asteroid]);
 
-      expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS);
-      expect(asteroid.hasAwardedPassBonus).toBe(true);
+      expect(result.score).toBe(100 + ASTEROID_PASS_BONUS);
+      expect(result.asteroids[0].hasAwardedPassBonus).toBe(true);
+      expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
 
     it("adds the larger bonus score when a fiery asteroid passes the player", () => {
@@ -372,10 +369,11 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = collectPassBonuses(100, player, [asteroid]);
+      const result = collectPassBonuses(100, player, [asteroid]);
 
-      expect(updatedScore).toBe(100 + FIERY_ASTEROID_PASS_BONUS);
-      expect(asteroid.hasAwardedPassBonus).toBe(true);
+      expect(result.score).toBe(100 + FIERY_ASTEROID_PASS_BONUS);
+      expect(result.asteroids[0].hasAwardedPassBonus).toBe(true);
+      expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
 
     it("adds bonus score for each newly passed asteroid", () => {
@@ -392,11 +390,13 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = collectPassBonuses(100, player, [firstAsteroid, secondAsteroid]);
+      const result = collectPassBonuses(100, player, [firstAsteroid, secondAsteroid]);
 
-      expect(updatedScore).toBe(100 + ASTEROID_PASS_BONUS + FIERY_ASTEROID_PASS_BONUS);
-      expect(firstAsteroid.hasAwardedPassBonus).toBe(true);
-      expect(secondAsteroid.hasAwardedPassBonus).toBe(true);
+      expect(result.score).toBe(100 + ASTEROID_PASS_BONUS + FIERY_ASTEROID_PASS_BONUS);
+      expect(result.asteroids[0].hasAwardedPassBonus).toBe(true);
+      expect(result.asteroids[1].hasAwardedPassBonus).toBe(true);
+      expect(firstAsteroid.hasAwardedPassBonus).toBe(false);
+      expect(secondAsteroid.hasAwardedPassBonus).toBe(false);
     });
 
     it("does not mark asteroids as passed before they pass the player", () => {
@@ -406,9 +406,9 @@ describe("game engine", () => {
         radius: 20,
       });
 
-      const updatedScore = collectPassBonuses(100, player, [asteroid]);
+      const result = collectPassBonuses(100, player, [asteroid]);
 
-      expect(updatedScore).toBe(100);
+      expect(result.score).toBe(100);
       expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
 
@@ -420,9 +420,9 @@ describe("game engine", () => {
         hasAwardedPassBonus: true,
       });
 
-      const updatedScore = collectPassBonuses(100, player, [asteroid]);
+      const result = collectPassBonuses(100, player, [asteroid]);
 
-      expect(updatedScore).toBe(100);
+      expect(result.score).toBe(100);
     });
 
     it("still credits the bonus when a large frame delta would otherwise remove the asteroid in the same frame", () => {
@@ -437,12 +437,13 @@ describe("game engine", () => {
       });
       const largeDeltaTime = 1;
 
-      const scoreAfterBonus = collectPassBonuses(100, player, [asteroid]);
-      updateAsteroids([asteroid], largeDeltaTime);
+      const bonusResult = collectPassBonuses(100, player, [asteroid]);
+      const updatedAsteroids = updateAsteroids(bonusResult.asteroids, largeDeltaTime);
 
-      expect(scoreAfterBonus).toBe(100 + ASTEROID_PASS_BONUS);
-      expect(asteroid.hasAwardedPassBonus).toBe(true);
-      expect(asteroid.x).toBeLessThan(-ASTEROID_REMOVE_PADDING);
+      expect(bonusResult.score).toBe(100 + ASTEROID_PASS_BONUS);
+      expect(bonusResult.asteroids[0].hasAwardedPassBonus).toBe(true);
+      expect(updatedAsteroids).toHaveLength(0);
+      expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
   });
 

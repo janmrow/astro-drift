@@ -140,28 +140,32 @@ describe("game engine properties", () => {
         const expectedYBeforeBounds = asteroid.y + asteroid.verticalSpeed * deltaTime;
         const initialRotation = asteroid.rotation;
 
-        updateAsteroids(asteroids, deltaTime);
+        const updatedAsteroids = updateAsteroids(asteroids, deltaTime);
 
-        if (asteroids.length === 0) {
+        if (updatedAsteroids.length === 0) {
           expect(initialX - asteroid.speed * deltaTime).toBeLessThan(-ASTEROID_REMOVE_PADDING);
           return;
         }
 
-        expect(asteroids[0].x).toBeLessThanOrEqual(initialX);
-        expect(asteroids[0].y).toBeGreaterThanOrEqual(
+        expect(updatedAsteroids[0].x).toBeLessThanOrEqual(initialX);
+        expect(updatedAsteroids[0].y).toBeGreaterThanOrEqual(
           asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING,
         );
-        expect(asteroids[0].y).toBeLessThanOrEqual(
+        expect(updatedAsteroids[0].y).toBeLessThanOrEqual(
           GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING,
         );
-        expect(asteroids[0].rotation).toBe(initialRotation + asteroid.rotationSpeed * deltaTime);
+        expect(updatedAsteroids[0].rotation).toBe(
+          initialRotation + asteroid.rotationSpeed * deltaTime,
+        );
+        expect(asteroid.x).toBe(initialX);
+        expect(asteroid.rotation).toBe(initialRotation);
 
         if (expectedYBeforeBounds < asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING) {
-          expect(asteroids[0].verticalSpeed).toBeGreaterThanOrEqual(0);
+          expect(updatedAsteroids[0].verticalSpeed).toBeGreaterThanOrEqual(0);
         }
 
         if (expectedYBeforeBounds > GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING) {
-          expect(asteroids[0].verticalSpeed).toBeLessThanOrEqual(0);
+          expect(updatedAsteroids[0].verticalSpeed).toBeLessThanOrEqual(0);
         }
       }),
       { numRuns: PROPERTY_RUNS },
@@ -178,9 +182,11 @@ describe("game engine properties", () => {
           const expectedBonus = asteroids
             .filter((asteroid) => !asteroid.hasAwardedPassBonus && hasAsteroidPassedPlayer(player, asteroid))
             .reduce((totalBonus, asteroid) => totalBonus + getAsteroidPassBonus(asteroid), 0);
-          const updatedScore = collectPassBonuses(currentScore, player, asteroids);
+          const originalAsteroids = asteroids.map((asteroid) => ({ ...asteroid }));
+          const result = collectPassBonuses(currentScore, player, asteroids);
 
-          expect(updatedScore).toBe(currentScore + expectedBonus);
+          expect(result.score).toBe(currentScore + expectedBonus);
+          expect(asteroids).toEqual(originalAsteroids);
         },
       ),
       { numRuns: PROPERTY_RUNS },
@@ -200,7 +206,7 @@ describe("game engine properties", () => {
             hasAwardedPassBonus: true,
           }));
 
-          expect(collectPassBonuses(currentScore, player, asteroids)).toBe(currentScore);
+          expect(collectPassBonuses(currentScore, player, asteroids).score).toBe(currentScore);
         },
       ),
       { numRuns: PROPERTY_RUNS },
@@ -226,7 +232,7 @@ describe("game engine properties", () => {
             );
           }, 0);
 
-          expect(collectPassBonuses(currentScore, player, asteroids)).toBe(
+          expect(collectPassBonuses(currentScore, player, asteroids).score).toBe(
             currentScore + expectedBonus,
           );
         },

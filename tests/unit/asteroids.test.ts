@@ -40,17 +40,15 @@ function slightlyBelow(value: number): number {
 }
 
 function spawnAsteroid(rngValue: number, survivalTime = 0): Asteroid {
-  const asteroids: Asteroid[] = [];
-
-  updateAsteroidSpawning(
-    asteroids,
+  const result = updateAsteroidSpawning(
+    [],
     createInitialAsteroidSpawnState(),
     ASTEROID_BASE_SPAWN_INTERVAL,
     survivalTime,
     constantRng(rngValue),
   );
 
-  return asteroids[0];
+  return result.asteroids[0];
 }
 
 describe("asteroid logic", () => {
@@ -67,35 +65,39 @@ describe("asteroid logic", () => {
     const asteroids: Asteroid[] = [];
     const spawnState = createInitialAsteroidSpawnState();
 
-    const updatedSpawnState = updateAsteroidSpawning(
+    const result = updateAsteroidSpawning(
       asteroids,
       spawnState,
       ASTEROID_BASE_SPAWN_INTERVAL + 0.1,
       0,
     );
 
-    expect(asteroids).toHaveLength(1);
-    expect(asteroids[0].id).toBe("asteroid-1");
-    expect(asteroids[0].hasAwardedPassBonus).toBe(false);
-    expect(updatedSpawnState.nextId).toBe(2);
-    expect(updatedSpawnState.timer).toBeCloseTo(0.1);
+    expect(asteroids).toHaveLength(0);
+    expect(result.asteroids).toHaveLength(1);
+    expect(result.asteroids[0].id).toBe("asteroid-1");
+    expect(result.asteroids[0].hasAwardedPassBonus).toBe(false);
+    expect(result.spawnState.nextId).toBe(2);
+    expect(result.spawnState.timer).toBeCloseTo(0.1);
   });
 
   it("spawns multiple asteroids when more than one interval passes", () => {
     const asteroids: Asteroid[] = [];
     const spawnState = createInitialAsteroidSpawnState();
 
-    const updatedSpawnState = updateAsteroidSpawning(
+    const result = updateAsteroidSpawning(
       asteroids,
       spawnState,
       ASTEROID_BASE_SPAWN_INTERVAL * 2 + 0.2,
       0,
     );
 
-    expect(asteroids).toHaveLength(2);
-    expect(asteroids.map((asteroid) => asteroid.id)).toEqual(["asteroid-1", "asteroid-2"]);
-    expect(updatedSpawnState.nextId).toBe(3);
-    expect(updatedSpawnState.timer).toBeCloseTo(0.2);
+    expect(asteroids).toHaveLength(0);
+    expect(result.asteroids.map((asteroid) => asteroid.id)).toEqual([
+      "asteroid-1",
+      "asteroid-2",
+    ]);
+    expect(result.spawnState.nextId).toBe(3);
+    expect(result.spawnState.timer).toBeCloseTo(0.2);
   });
 
   it("does not spawn or advance the timer when elapsed time is zero", () => {
@@ -105,31 +107,32 @@ describe("asteroid logic", () => {
       nextId: 3,
     };
 
-    const updatedSpawnState = updateAsteroidSpawning(asteroids, spawnState, 0, 0);
+    const result = updateAsteroidSpawning(asteroids, spawnState, 0, 0);
 
     expect(asteroids).toHaveLength(0);
-    expect(updatedSpawnState).toEqual(spawnState);
+    expect(result.asteroids).toEqual(asteroids);
+    expect(result.spawnState).toEqual(spawnState);
   });
 
   it("spawns the full interval multiple after a large elapsed time jump", () => {
     const asteroids: Asteroid[] = [];
 
-    const updatedSpawnState = updateAsteroidSpawning(
+    const result = updateAsteroidSpawning(
       asteroids,
       createInitialAsteroidSpawnState(),
       5,
       0,
     );
 
-    expect(asteroids).toHaveLength(4);
-    expect(asteroids.map((asteroid) => asteroid.id)).toEqual([
+    expect(asteroids).toHaveLength(0);
+    expect(result.asteroids.map((asteroid) => asteroid.id)).toEqual([
       "asteroid-1",
       "asteroid-2",
       "asteroid-3",
       "asteroid-4",
     ]);
-    expect(updatedSpawnState.nextId).toBe(5);
-    expect(updatedSpawnState.timer).toBeCloseTo(0.2);
+    expect(result.spawnState.nextId).toBe(5);
+    expect(result.spawnState.timer).toBeCloseTo(0.2);
   });
 
   it("continues spawning from an existing timer and id", () => {
@@ -139,19 +142,20 @@ describe("asteroid logic", () => {
       nextId: 7,
     };
 
-    const updatedSpawnState = updateAsteroidSpawning(asteroids, spawnState, 0.2, 0);
+    const result = updateAsteroidSpawning(asteroids, spawnState, 0.2, 0);
 
-    expect(asteroids).toHaveLength(1);
-    expect(asteroids[0].id).toBe("asteroid-7");
-    expect(updatedSpawnState.nextId).toBe(8);
-    expect(updatedSpawnState.timer).toBeCloseTo(0.1);
+    expect(asteroids).toHaveLength(0);
+    expect(result.asteroids).toHaveLength(1);
+    expect(result.asteroids[0].id).toBe("asteroid-7");
+    expect(result.spawnState.nextId).toBe(8);
+    expect(result.spawnState.timer).toBeCloseTo(0.1);
   });
 
   it("does not spawn an asteroid before the spawn interval passes", () => {
     const asteroids: Asteroid[] = [];
     const spawnState = createInitialAsteroidSpawnState();
 
-    const updatedSpawnState = updateAsteroidSpawning(
+    const result = updateAsteroidSpawning(
       asteroids,
       spawnState,
       ASTEROID_BASE_SPAWN_INTERVAL - 0.1,
@@ -159,8 +163,9 @@ describe("asteroid logic", () => {
     );
 
     expect(asteroids).toHaveLength(0);
-    expect(updatedSpawnState.nextId).toBe(1);
-    expect(updatedSpawnState.timer).toBeCloseTo(ASTEROID_BASE_SPAWN_INTERVAL - 0.1);
+    expect(result.asteroids).toHaveLength(0);
+    expect(result.spawnState.nextId).toBe(1);
+    expect(result.spawnState.timer).toBeCloseTo(ASTEROID_BASE_SPAWN_INTERVAL - 0.1);
   });
 
   it("creates spawned asteroids inside the expected gameplay ranges", () => {
@@ -281,9 +286,10 @@ describe("asteroid logic", () => {
       }),
     ];
 
-    updateAsteroids(asteroids, 0.5);
+    const updatedAsteroids = updateAsteroids(asteroids, 0.5);
 
-    expect(asteroids[0].x).toBe(440);
+    expect(updatedAsteroids[0].x).toBe(440);
+    expect(asteroids[0].x).toBe(500);
   });
 
   it("moves asteroids vertically according to their vertical speed", () => {
@@ -294,9 +300,10 @@ describe("asteroid logic", () => {
       }),
     ];
 
-    updateAsteroids(asteroids, 0.5);
+    const updatedAsteroids = updateAsteroids(asteroids, 0.5);
 
-    expect(asteroids[0].y).toBe(265);
+    expect(updatedAsteroids[0].y).toBe(265);
+    expect(asteroids[0].y).toBe(250);
   });
 
   it("bounces asteroids away from the top and bottom movement bounds", () => {
@@ -313,12 +320,14 @@ describe("asteroid logic", () => {
 
     const asteroids = [topAsteroid, bottomAsteroid];
 
-    updateAsteroids(asteroids, 0.5);
+    const updatedAsteroids = updateAsteroids(asteroids, 0.5);
 
-    expect(topAsteroid.y).toBe(46);
-    expect(topAsteroid.verticalSpeed).toBe(30);
-    expect(bottomAsteroid.y).toBe(GAME_HEIGHT - 46);
-    expect(bottomAsteroid.verticalSpeed).toBe(-30);
+    expect(updatedAsteroids[0].y).toBe(46);
+    expect(updatedAsteroids[0].verticalSpeed).toBe(30);
+    expect(updatedAsteroids[1].y).toBe(GAME_HEIGHT - 46);
+    expect(updatedAsteroids[1].verticalSpeed).toBe(-30);
+    expect(topAsteroid.y).toBe(10);
+    expect(bottomAsteroid.y).toBe(GAME_HEIGHT - 10);
   });
 
   it("updates asteroid rotation", () => {
@@ -329,9 +338,10 @@ describe("asteroid logic", () => {
       }),
     ];
 
-    updateAsteroids(asteroids, 2);
+    const updatedAsteroids = updateAsteroids(asteroids, 2);
 
-    expect(asteroids[0].rotation).toBe(2);
+    expect(updatedAsteroids[0].rotation).toBe(2);
+    expect(asteroids[0].rotation).toBe(1);
   });
 
   it("removes asteroids after they leave the screen", () => {
@@ -345,9 +355,10 @@ describe("asteroid logic", () => {
       }),
     ];
 
-    updateAsteroids(asteroids, 0);
+    const updatedAsteroids = updateAsteroids(asteroids, 0);
 
-    expect(asteroids).toHaveLength(1);
-    expect(asteroids[0].id).toBe("asteroid-visible");
+    expect(updatedAsteroids).toHaveLength(1);
+    expect(updatedAsteroids[0].id).toBe("asteroid-visible");
+    expect(asteroids).toHaveLength(2);
   });
 });

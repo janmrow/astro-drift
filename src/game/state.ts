@@ -1,4 +1,5 @@
 import { collectPassBonuses, createInitialPlayer, hasPlayerCollision, updatePlayer, updateScore } from "./engine";
+import { BONUS_FEEDBACK_DURATION } from "./balance";
 import {
   createInitialAsteroidSpawnState,
   updateAsteroidSpawning,
@@ -13,9 +14,13 @@ export type GameState = {
   asteroidSpawnState: AsteroidSpawnState;
   score: number;
   survivalTime: number;
-  bonusFeedbackText: string | null;
-  bonusFeedbackTimeLeft: number;
+  bonusFeedback: BonusFeedback;
 };
+
+export type BonusFeedback = {
+  text: string;
+  timeLeft: number;
+} | null;
 
 export function createInitialGameState(): GameState {
   return {
@@ -24,69 +29,50 @@ export function createInitialGameState(): GameState {
     asteroidSpawnState: createInitialAsteroidSpawnState(),
     score: 0,
     survivalTime: 0,
-    bonusFeedbackText: null,
-    bonusFeedbackTimeLeft: 0,
+    bonusFeedback: null,
   };
 }
-
-export type ScoreBonusResult = {
-  score: number;
-  bonusFeedbackText: string | null;
-  bonusFeedbackTimeLeft: number;
-};
 
 export function applyScoreBonuses(
   currentScore: number,
   currentPlayer: Player,
   currentAsteroids: Asteroid[],
-  currentBonusFeedbackText: string | null,
-  currentBonusFeedbackTimeLeft: number,
-  bonusFeedbackDuration: number,
-): ScoreBonusResult {
-  const scoreAfterBonus = collectPassBonuses(currentScore, currentPlayer, currentAsteroids);
-  const bonusPoints = Math.floor(scoreAfterBonus - currentScore);
+  currentBonusFeedback: BonusFeedback,
+): { score: number; asteroids: Asteroid[]; bonusFeedback: BonusFeedback } {
+  const bonusResult = collectPassBonuses(currentScore, currentPlayer, currentAsteroids);
+  const bonusPoints = Math.floor(bonusResult.score - currentScore);
 
   if (bonusPoints <= 0) {
     return {
-      score: scoreAfterBonus,
-      bonusFeedbackText: currentBonusFeedbackText,
-      bonusFeedbackTimeLeft: currentBonusFeedbackTimeLeft,
+      ...bonusResult,
+      bonusFeedback: currentBonusFeedback,
     };
   }
 
   return {
-    score: scoreAfterBonus,
-    bonusFeedbackText: `+${bonusPoints}`,
-    bonusFeedbackTimeLeft: bonusFeedbackDuration,
+    ...bonusResult,
+    bonusFeedback: {
+      text: `+${bonusPoints}`,
+      timeLeft: BONUS_FEEDBACK_DURATION,
+    },
   };
 }
 
-export type BonusFeedbackTimerResult = {
-  bonusFeedbackText: string | null;
-  bonusFeedbackTimeLeft: number;
-};
-
 export function updateBonusFeedbackTimer(
-  currentBonusFeedbackText: string | null,
-  currentBonusFeedbackTimeLeft: number,
+  currentBonusFeedback: BonusFeedback,
   deltaTime: number,
-): BonusFeedbackTimerResult {
-  if (currentBonusFeedbackTimeLeft <= 0) {
-    return {
-      bonusFeedbackText: currentBonusFeedbackText,
-      bonusFeedbackTimeLeft: currentBonusFeedbackTimeLeft,
-    };
+): BonusFeedback {
+  if (!currentBonusFeedback) {
+    return null;
   }
 
-  const nextBonusFeedbackTimeLeft = Math.max(0, currentBonusFeedbackTimeLeft - deltaTime);
+  const nextTimeLeft = Math.max(0, currentBonusFeedback.timeLeft - deltaTime);
 
-  return {
-    bonusFeedbackText: nextBonusFeedbackTimeLeft === 0 ? null : currentBonusFeedbackText,
-    bonusFeedbackTimeLeft: nextBonusFeedbackTimeLeft,
-  };
+  return nextTimeLeft === 0 ? null : { ...currentBonusFeedback, timeLeft: nextTimeLeft };
 }
 
 export type RunningGameResult = {
+  gameState: GameState;
   collided: boolean;
 };
 
@@ -95,44 +81,42 @@ export function advanceRunningGame(
   input: InputState,
   deltaTime: number,
   rng: () => number,
-  bonusFeedbackDuration: number,
 ): RunningGameResult {
-  gameState.survivalTime += deltaTime;
-  gameState.player = updatePlayer(gameState.player, input, deltaTime);
-  gameState.asteroidSpawnState = updateAsteroidSpawning(
+  const survivalTime = gameState.survivalTime + deltaTime;
+  const player = updatePlayer(gameState.player, input, deltaTime);
+  const spawningResult = updateAsteroidSpawning(
     gameState.asteroids,
     gameState.asteroidSpawnState,
     deltaTime,
-    gameState.survivalTime,
+    survivalTime,
     rng,
   );
-
   const bonusResult = applyScoreBonuses(
     gameState.score,
-    gameState.player,
-    gameState.asteroids,
-    gameState.bonusFeedbackText,
-    gameState.bonusFeedbackTimeLeft,
-    bonusFeedbackDuration,
+    player,
+    spawningResult.asteroids,
+    gameState.bonusFeedback,
   );
-  gameState.score = bonusResult.score;
-  gameState.bonusFeedbackText = bonusResult.bonusFeedbackText;
-  gameState.bonusFeedbackTimeLeft = bonusResult.bonusFeedbackTimeLeft;
+  const asteroids = updateAsteroids(bonusResult.asteroids, deltaTime);
+  const nextGameState = {
+    player,
+    asteroids,
+    asteroidSpawnState: spawningResult.spawnState,
+    score: bonusResult.score,
+    survivalTime,
+    bonusFeedback: bonusResult.bonusFeedback,
+  };
 
-  updateAsteroids(gameState.asteroids, deltaTime);
-
-  if (hasPlayerCollision(gameState.player, gameState.asteroids)) {
-    return { collided: true };
+  if (hasPlayerCollision(player, asteroids)) {
+    return { gameState: nextGameState, collided: true };
   }
 
-  gameState.score = updateScore(gameState.score, deltaTime);
-  const timerResult = updateBonusFeedbackTimer(
-    gameState.bonusFeedbackText,
-    gameState.bonusFeedbackTimeLeft,
-    deltaTime,
-  );
-  gameState.bonusFeedbackText = timerResult.bonusFeedbackText;
-  gameState.bonusFeedbackTimeLeft = timerResult.bonusFeedbackTimeLeft;
-
-  return { collided: false };
+  return {
+    gameState: {
+      ...nextGameState,
+      score: updateScore(nextGameState.score, deltaTime),
+      bonusFeedback: updateBonusFeedbackTimer(nextGameState.bonusFeedback, deltaTime),
+    },
+    collided: false,
+  };
 }

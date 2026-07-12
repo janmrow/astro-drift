@@ -1,7 +1,6 @@
 import "./style.css";
 
 import { capFrameDelta, createInputState } from "./game/engine";
-import { BONUS_FEEDBACK_DURATION } from "./game/balance";
 import { formatScore, formatTime } from "./game/format";
 import { createSeededRng } from "./game/rng";
 import {
@@ -71,13 +70,8 @@ function runGameLoop(currentFrameTime: number): void {
   updateStars(stars, ambientMotionSuppressed ? 0 : deltaTime);
 
   if (gameStatus === "running") {
-    const result = advanceRunningGame(
-      gameState,
-      input,
-      deltaTime,
-      asteroidRng,
-      BONUS_FEEDBACK_DURATION,
-    );
+    const result = advanceRunningGame(gameState, input, deltaTime, asteroidRng);
+    gameState = result.gameState;
 
     if (result.collided) {
       gameStatus = "gameOver";
@@ -94,9 +88,9 @@ function runGameLoop(currentFrameTime: number): void {
     gameState.score,
     gameState.survivalTime,
     bestScore,
-    gameState.bonusFeedbackTimeLeft > 0 ? gameState.bonusFeedbackText : null,
+    gameState.bonusFeedback?.text ?? null,
     // Raw time remaining; the renderer derives the fade/rise fraction so the animation curve stays a rendering concern.
-    gameState.bonusFeedbackTimeLeft,
+    gameState.bonusFeedback?.timeLeft ?? 0,
   );
   updateDomStatus();
 

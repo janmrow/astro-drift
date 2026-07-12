@@ -20,8 +20,7 @@ describe("createInitialGameState", () => {
       asteroidSpawnState: { timer: 0, nextId: 1 },
       score: 0,
       survivalTime: 0,
-      bonusFeedbackText: null,
-      bonusFeedbackTimeLeft: 0,
+      bonusFeedback: null,
     });
   });
 
@@ -40,12 +39,13 @@ describe("applyScoreBonuses", () => {
     const player = createInitialPlayer();
     const asteroids = [createAsteroid({ x: player.x + 500, hasAwardedPassBonus: false })];
 
-    const result = applyScoreBonuses(100, player, asteroids, "+25", 0.2, BONUS_FEEDBACK_DURATION);
+    const feedback = { text: "+25", timeLeft: 0.2 };
+    const result = applyScoreBonuses(100, player, asteroids, feedback);
 
     expect(result).toEqual({
       score: 100,
-      bonusFeedbackText: "+25",
-      bonusFeedbackTimeLeft: 0.2,
+      asteroids,
+      bonusFeedback: feedback,
     });
   });
 
@@ -54,32 +54,37 @@ describe("applyScoreBonuses", () => {
     const playerLeftEdge = player.x - player.width / 2;
     const asteroids = [createAsteroid({ x: playerLeftEdge - 31, hasAwardedPassBonus: false })];
 
-    const result = applyScoreBonuses(100, player, asteroids, null, 0, BONUS_FEEDBACK_DURATION);
+    const result = applyScoreBonuses(100, player, asteroids, null);
 
     expect(result.score).toBe(125);
-    expect(result.bonusFeedbackText).toBe("+25");
-    expect(result.bonusFeedbackTimeLeft).toBe(BONUS_FEEDBACK_DURATION);
-    expect(asteroids[0].hasAwardedPassBonus).toBe(true);
+    expect(result.bonusFeedback).toEqual({
+      text: "+25",
+      timeLeft: BONUS_FEEDBACK_DURATION,
+    });
+    expect(result.asteroids[0].hasAwardedPassBonus).toBe(true);
+    expect(asteroids[0].hasAwardedPassBonus).toBe(false);
   });
 });
 
 describe("updateBonusFeedbackTimer", () => {
   it("does nothing once the timer has already run out", () => {
-    const result = updateBonusFeedbackTimer(null, 0, 0.5);
+    const result = updateBonusFeedbackTimer(null, 0.5);
 
-    expect(result).toEqual({ bonusFeedbackText: null, bonusFeedbackTimeLeft: 0 });
+    expect(result).toBeNull();
   });
 
   it("counts the timer down while keeping the feedback text", () => {
-    const result = updateBonusFeedbackTimer("+25", 0.5, 0.2);
+    const feedback = { text: "+25", timeLeft: 0.5 };
+    const result = updateBonusFeedbackTimer(feedback, 0.2);
 
-    expect(result).toEqual({ bonusFeedbackText: "+25", bonusFeedbackTimeLeft: 0.3 });
+    expect(result).toEqual({ text: "+25", timeLeft: 0.3 });
+    expect(feedback).toEqual({ text: "+25", timeLeft: 0.5 });
   });
 
   it("clamps the timer at zero and clears the feedback text once it elapses", () => {
-    const result = updateBonusFeedbackTimer("+25", 0.2, 0.5);
+    const result = updateBonusFeedbackTimer({ text: "+25", timeLeft: 0.2 }, 0.5);
 
-    expect(result).toEqual({ bonusFeedbackText: null, bonusFeedbackTimeLeft: 0 });
+    expect(result).toBeNull();
   });
 });
 
@@ -88,11 +93,12 @@ describe("advanceRunningGame", () => {
     const gameState = createInitialGameState();
     const deltaTime = 0.1;
 
-    const result = advanceRunningGame(gameState, createInputState(), deltaTime, () => 1, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), deltaTime, () => 1);
 
-    expect(result).toEqual({ collided: false });
-    expect(gameState.survivalTime).toBeCloseTo(deltaTime);
-    expect(gameState.score).toBeCloseTo(SCORE_PER_SECOND * deltaTime);
+    expect(result.collided).toBe(false);
+    expect(result.gameState.survivalTime).toBeCloseTo(deltaTime);
+    expect(result.gameState.score).toBeCloseTo(SCORE_PER_SECOND * deltaTime);
+    expect(gameState).toEqual(createInitialGameState());
   });
 
   it("awards a pass bonus and reflects it in the bonus feedback text", () => {
@@ -101,18 +107,20 @@ describe("advanceRunningGame", () => {
     const passedAsteroid = createAsteroid({ x: playerLeftEdge - 31, hasAwardedPassBonus: false });
     gameState.asteroids.push(passedAsteroid);
 
-    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1);
 
-    expect(result).toEqual({ collided: false });
-    expect(gameState.bonusFeedbackText).toBe("+25");
-    expect(gameState.bonusFeedbackTimeLeft).toBeCloseTo(BONUS_FEEDBACK_DURATION - 0.1);
-    expect(passedAsteroid.hasAwardedPassBonus).toBe(true);
+    expect(result.collided).toBe(false);
+    expect(result.gameState.bonusFeedback).toEqual({
+      text: "+25",
+      timeLeft: BONUS_FEEDBACK_DURATION - 0.1,
+    });
+    expect(result.gameState.asteroids[0].hasAwardedPassBonus).toBe(true);
+    expect(passedAsteroid.hasAwardedPassBonus).toBe(false);
   });
 
   it("reports a collision and skips the time-based score/timer updates for that call", () => {
     const gameState = createInitialGameState();
-    gameState.bonusFeedbackText = "+25";
-    gameState.bonusFeedbackTimeLeft = 0.2;
+    gameState.bonusFeedback = { text: "+25", timeLeft: 0.2 };
     const collidingAsteroid = createAsteroid({
       x: gameState.player.x,
       y: gameState.player.y,
@@ -121,21 +129,23 @@ describe("advanceRunningGame", () => {
     });
     gameState.asteroids.push(collidingAsteroid);
 
-    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1);
 
-    expect(result).toEqual({ collided: true });
+    expect(result.collided).toBe(true);
+    expect(result.gameState.score).toBe(0);
+    expect(result.gameState.bonusFeedback).toEqual({ text: "+25", timeLeft: 0.2 });
     expect(gameState.score).toBe(0);
-    expect(gameState.bonusFeedbackText).toBe("+25");
-    expect(gameState.bonusFeedbackTimeLeft).toBe(0.2);
+    expect(gameState.bonusFeedback).toEqual({ text: "+25", timeLeft: 0.2 });
   });
 
   it("spawns asteroids once enough delta time has accumulated for a seeded rng", () => {
     const gameState = createInitialGameState();
 
-    const result = advanceRunningGame(gameState, createInputState(), 1.5, () => 0.5, BONUS_FEEDBACK_DURATION);
+    const result = advanceRunningGame(gameState, createInputState(), 1.5, () => 0.5);
 
-    expect(result).toEqual({ collided: false });
-    expect(gameState.asteroids.length).toBeGreaterThan(0);
-    expect(gameState.asteroidSpawnState.nextId).toBeGreaterThan(1);
+    expect(result.collided).toBe(false);
+    expect(result.gameState.asteroids.length).toBeGreaterThan(0);
+    expect(result.gameState.asteroidSpawnState.nextId).toBeGreaterThan(1);
+    expect(gameState.asteroids).toHaveLength(0);
   });
 });

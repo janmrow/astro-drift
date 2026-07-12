@@ -57,49 +57,54 @@ export function updateAsteroidSpawning(
   deltaTime: number,
   currentSurvivalTime: number,
   rng: () => number = Math.random,
-): AsteroidSpawnState {
+): { asteroids: Asteroid[]; spawnState: AsteroidSpawnState } {
+  const nextAsteroids = [...currentAsteroids];
   let nextTimer = currentSpawnState.timer + deltaTime;
   let nextId = currentSpawnState.nextId;
 
   const spawnInterval = getAsteroidSpawnInterval(currentSurvivalTime);
 
   while (nextTimer >= spawnInterval) {
-    currentAsteroids.push(createAsteroid(currentSurvivalTime, nextId, rng));
+    nextAsteroids.push(createAsteroid(currentSurvivalTime, nextId, rng));
     nextId += 1;
     nextTimer -= spawnInterval;
   }
 
   return {
-    timer: nextTimer,
-    nextId,
+    asteroids: nextAsteroids,
+    spawnState: {
+      timer: nextTimer,
+      nextId,
+    },
   };
 }
 
-export function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number): void {
-  for (const asteroid of currentAsteroids) {
-    asteroid.x -= asteroid.speed * deltaTime;
-    asteroid.y += asteroid.verticalSpeed * deltaTime;
-    asteroid.rotation += asteroid.rotationSpeed * deltaTime;
+export function updateAsteroids(currentAsteroids: Asteroid[], deltaTime: number): Asteroid[] {
+  return currentAsteroids
+    .map((currentAsteroid) => {
+      const asteroid = {
+        ...currentAsteroid,
+        x: currentAsteroid.x - currentAsteroid.speed * deltaTime,
+        y: currentAsteroid.y + currentAsteroid.verticalSpeed * deltaTime,
+        rotation: currentAsteroid.rotation + currentAsteroid.rotationSpeed * deltaTime,
+      };
 
-    const minY = asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING;
-    const maxY = GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING;
+      const minY = asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING;
+      const maxY = GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING;
 
-    if (asteroid.y < minY) {
-      asteroid.y = minY;
-      asteroid.verticalSpeed = Math.abs(asteroid.verticalSpeed);
-    }
+      if (asteroid.y < minY) {
+        asteroid.y = minY;
+        asteroid.verticalSpeed = Math.abs(asteroid.verticalSpeed);
+      }
 
-    if (asteroid.y > maxY) {
-      asteroid.y = maxY;
-      asteroid.verticalSpeed = -Math.abs(asteroid.verticalSpeed);
-    }
-  }
+      if (asteroid.y > maxY) {
+        asteroid.y = maxY;
+        asteroid.verticalSpeed = -Math.abs(asteroid.verticalSpeed);
+      }
 
-  for (let index = currentAsteroids.length - 1; index >= 0; index--) {
-    if (currentAsteroids[index].x < -ASTEROID_REMOVE_PADDING) {
-      currentAsteroids.splice(index, 1);
-    }
-  }
+      return asteroid;
+    })
+    .filter((asteroid) => asteroid.x >= -ASTEROID_REMOVE_PADDING);
 }
 
 function createAsteroid(currentSurvivalTime: number, id: number, rng: () => number): Asteroid {

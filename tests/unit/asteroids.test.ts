@@ -31,59 +31,26 @@ import { GAME_HEIGHT, GAME_WIDTH } from "../../src/game/engine";
 import type { Asteroid } from "../../src/game/types";
 import { createAsteroid } from "./helpers";
 
-type AsteroidRandomRolls = {
-  variant: number;
-  radius?: number;
-  speed?: number;
-  rotationDirection?: number;
-  rotationSpeed?: number;
-  y?: number;
-  diagonal?: number;
-  verticalDirection?: number;
-  verticalSpeed?: number;
-  rotation?: number;
-  pointDistanceMultiplier?: number;
-};
-
-function asteroidRandomValues({
-  variant,
-  radius = 0.5,
-  speed = 0.5,
-  rotationDirection = 0.75,
-  rotationSpeed = 0.75,
-  y = 0.5,
-  diagonal = 1,
-  verticalDirection = 0.75,
-  verticalSpeed = 0.5,
-  rotation = 0.5,
-  pointDistanceMultiplier = 0.5,
-}: AsteroidRandomRolls): number[] {
-  const values = [
-    variant,
-    radius,
-    speed,
-    rotationDirection,
-    rotationSpeed,
-    y,
-  ];
-
-  if (variant < FIERY_ASTEROID_CHANCE) {
-    values.push(verticalDirection, verticalSpeed);
-  } else {
-    values.push(diagonal);
-
-    if (diagonal < STANDARD_ASTEROID_DIAGONAL_CHANCE) {
-      values.push(verticalDirection, verticalSpeed);
-    }
-  }
-
-  return [...values, rotation, ...Array<number>(9).fill(pointDistanceMultiplier)];
+function constantRng(value: number): () => number {
+  return () => value;
 }
 
-function createAsteroidRng(rolls: AsteroidRandomRolls): () => number {
-  const values = asteroidRandomValues(rolls);
+function slightlyBelow(value: number): number {
+  return value - Number.EPSILON;
+}
 
-  return () => values.shift() ?? 0.5;
+function spawnAsteroid(rngValue: number, survivalTime = 0): Asteroid {
+  const asteroids: Asteroid[] = [];
+
+  updateAsteroidSpawning(
+    asteroids,
+    createInitialAsteroidSpawnState(),
+    ASTEROID_BASE_SPAWN_INTERVAL,
+    survivalTime,
+    constantRng(rngValue),
+  );
+
+  return asteroids[0];
 }
 
 describe("asteroid logic", () => {
@@ -197,21 +164,12 @@ describe("asteroid logic", () => {
   });
 
   it("creates spawned asteroids inside the expected gameplay ranges", () => {
-    const asteroids: Asteroid[] = [];
     const survivalTime = 20;
     const radius = (ASTEROID_MIN_RADIUS + ASTEROID_MAX_RADIUS) / 2;
     const speedBonus = survivalTime * ASTEROID_SPEED_RAMP;
+    const asteroid = spawnAsteroid(0.5, survivalTime);
 
-    updateAsteroidSpawning(
-      asteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      survivalTime,
-      () => 0.5,
-    );
-
-    expect(asteroids).toHaveLength(1);
-    expect(asteroids[0]).toMatchObject({
+    expect(asteroid).toMatchObject({
       id: "asteroid-1",
       variant: "standard",
       radius,
@@ -223,174 +181,96 @@ describe("asteroid logic", () => {
       rotationSpeed: (ASTEROID_MIN_ROTATION_SPEED + ASTEROID_MAX_ROTATION_SPEED) / 2,
       hasAwardedPassBonus: false,
     });
-    expect(asteroids[0].points).toHaveLength(9);
-    expect(asteroids[0].points[0]).toEqual({
-      angle: 0,
-      distanceMultiplier: 1,
-    });
+    expect(asteroid.points).toHaveLength(9);
+
+    for (const [index, point] of asteroid.points.entries()) {
+      expect(point.angle).toBeCloseTo((index * Math.PI * 2) / asteroid.points.length);
+      expect(point.distanceMultiplier).toBe(1);
+    }
   });
 
   it("increases spawned asteroid speed as survival time grows", () => {
-    const earlyAsteroids: Asteroid[] = [];
-    const laterAsteroids: Asteroid[] = [];
+    const earlyAsteroid = spawnAsteroid(0.5);
+    const laterAsteroid = spawnAsteroid(0.5, 60);
 
-    updateAsteroidSpawning(
-      earlyAsteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      () => 0.5,
-    );
-    updateAsteroidSpawning(
-      laterAsteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      60,
-      () => 0.5,
-    );
-
-    expect(laterAsteroids[0].speed).toBeGreaterThan(earlyAsteroids[0].speed);
+    expect(laterAsteroid.speed).toBeGreaterThan(earlyAsteroid.speed);
   });
 
   it("does not exceed the maximum asteroid speed after long survival times", () => {
-    const asteroids: Asteroid[] = [];
+    const asteroid = spawnAsteroid(1, 10_000);
 
-    updateAsteroidSpawning(
-      asteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      10_000,
-      () => 1,
-    );
-
-    expect(asteroids[0].speed).toBe(ASTEROID_SPEED_HARD_CAP);
+    expect(asteroid.speed).toBe(ASTEROID_SPEED_HARD_CAP);
   });
 
-  it("creates fiery asteroids with faster speed and rotation when the variant roll hits", () => {
-    const expectedRadiusMultiplier =
-      (FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER + FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER) / 2;
+  it("uses the fiery asteroid chance as an exclusive variant boundary", () => {
+    expect(spawnAsteroid(slightlyBelow(FIERY_ASTEROID_CHANCE)).variant).toBe("fiery");
+    expect(spawnAsteroid(FIERY_ASTEROID_CHANCE).variant).toBe("standard");
+  });
 
-    const standardAsteroids: Asteroid[] = [];
-    const fieryAsteroids: Asteroid[] = [];
+  it("applies the configured fiery asteroid modifiers", () => {
+    const rngValue = FIERY_ASTEROID_CHANCE / 2;
+    const asteroid = spawnAsteroid(rngValue);
+    const baseRadius = ASTEROID_MIN_RADIUS + rngValue * (ASTEROID_MAX_RADIUS - ASTEROID_MIN_RADIUS);
+    const radiusProgress = (baseRadius - ASTEROID_MIN_RADIUS) / (ASTEROID_MAX_RADIUS - ASTEROID_MIN_RADIUS);
+    const radiusMultiplier =
+      FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER -
+      radiusProgress *
+        (FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER - FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER);
+    const baseSpeed =
+      ASTEROID_BASE_MIN_SPEED + rngValue * (ASTEROID_BASE_MAX_SPEED - ASTEROID_BASE_MIN_SPEED);
+    const baseRotationSpeed =
+      ASTEROID_MIN_ROTATION_SPEED +
+      rngValue * (ASTEROID_MAX_ROTATION_SPEED - ASTEROID_MIN_ROTATION_SPEED);
 
-    updateAsteroidSpawning(
-      standardAsteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      createAsteroidRng({ variant: FIERY_ASTEROID_CHANCE + 0.01 }),
-    );
-    updateAsteroidSpawning(
-      fieryAsteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      createAsteroidRng({ variant: FIERY_ASTEROID_CHANCE - 0.01 }),
-    );
-
-    expect(standardAsteroids[0].variant).toBe("standard");
-    expect(fieryAsteroids[0].variant).toBe("fiery");
-    expect(fieryAsteroids[0].radius).toBeCloseTo(
-      standardAsteroids[0].radius * expectedRadiusMultiplier,
-    );
-    expect(fieryAsteroids[0].speed).toBeCloseTo(
-      standardAsteroids[0].speed * FIERY_ASTEROID_SPEED_MULTIPLIER,
-    );
-    expect(fieryAsteroids[0].rotationSpeed).toBeCloseTo(
-      standardAsteroids[0].rotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER,
-    );
-    expect(fieryAsteroids[0].verticalSpeed).toBeCloseTo(
-      (FIERY_ASTEROID_MIN_VERTICAL_SPEED + FIERY_ASTEROID_MAX_VERTICAL_SPEED) / 2,
+    expect(asteroid.radius).toBeCloseTo(baseRadius * radiusMultiplier);
+    expect(asteroid.speed).toBeCloseTo(baseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER);
+    expect(asteroid.rotationSpeed).toBeCloseTo(
+      -baseRotationSpeed * FIERY_ASTEROID_ROTATION_MULTIPLIER,
     );
   });
 
   it("keeps fiery asteroid vertical drift small compared to standard diagonal drift", () => {
-    const fieryAsteroids: Asteroid[] = [];
+    const rngValue = FIERY_ASTEROID_CHANCE / 2;
+    const fieryAsteroid = spawnAsteroid(rngValue);
+    const expectedVerticalSpeed =
+      -(FIERY_ASTEROID_MIN_VERTICAL_SPEED +
+        rngValue * (FIERY_ASTEROID_MAX_VERTICAL_SPEED - FIERY_ASTEROID_MIN_VERTICAL_SPEED));
 
-    updateAsteroidSpawning(
-      fieryAsteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      createAsteroidRng({ variant: FIERY_ASTEROID_CHANCE - 0.01, verticalSpeed: 1 }),
-    );
-
-    expect(Math.abs(fieryAsteroids[0].verticalSpeed)).toBe(FIERY_ASTEROID_MAX_VERTICAL_SPEED);
+    expect(fieryAsteroid.verticalSpeed).toBeCloseTo(expectedVerticalSpeed);
     expect(FIERY_ASTEROID_MAX_VERTICAL_SPEED).toBeLessThan(STANDARD_ASTEROID_MIN_VERTICAL_SPEED);
   });
 
-  it("creates diagonal standard asteroids when the diagonal movement roll hits", () => {
+  it("creates diagonal standard asteroids below the diagonal chance boundary", () => {
+    const rngValue = slightlyBelow(STANDARD_ASTEROID_DIAGONAL_CHANCE);
+    const asteroid = spawnAsteroid(rngValue);
     const expectedVerticalSpeed =
-      (STANDARD_ASTEROID_MIN_VERTICAL_SPEED + STANDARD_ASTEROID_MAX_VERTICAL_SPEED) / 2;
+      -(STANDARD_ASTEROID_MIN_VERTICAL_SPEED +
+        rngValue *
+          (STANDARD_ASTEROID_MAX_VERTICAL_SPEED - STANDARD_ASTEROID_MIN_VERTICAL_SPEED));
 
-    const asteroids: Asteroid[] = [];
-
-    updateAsteroidSpawning(
-      asteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      createAsteroidRng({
-        variant: FIERY_ASTEROID_CHANCE + 0.01,
-        diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE - 0.01,
-        verticalDirection: 0.75,
-        verticalSpeed: 0.5,
-      }),
-    );
-
-    expect(asteroids[0].variant).toBe("standard");
-    expect(asteroids[0].verticalSpeed).toBe(expectedVerticalSpeed);
+    expect(asteroid.variant).toBe("standard");
+    expect(asteroid.verticalSpeed).toBeCloseTo(expectedVerticalSpeed);
   });
 
-  it("keeps standard asteroids moving straight when the diagonal movement roll misses", () => {
-    const asteroids: Asteroid[] = [];
+  it("keeps standard asteroids moving straight at the diagonal chance boundary", () => {
+    const asteroid = spawnAsteroid(STANDARD_ASTEROID_DIAGONAL_CHANCE);
 
-    updateAsteroidSpawning(
-      asteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      createAsteroidRng({
-        variant: FIERY_ASTEROID_CHANCE + 0.01,
-        diagonal: STANDARD_ASTEROID_DIAGONAL_CHANCE + 0.01,
-      }),
-    );
-
-    expect(asteroids[0].variant).toBe("standard");
-    expect(asteroids[0].verticalSpeed).toBe(0);
+    expect(asteroid.variant).toBe("standard");
+    expect(asteroid.verticalSpeed).toBe(0);
   });
 
   it("creates asteroid rotation speeds with noticeable but bounded spin", () => {
-    const leftSpinAsteroids: Asteroid[] = [];
+    const leftSpinAsteroid = spawnAsteroid(FIERY_ASTEROID_CHANCE);
+    const rightSpinAsteroid = spawnAsteroid(1);
 
-    updateAsteroidSpawning(
-      leftSpinAsteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      createAsteroidRng({
-        variant: FIERY_ASTEROID_CHANCE + 0.01,
-        rotationDirection: 0.25,
-        rotationSpeed: 0,
-      }),
+    expect(leftSpinAsteroid.rotationSpeed).toBeLessThan(0);
+    expect(Math.abs(leftSpinAsteroid.rotationSpeed)).toBeGreaterThanOrEqual(
+      ASTEROID_MIN_ROTATION_SPEED,
     );
-
-    const rightSpinAsteroids: Asteroid[] = [];
-
-    updateAsteroidSpawning(
-      rightSpinAsteroids,
-      createInitialAsteroidSpawnState(),
-      ASTEROID_BASE_SPAWN_INTERVAL,
-      0,
-      createAsteroidRng({
-        variant: FIERY_ASTEROID_CHANCE + 0.01,
-        rotationDirection: 0.75,
-        rotationSpeed: 1,
-      }),
+    expect(Math.abs(leftSpinAsteroid.rotationSpeed)).toBeLessThanOrEqual(
+      ASTEROID_MAX_ROTATION_SPEED,
     );
-
-    expect(leftSpinAsteroids[0].rotationSpeed).toBe(-ASTEROID_MIN_ROTATION_SPEED);
-    expect(rightSpinAsteroids[0].rotationSpeed).toBe(ASTEROID_MAX_ROTATION_SPEED);
+    expect(rightSpinAsteroid.rotationSpeed).toBe(ASTEROID_MAX_ROTATION_SPEED);
   });
 
   it("moves asteroids to the left according to their speed", () => {

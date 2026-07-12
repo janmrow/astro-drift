@@ -1,7 +1,7 @@
 import { createInputState } from "../game/engine";
 import type { InputState } from "../game/types";
 
-type GameActionHandler = (key: string) => boolean;
+type GameActionHandler = (key: string) => void;
 
 export function setupKeyboardControls(
   currentInput: InputState,

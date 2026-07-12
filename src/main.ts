@@ -105,22 +105,19 @@ function runGameLoop(currentFrameTime: number): void {
 
 const START_KEYS = ["enter", " "];
 
-function handleGameAction(key: string): boolean {
+function handleGameAction(key: string): void {
   if (gameStatus === "idle") {
     if (!START_KEYS.includes(key.toLowerCase())) {
-      return false;
+      return;
     }
 
     startGame();
-    return true;
+    return;
   }
 
   if (gameStatus === "gameOver") {
     restartGame();
-    return true;
   }
-
-  return false;
 }
 
 function startGame(): void {

@@ -83,17 +83,6 @@ const PLAYER_SHIP = {
   cockpitRadius: 5,
 };
 
-// Colors for HUD/overlay elements with no equivalent PALETTE role yet.
-// text/mutedText/cyan resolve through PALETTE since those roles are shared
-// with the rest of the redesign. Reward-related text uses PALETTE.reward
-// directly instead of a UI_COLORS entry.
-const UI_COLORS = {
-  surfaceStrong: "rgba(7, 4, 23, 0.76)",
-  text: PALETTE.textPrimary,
-  mutedText: PALETTE.textMuted,
-  cyan: PALETTE.hazardStandard,
-};
-
 export function createStars(count: number): Star[] {
   const nearStarStartIndex = Math.floor(count * (1 - NEAR_STAR_RATIO));
 
@@ -363,8 +352,8 @@ function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentS
   const scoreText = formatScore(currentScore);
   const timeText = formatTime(currentSurvivalTime);
 
-  drawOutlinedText(ctx, scoreText, x, scoreBaseline, fontStyle("md", 700), 4, UI_COLORS.text);
-  drawOutlinedText(ctx, timeText, x, timeBaseline, fontStyle("sm"), 3, UI_COLORS.mutedText);
+  drawOutlinedText(ctx, scoreText, x, scoreBaseline, fontStyle("md", 700), 4, PALETTE.textPrimary);
+  drawOutlinedText(ctx, timeText, x, timeBaseline, fontStyle("sm"), 3, PALETTE.textMuted);
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
@@ -374,19 +363,19 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
   ctx.save();
   ctx.textAlign = "center";
 
-  ctx.fillStyle = UI_COLORS.text;
+  ctx.fillStyle = PALETTE.textPrimary;
   ctx.font = fontStyle("xxl", 700);
   ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
 
-  ctx.fillStyle = UI_COLORS.mutedText;
+  ctx.fillStyle = PALETTE.textMuted;
   ctx.font = fontStyle("md");
   ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
 
-  ctx.fillStyle = UI_COLORS.cyan;
+  ctx.fillStyle = PALETTE.hazardStandard;
   ctx.font = fontStyle("md", 700);
   ctx.fillText("Press Enter or Space to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
-  ctx.fillStyle = UI_COLORS.mutedText;
+  ctx.fillStyle = PALETTE.textMuted;
   ctx.font = fontStyle("sm");
   ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
@@ -399,13 +388,13 @@ function drawGameOverOverlay(
   finalSurvivalTime: number,
   bestScore: number,
 ): void {
-  ctx.fillStyle = UI_COLORS.surfaceStrong;
+  ctx.fillStyle = "rgba(7, 4, 23, 0.76)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
   ctx.save();
   ctx.textAlign = "center";
 
-  ctx.fillStyle = UI_COLORS.text;
+  ctx.fillStyle = PALETTE.textPrimary;
   ctx.font = fontStyle("xxl", 700);
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
@@ -413,15 +402,15 @@ function drawGameOverOverlay(
   ctx.font = fontStyle("lg", 700);
   ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
 
-  ctx.fillStyle = UI_COLORS.text;
+  ctx.fillStyle = PALETTE.textPrimary;
   ctx.font = fontStyle("md", 700);
   ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
 
-  ctx.fillStyle = UI_COLORS.mutedText;
+  ctx.fillStyle = PALETTE.textMuted;
   ctx.font = fontStyle("md");
   ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
 
-  ctx.fillStyle = UI_COLORS.text;
+  ctx.fillStyle = PALETTE.textPrimary;
   ctx.font = fontStyle("md", 700);
   ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 

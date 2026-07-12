@@ -30,7 +30,6 @@ export const FONT_SCALE = {
   sm: 16,
   md: 20,
   lg: 28,
-  xl: 40,
   xxl: 56,
 } as const;
 

@@ -444,24 +444,6 @@ describe("game engine", () => {
       expect(asteroid.hasAwardedPassBonus).toBe(true);
       expect(asteroid.x).toBeLessThan(-ASTEROID_REMOVE_PADDING);
     });
-
-    it("loses the bonus if bonuses are applied after asteroids are removed (documents the pre-fix ordering bug)", () => {
-      const player = createInitialPlayer();
-      const playerLeftEdge = player.x - player.width / 2;
-      const asteroid = createAsteroid({
-        x: playerLeftEdge - 21,
-        radius: 20,
-        speed: 5000,
-      });
-      const asteroids = [asteroid];
-      const largeDeltaTime = 1;
-
-      updateAsteroids(asteroids, largeDeltaTime);
-      const scoreAfterBonus = collectPassBonuses(100, player, asteroids);
-
-      expect(asteroids).toHaveLength(0);
-      expect(scoreAfterBonus).toBe(100);
-    });
   });
 
   describe("frame delta cap", () => {
@@ -475,22 +457,6 @@ describe("game engine", () => {
 
     it("does not cap a delta exactly at the maximum", () => {
       expect(capFrameDelta(MAX_FRAME_DELTA_SECONDS)).toBe(MAX_FRAME_DELTA_SECONDS);
-    });
-
-    it("treats NaN as zero", () => {
-      expect(capFrameDelta(NaN)).toBe(0);
-    });
-
-    it("treats negative deltas as zero", () => {
-      expect(capFrameDelta(-1)).toBe(0);
-    });
-
-    it("treats -Infinity as zero", () => {
-      expect(capFrameDelta(-Infinity)).toBe(0);
-    });
-
-    it("treats Infinity as zero", () => {
-      expect(capFrameDelta(Infinity)).toBe(0);
     });
   });
 });

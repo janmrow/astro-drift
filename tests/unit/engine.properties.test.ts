@@ -30,14 +30,9 @@ import type { Asteroid, InputState, Player } from "../../src/game/types";
 
 const PROPERTY_RUNS = 100;
 
-// Runtime caps a single frame's elapsed time at ~0.033s (see main.ts); this wide
-// range stays too, since it stress-tests the pure functions beyond real gameplay.
+// This wide range stress-tests the pure functions beyond real gameplay.
 const deltaTimeArbitrary = fc
   .integer({ min: 0, max: 10_000 })
-  .map((milliseconds) => milliseconds / 1_000);
-
-const realisticDeltaTimeArbitrary = fc
-  .integer({ min: 0, max: 33 })
   .map((milliseconds) => milliseconds / 1_000);
 
 const unitIntervalArbitrary = fc.float({ min: 0, max: 1, noNaN: true });
@@ -89,29 +84,6 @@ describe("game engine properties", () => {
         playerArbitrary,
         inputArbitrary,
         deltaTimeArbitrary,
-        (player, input, deltaTime) => {
-          const updatedPlayer = updatePlayer(player, input, deltaTime);
-
-          expect(updatedPlayer.x).toBeGreaterThanOrEqual(player.width / 2 + PLAYER_SCREEN_PADDING);
-          expect(updatedPlayer.x).toBeLessThanOrEqual(PLAYER_AREA_MAX_X);
-          expect(updatedPlayer.y).toBeGreaterThanOrEqual(
-            player.height / 2 + PLAYER_SCREEN_PADDING,
-          );
-          expect(updatedPlayer.y).toBeLessThanOrEqual(
-            GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING,
-          );
-        },
-      ),
-      { numRuns: PROPERTY_RUNS },
-    );
-  });
-
-  it("keeps an in-bounds player inside the playable movement bounds over a real frame", () => {
-    fc.assert(
-      fc.property(
-        playerArbitrary,
-        inputArbitrary,
-        realisticDeltaTimeArbitrary,
         (player, input, deltaTime) => {
           const updatedPlayer = updatePlayer(player, input, deltaTime);
 

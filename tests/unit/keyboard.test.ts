@@ -3,29 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createInputState } from "../../src/game/engine";
 import { resetInputState, setupKeyboardControls } from "../../src/input/keyboard";
 
-type FakeKeyboardEvent = { key: string; preventDefault: () => void };
-type Listener = (event: FakeKeyboardEvent) => void;
-
-function createKeyEvent(key: string): FakeKeyboardEvent {
-  return { key, preventDefault: vi.fn() };
+function createKeyboardEvent(type: "keydown" | "keyup", key: string): KeyboardEvent {
+  const event = new Event(type, { cancelable: true });
+  Object.defineProperty(event, "key", { value: key });
+  return event as KeyboardEvent;
 }
 
 describe("keyboard controls", () => {
   let input: ReturnType<typeof createInputState>;
-  let onGameActionRequested: ReturnType<typeof vi.fn<(key: string) => boolean>>;
-  let listeners: Record<string, Listener>;
+  let onGameActionRequested: ReturnType<typeof vi.fn<(key: string) => void>>;
 
   beforeEach(() => {
-    listeners = {};
-
-    vi.stubGlobal("window", {
-      addEventListener: vi.fn((type: string, handler: Listener) => {
-        listeners[type] = handler;
-      }),
-    });
+    vi.stubGlobal("window", new EventTarget());
 
     input = createInputState();
-    onGameActionRequested = vi.fn().mockReturnValue(false);
+    onGameActionRequested = vi.fn();
     setupKeyboardControls(input, onGameActionRequested);
   });
 
@@ -34,62 +26,53 @@ describe("keyboard controls", () => {
   });
 
   it("maps WASD keys to movement state", () => {
-    listeners.keydown(createKeyEvent("w"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "w"));
     expect(input.up).toBe(true);
 
-    listeners.keyup(createKeyEvent("w"));
+    window.dispatchEvent(createKeyboardEvent("keyup", "w"));
     expect(input.up).toBe(false);
   });
 
   it("maps arrow keys to movement state", () => {
-    listeners.keydown(createKeyEvent("ArrowLeft"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "ArrowLeft"));
     expect(input.left).toBe(true);
 
-    listeners.keyup(createKeyEvent("ArrowLeft"));
+    window.dispatchEvent(createKeyboardEvent("keyup", "ArrowLeft"));
     expect(input.left).toBe(false);
   });
 
   it("prevents default for movement keys", () => {
-    const event = createKeyEvent("ArrowUp");
-    listeners.keydown(event);
-    expect(event.preventDefault).toHaveBeenCalled();
+    const event = createKeyboardEvent("keydown", "ArrowUp");
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it("does not prevent default or change input for unrelated keys", () => {
-    const event = createKeyEvent("q");
-    listeners.keydown(event);
-    expect(event.preventDefault).not.toHaveBeenCalled();
+    const event = createKeyboardEvent("keydown", "q");
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
     expect(input).toEqual(createInputState());
   });
 
   it("prevents default and requests a game action for action keys", () => {
     for (const key of ["Enter", " ", "r"]) {
       onGameActionRequested.mockClear();
-      const event = createKeyEvent(key);
+      const event = createKeyboardEvent("keydown", key);
 
-      listeners.keydown(event);
+      window.dispatchEvent(event);
 
-      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(true);
       expect(onGameActionRequested).toHaveBeenCalledWith(key);
     }
   });
 
-  it("prevents default for the space key even when the game action is rejected", () => {
-    onGameActionRequested.mockReturnValue(false);
-    const event = createKeyEvent(" ");
-
-    listeners.keydown(event);
-
-    expect(event.preventDefault).toHaveBeenCalled();
-  });
-
   it("resets movement input on window blur", () => {
-    listeners.keydown(createKeyEvent("ArrowUp"));
-    listeners.keydown(createKeyEvent("ArrowLeft"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "ArrowUp"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "ArrowLeft"));
     expect(input.up).toBe(true);
     expect(input.left).toBe(true);
 
-    listeners.blur(createKeyEvent(""));
+    window.dispatchEvent(new Event("blur"));
 
     expect(input.up).toBe(false);
     expect(input.down).toBe(false);

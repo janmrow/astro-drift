@@ -2,7 +2,6 @@ import "./style.css";
 
 import { capFrameDelta, createInputState } from "./game/engine";
 import { formatScore, formatTime } from "./game/format";
-import { createSeededRng } from "./game/rng";
 import {
   advanceRunningGame,
   createInitialGameState,
@@ -30,13 +29,6 @@ const fontFamily = window.getComputedStyle(canvas).fontFamily;
 const STAR_COUNT = 90;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-function createAsteroidRngFromLocation(): () => number {
-  const seedParam = new URLSearchParams(window.location.search).get("seed");
-  return seedParam !== null ? createSeededRng(Number(seedParam)) : Math.random;
-}
-
-let asteroidRng = createAsteroidRngFromLocation();
 
 const stars = createStars(STAR_COUNT);
 const input = createInputState();
@@ -71,7 +63,7 @@ function runGameLoop(currentFrameTime: number): void {
   updateStars(stars, ambientMotionSuppressed ? 0 : deltaTime);
 
   if (gameStatus === "running") {
-    const result = advanceRunningGame(gameState, input, deltaTime, asteroidRng);
+    const result = advanceRunningGame(gameState, input, deltaTime, Math.random);
     gameState = result.gameState;
 
     if (result.collided) {
@@ -123,14 +115,10 @@ function restartGame(): void {
   gameStatus = "running";
   gameState = createInitialGameState();
   resetInputState(input);
-  asteroidRng = createAsteroidRngFromLocation();
   previousFrameTime = performance.now();
 }
 
 let lastStatusText = "";
-let lastScoreText = "";
-let lastTimeText = "";
-let lastAsteroidCountText = "";
 
 function updateDomStatus(): void {
   if (gameStatus !== lastStatusText) {
@@ -138,26 +126,9 @@ function updateDomStatus(): void {
     lastStatusText = gameStatus;
   }
 
-  const scoreText = formatScore(gameState.score);
-
-  if (scoreText !== lastScoreText) {
-    scoreElement.textContent = scoreText;
-    lastScoreText = scoreText;
-  }
-
-  const timeText = formatTime(gameState.survivalTime);
-
-  if (timeText !== lastTimeText) {
-    timeElement.textContent = timeText;
-    lastTimeText = timeText;
-  }
-
-  const asteroidCountText = gameState.asteroids.length.toString();
-
-  if (asteroidCountText !== lastAsteroidCountText) {
-    asteroidCountElement.textContent = asteroidCountText;
-    lastAsteroidCountText = asteroidCountText;
-  }
+  scoreElement.textContent = formatScore(gameState.score);
+  timeElement.textContent = formatTime(gameState.survivalTime);
+  asteroidCountElement.textContent = gameState.asteroids.length.toString();
 }
 
 function getRequiredContext(canvasElement: HTMLCanvasElement): CanvasRenderingContext2D {

@@ -1,18 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-type MutationCounts = {
-  status: number;
-  score: number;
-  time: number;
-  asteroids: number;
-};
-
-declare global {
-  interface Window {
-    __mutationCounts?: MutationCounts;
-  }
-}
-
 test("loads the initial game contract", async ({ page }) => {
   await page.goto("/");
 
@@ -64,109 +51,11 @@ test("updates the browser status while running", async ({ page }) => {
     .toBeGreaterThan(0);
 });
 
-test("goes to gameOver on collision and restarts cleanly with R", async ({ page }) => {
-  // Seed 172 was found by brute-force simulation to collide with a stationary
-  // player quickly (~3s), giving a fast, deterministic gameOver without
-  // relying on Math.random. See src/game/rng.ts / the ?seed= query param in main.ts.
-  await page.goto("/?seed=172");
-
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("game-status")).toHaveText("running");
-
-  await expect(page.getByTestId("game-status")).toHaveText("gameOver", { timeout: 15_000 });
-
-  const scoreAtGameOver = await page.getByTestId("game-score").textContent();
-  const asteroidCountAtGameOver = await page.getByTestId("asteroid-count").textContent();
-
-  expect(Number(scoreAtGameOver)).toBeGreaterThan(0);
-  expect(Number(asteroidCountAtGameOver)).toBeGreaterThan(0);
-
-  await page.keyboard.press("r");
-
-  await expect(page.getByTestId("game-status")).toHaveText("running");
-  await expect(page.getByTestId("game-score")).toHaveText("00000");
-  await expect(page.getByTestId("game-time")).toHaveText("0:00");
-
-  await expect(page.getByTestId("game-status")).toHaveText("gameOver", { timeout: 15_000 });
-
-  const secondRunScoreAtGameOver = await page.getByTestId("game-score").textContent();
-  const secondRunAsteroidCountAtGameOver = await page.getByTestId("asteroid-count").textContent();
-
-  // Real per-frame timing (not just the seeded RNG) affects the exact collision
-  // frame, so allow a tiny tolerance instead of requiring an exact match — the
-  // game loop has no fixed timestep, so deltaTime varies with real wall-clock
-  // time between frames and two runs won't be byte-identical even with a
-  // correctly-reset seed.
-  //
-  // This test still guards a real regression: before the seeded-RNG-reset fix,
-  // restarting reused the RNG's carried-over internal state instead of
-  // resetting it, so a same-seed restart produced an asteroid sequence that
-  // diverged by a lot more than +/-1 — not just a timing-sized nudge. The
-  // tolerance below is deliberately tight enough to catch that class of bug
-  // while tolerating normal frame-timing variance.
-  expect(Number(secondRunScoreAtGameOver)).toBeGreaterThanOrEqual(Number(scoreAtGameOver) - 1);
-  expect(Number(secondRunScoreAtGameOver)).toBeLessThanOrEqual(Number(scoreAtGameOver) + 1);
-  expect(Number(secondRunAsteroidCountAtGameOver)).toBeGreaterThanOrEqual(
-    Number(asteroidCountAtGameOver) - 1,
-  );
-  expect(Number(secondRunAsteroidCountAtGameOver)).toBeLessThanOrEqual(
-    Number(asteroidCountAtGameOver) + 1,
-  );
-});
-
 test("scopes aria-live to the status announcement only", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByTestId("game-status-panel")).toHaveAttribute("aria-live", "polite");
   await expect(page.getByTestId("game-stats-panel")).not.toHaveAttribute("aria-live");
-});
-
-test("only writes status text nodes when the value actually changes", async ({ page }) => {
-  await page.goto("/");
-
-  await page.evaluate(() => {
-    const counts: MutationCounts = { status: 0, score: 0, time: 0, asteroids: 0 };
-
-    const observe = (key: keyof MutationCounts, selector: string) => {
-      const element = document.querySelector(selector);
-
-      if (!element) {
-        throw new Error(`Element not found for selector: ${selector}`);
-      }
-
-      new MutationObserver(() => {
-        counts[key] += 1;
-      }).observe(element, { characterData: true, childList: true, subtree: true });
-    };
-
-    observe("status", "[data-testid='game-status']");
-    observe("score", "[data-testid='game-score']");
-    observe("time", "[data-testid='game-time']");
-    observe("asteroids", "[data-testid='asteroid-count']");
-
-    window.__mutationCounts = counts;
-  });
-
-  await page.keyboard.press("Enter");
-  await page.waitForTimeout(1500);
-
-  const counts = await page.evaluate(() => window.__mutationCounts);
-
-  if (!counts) {
-    throw new Error("Mutation counts were not recorded.");
-  }
-
-  // Status flips idle -> running, and possibly -> gameOver if a random collision
-  // happens within the window, so 1 or 2 changes are both valid. At 60fps for
-  // ~1.5s the loop runs roughly 90 times; if text were written every frame
-  // regardless of change, all counts would track that. Change-only writes keep
-  // them far lower, bounded by how many whole-number ticks actually occurred.
-  expect(counts.status).toBeGreaterThanOrEqual(1);
-  expect(counts.status).toBeLessThanOrEqual(2);
-  expect(counts.score).toBeGreaterThan(0);
-  expect(counts.score).toBeLessThan(60);
-  expect(counts.time).toBeGreaterThan(0);
-  expect(counts.time).toBeLessThan(60);
 });
 
 test("saves the best score when the tab is hidden mid-run", async ({ page }) => {

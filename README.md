@@ -93,11 +93,9 @@ Run the full local quality gate:
 npm run check
 ```
 
-The quality gate runs:
-
-```text
-lint -> unit tests -> Playwright E2E -> build
-```
+The scripts in `package.json` are the executable source of truth for the gate.
+Through that script graph, `npm run check` runs lint, TypeScript checking for the
+tests, unit tests, one production build, a preview server, and Playwright E2E.
 
 If Playwright browsers are missing on a fresh machine, install Chromium:
 
@@ -122,6 +120,7 @@ src/
     keyboard.ts
   rendering/
     canvasRenderer.ts
+    theme.ts
   storage/
     bestScoreStorage.ts
   style.css
@@ -133,6 +132,7 @@ tests/
     asteroids.test.ts
     bestScoreStorage.test.ts
     format.test.ts
+    helpers.ts
     keyboard.test.ts
     rng.test.ts
     state.test.ts
@@ -141,11 +141,13 @@ tests/
 
 docs/
   ADR-001-separate-engine-from-rendering.md
+  PRINCIPLES.md
+  TEST_STRATEGY.md
+  VISUAL-STYLE-CONSTRAINTS.md
 
 .github/
   workflows/
     ci.yml
-    deploy-pages.yml
 ```
 
 ## How The Code Is Organized
@@ -165,51 +167,61 @@ Core gameplay rules live in `src/game/`:
 - score and time formatting
 - gameplay tuning constants (`balance.ts`)
 - per-frame game state orchestration (`state.ts`)
+- explicit randomness inputs and a deterministic RNG utility
+- shared game-domain types
 
-Rendering lives in `src/rendering/canvasRenderer.ts`. It draws the background, stars, player, asteroids, HUD, bonus feedback, and game over overlay.
+Game update functions return next values without mutating caller-owned game state
+or collections. `advanceRunningGame` returns the next game state together with
+collision information.
+
+Canvas drawing lives in `src/rendering/canvasRenderer.ts`; Canvas palette and
+typography helpers live in `src/rendering/theme.ts`. DOM styling, including the
+font-family source used by both DOM and Canvas text, lives in `src/style.css`.
 
 Keyboard input lives in `src/input/keyboard.ts`.
 
 Local best score persistence lives in `src/storage/bestScoreStorage.ts`.
 
-`src/main.ts` connects these pieces: input, game state, rendering, storage, DOM status hooks, and the animation loop.
+`src/main.ts` connects these pieces and owns the imperative browser shell: input,
+time, runtime game-rule randomness, game state, rendering, storage, DOM status
+hooks, and the animation loop. The renderer owns separate visual randomness,
+currently used only for the star field.
 
 This structure keeps the important behavior testable without relying on Canvas pixel assertions.
 
 ## Testing Approach
 
-Unit tests cover pure game logic, including movement, boundaries, scoring, asteroid behavior, collision checks, formatting, and best score storage. The suite includes example-based tests and property-based tests with `fast-check` for core invariants such as movement bounds, non-decreasing score, spawn interval limits, asteroid movement, and pass bonus rules.
+Unit tests cover game rules and small boundary modules, including movement,
+boundaries, scoring, asteroid behavior, collision, state advancement, formatting,
+deterministic RNG behavior, keyboard input, and best-score storage. The suite
+includes example-based tests and property-based tests with `fast-check` for core
+invariants such as movement bounds, non-decreasing score, spawn interval limits,
+asteroid movement, and pass bonus rules.
 
 Playwright tests cover the main browser smoke flow:
 
-- the page loads
-- the canvas is visible
-- the game starts in `idle`
-- Enter starts the game
-- Space starts the game
-- DOM status hooks update to `running`
-- score, time, and asteroid status hooks progress while the game is running
+- the initial Canvas and DOM contract
+- Enter and Space starting the game
+- the restart key not starting an idle game
+- running status, score, time, and asteroid-count progression
+- `aria-live` being limited to status announcements
+- best-score persistence when a running tab is hidden
+
+Full browser game-over/restart remains a manual smoke check rather than an
+automated E2E scenario. Collision and clean initial-state rules are tested
+directly at unit level.
 
 The project does not test Canvas pixels. Pixel-level tests are brittle and would make small visual changes look like gameplay regressions. Instead, game rules are tested directly and browser flow is checked through stable DOM hooks such as `data-testid`.
 
-More detail is documented in [TEST_STRATEGY.md](TEST_STRATEGY.md).
+More detail is documented in the [test strategy](docs/TEST_STRATEGY.md).
 
 ## CI And Deployment
 
-GitHub Actions runs CI on pushes and pull requests targeting `main`.
-
-The CI workflow:
-
-```text
-npm ci
-npm run lint
-npm test
-npx playwright install --with-deps chromium
-npm run test:e2e
-npm run build
-```
-
-The GitHub Pages deployment workflow also runs the full quality gate before publishing the built `dist/` artifact.
+GitHub Actions runs the canonical `npm run check` gate for pushes and pull
+requests targeting `main`, as well as manual workflow runs. A dependent job
+builds and deploys GitHub Pages after verification for eligible `main` pushes or
+manual runs. Workflow triggers, permissions, dependencies, and deployment steps
+are defined in `.github/workflows/ci.yml`.
 
 For Pages builds, `vite.config.ts` adjusts the Vite `base` path through the `GITHUB_PAGES=true` environment variable.
 

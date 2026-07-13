@@ -12,15 +12,10 @@ Optimize for a small, playable, polished arcade loop with clear architecture, re
 
 This project uses Node.js 22 and npm.
 
-```bash
-npm run dev          # local development server
-npm run build        # TypeScript check and Vite build
-npm test             # unit tests only
-npm run test:watch   # unit tests in watch mode
-npm run lint         # ESLint
-npm run test:e2e     # Playwright E2E; starts its preview server
-npm run check        # full gate: lint -> unit tests -> E2E -> build
-```
+See [README.md](README.md) for setup and primary commands. The scripts in
+`package.json` are the executable source of truth. Use `npm run check` as the
+canonical full quality gate; run narrower scripts such as `npm test`,
+`npm run lint`, or `npm run build` while iterating.
 
 Run a single unit test file:
 
@@ -33,8 +28,6 @@ Install the Chromium browser used by Playwright on a fresh machine:
 ```bash
 npx playwright install chromium
 ```
-
-Use `npm run check` as the main local quality gate.
 
 Do not run `npm run test:e2e` and `npm run check` concurrently. Both manage the same Playwright preview server on `localhost:4173`.
 
@@ -50,13 +43,14 @@ Do not manually start `vite preview` for normal E2E or full-check runs; Playwrig
 
 The core rule is: **game logic never touches Canvas**.
 
-| Layer | Files | Responsibility |
-|---|---|---|
-| Game logic | `src/game/engine.ts`, `asteroids.ts`, `format.ts`, `types.ts`, `balance.ts`, `state.ts`, `rng.ts` | Pure movement, boundaries, scoring, difficulty, collision, asteroid behavior, formatting, tuning, state advancement, and deterministic RNG |
-| Rendering | `src/rendering/canvasRenderer.ts` | All Canvas drawing |
-| Input | `src/input/keyboard.ts` | Keyboard events mapped to `InputState` |
-| Storage | `src/storage/bestScoreStorage.ts` | Best-score persistence in `localStorage` |
-| Glue | `src/main.ts` | Animation loop and wiring between state, input, rendering, storage, and DOM hooks |
+`src/game/` owns game rules and state transitions. Its update functions return
+next values without mutating caller-owned inputs. Browser, Canvas, input,
+storage, time, and randomness effects stay at explicit shell boundaries:
+`src/main.ts`, `src/rendering/`, `src/input/`, and `src/storage/`.
+
+See [ADR-001](docs/ADR-001-separate-engine-from-rendering.md) for the durable
+responsibility boundary and [Engineering Principles](docs/PRINCIPLES.md) for the
+functional-core / imperative-shell dependency rule.
 
 The game state machine is:
 
@@ -64,9 +58,13 @@ The game state machine is:
 idle -> running -> gameOver
 ```
 
-`src/main.ts` holds one `gameState: GameState` object and tracks `gameStatus` separately. This separation is intentional; see the `ADR-001` addendum on state transitions.
+`src/main.ts` holds one `gameState: GameState` object and tracks `gameStatus`
+separately. This separation is intentional; see the ADR-001 addendum on state
+transitions.
 
-While the game is running, `advanceRunningGame` from `src/game/state.ts` advances the state. Game-rule functions in `src/game/` should be pure and return new values.
+While the game is running, `advanceRunningGame` from `src/game/state.ts` returns
+the next game state and collision information. Prefer value-returning functions
+for new gameplay behavior and keep effects at the established boundaries.
 
 Stable DOM hooks used by Playwright:
 
@@ -83,9 +81,12 @@ Stable DOM hooks used by Playwright:
 - Do not add React, a backend, accounts, a database, multiplayer, complex levels, shooting mechanics, power-ups, large redesigns, or broad rewrites unless explicitly requested.
 - Keep the existing stack: TypeScript, Vite, Canvas, Vitest, Playwright, ESLint, and GitHub Actions.
 - Do not switch package managers or add dependencies unless the task requires it or the trade-off is clearly justified.
-- Keep game rules in `src/game/`, Canvas rendering in `src/rendering/canvasRenderer.ts`, keyboard input in `src/input/keyboard.ts`, and browser persistence in `src/storage/bestScoreStorage.ts`.
+- Keep game rules in `src/game/`, Canvas rendering and tokens in
+  `src/rendering/`, DOM styling in `src/style.css`, keyboard input in
+  `src/input/keyboard.ts`, and browser persistence in
+  `src/storage/bestScoreStorage.ts`.
 - Keep `src/main.ts` mostly as glue.
-- Prefer pure functions for new gameplay behavior.
+- Prefer value-returning functions for new gameplay behavior.
 - Write clear, engineering-oriented TypeScript with explicit names, small functions, straightforward control flow, and readable conditionals.
 - Avoid clever one-liners, premature patterns, unnecessary abstractions, and broad refactors mixed with feature work.
 
@@ -93,15 +94,15 @@ Before changing an invariant relied on by many call sites, audit all existing ca
 
 ## Testing
 
-Use unit tests for pure rules, including movement, boundaries, scoring, formatting, difficulty, asteroid behavior, collision, restart behavior, and best-score storage.
+Use unit tests for game rules and small boundary modules. Keep Playwright focused
+on important browser contracts. The current test-layer rationale and coverage
+boundaries live in [the test strategy](docs/TEST_STRATEGY.md).
 
 Property-based tests use `fast-check`. Prefer small explicit helper factories over repeated raw object literals:
 
 ```ts
 createAsteroid({ x: 500, speed: 120 });
 ```
-
-Use Playwright only for important browser flows such as page load, Canvas presence, idle status, starting, status updates, and restart where practical.
 
 - Do not test Canvas pixels.
 - Assert through stable DOM hooks such as `data-testid`.
@@ -147,8 +148,12 @@ For mixed changes entirely within `src/rendering/` that combine more than one co
 
 Do not duplicate the README in agent instructions.
 
-- `README.md` is the public project snapshot: purpose, setup, commands, testing, and high-level architecture.
+- [README.md](README.md) is the public project snapshot: purpose, setup, commands,
+  testing, and high-level architecture.
 - Update `README.md` when setup, commands, structure, user-facing behavior, roadmap, or scope changes.
-- Update `TEST_STRATEGY.md` when test levels, E2E strategy, quality gates, or major coverage decisions change.
+- Update [the test strategy](docs/TEST_STRATEGY.md) when test levels, E2E
+  strategy, quality gates, or major coverage decisions change.
 - Update shared agent instructions when architecture-level facts change, especially the layout under `src/game/`, state ownership, or the role of `src/main.ts`.
 - Add or update an ADR in `docs/` only for meaningful architectural decisions, not small local refactors.
+- Keep visual invariants and rendering-assumption guidance in
+  [the visual constraints](docs/VISUAL-STYLE-CONSTRAINTS.md).

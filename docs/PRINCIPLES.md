@@ -12,11 +12,14 @@ The idea, in short: split the codebase into two zones with fundamentally differe
 
 This fits a small arcade game unusually well, because the two things that actually change independently in this project *are* game rules and presentation. A visual redesign — new palette, new HUD layout, motion trails — should not require touching how asteroids move or collide. Conversely, a change to the movement model should not care what color anything is drawn in. The architecture mirrors the two kinds of change this project actually goes through.
 
-What it is worth in practice: game logic can be unit-tested without a browser, without mocks, and without a test harness pretending to be a DOM. Presentation-layer experiments — a new renderer or an audio layer — can be developed or replaced with limited impact on the correctness of the game rules underneath. The architectural decision is documented in [ADR-001](docs/ADR-001-separate-engine-from-rendering.md). The credit for naming this pattern goes to Gary Bernhardt.
+What it is worth in practice: game logic can be unit-tested without a browser, without mocks, and without a test harness pretending to be a DOM. Presentation-layer experiments — a new renderer or an audio layer — can be developed or replaced with limited impact on the correctness of the game rules underneath. The architectural decision is documented in [ADR-001](ADR-001-separate-engine-from-rendering.md). The credit for naming this pattern goes to Gary Bernhardt.
 
 **Default:** Put game rules and state transitions in `src/game/`. Pass external inputs such as elapsed time and randomness into the core explicitly.
 
-**Avoid:** Imports from `src/game/` into rendering, input, storage, or `main.ts`, and direct use there of browser APIs, `Date.now()`, or `Math.random()`.
+**Avoid:** Imports by `src/game/` from rendering, input, storage, or `main.ts`, and
+direct use in game modules of browser APIs, the system clock, or unseeded
+randomness. Shell, rendering, input, and storage modules may depend on game
+modules; the reverse dependency is the one to prevent.
 
 **Exception:** If a rule genuinely depends on an external capability, keep the effect in the shell and pass the smallest required value or function into the core.
 
@@ -58,7 +61,13 @@ Do not ask only "what example inputs should I test?" Also ask "what must remain 
 
 Property-based tests generate varied inputs and check that these invariants hold, rather than relying only on a curated handful of examples. They complement example-based tests: examples are often better at documenting specific cases, while properties are better at exploring a broad input space and exposing edge cases a human may not write by hand.
 
-This follows naturally from having a pure functional core. Pure functions do not need mocking or dependency injection to test; they need inputs. The game's seeded RNG makes gameplay behavior reproducible, while `fast-check` provides its own seed and replay information for reproducing a failing generated case. These are separate mechanisms serving the same goal: failures should be diagnosable and repeatable.
+This follows naturally from having a functional core. Value-returning game rules
+do not need a browser or DOM harness to test; they need inputs. Randomized rules
+accept an RNG function, and the retained `createSeededRng` utility can provide
+repeatable unit-test sequences. Browser gameplay supplies randomness at the shell
+and does not expose a seed query contract. Separately, `fast-check` provides its
+own seed and replay information for reproducing a failing generated case. These
+mechanisms serve the same goal: failures should be diagnosable and repeatable.
 
 **Default:** Use focused example-based tests for concrete behavior and property-based tests for stable domain invariants.
 
@@ -66,7 +75,7 @@ This follows naturally from having a pure functional core. Pure functions do not
 
 **Exception:** Do not force property-based testing onto behavior that is better explained by a few clear examples or verified at another test layer.
 
-The lineage here is QuickCheck, originally from Haskell; `fast-check` is the JavaScript/TypeScript implementation this project uses. The broader test-layer decisions are documented in [TEST_STRATEGY.md](docs/TEST_STRATEGY.md).
+The lineage here is QuickCheck, originally from Haskell; `fast-check` is the JavaScript/TypeScript implementation this project uses. The broader test-layer decisions are documented in [TEST_STRATEGY.md](TEST_STRATEGY.md).
 
 ## 5. Composition over inheritance
 

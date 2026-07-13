@@ -19,17 +19,19 @@ Canvas is good for drawing the game, but it is not a good place to validate core
 
 ## Decision
 
-Core game rules are split across `src/game/engine.ts`, `src/game/asteroids.ts`, and `src/game/types.ts`.
+Core game rules and state transitions live under `src/game/`, grouped by
+responsibility:
 
-The game logic includes:
+- `state.ts` creates/resets game state and orchestrates each running frame;
+- `engine.ts` owns movement, boundaries, scoring, collision, and frame rules;
+- `asteroids.ts` owns asteroid spawning, movement, behavior, and cleanup;
+- `balance.ts` owns gameplay tuning constants;
+- `format.ts` owns score and time formatting;
+- `rng.ts` provides the retained deterministic RNG utility; and
+- `types.ts` owns shared game-domain types.
 
-- player movement;
-- movement boundaries;
-- score calculation;
-- difficulty calculation;
-- collision checks;
-- restart-related state creation;
-- formatting helpers used by the game state.
+This is a responsibility map, not an exhaustive list of symbols. Per-frame game
+updates return next values without mutating caller-owned inputs.
 
 The rendering layer stays responsible for drawing:
 
@@ -39,6 +41,17 @@ The rendering layer stays responsible for drawing:
 - asteroids;
 - HUD;
 - game over overlay.
+
+Canvas drawing is owned by `src/rendering/canvasRenderer.ts`, while Canvas visual
+tokens and font-string construction live in `src/rendering/theme.ts`. DOM styling
+lives in `src/style.css`.
+
+Browser effects remain at explicit boundaries. `src/main.ts` owns the animation
+loop, time, DOM wiring, and the runtime randomness passed into game rules;
+game-rule updates receive that RNG explicitly rather than selecting a global
+randomness source. Rendering owns separate visual randomness, currently used only
+for the star field in `src/rendering/canvasRenderer.ts`. `src/input/keyboard.ts`
+owns keyboard events, and `src/storage/bestScoreStorage.ts` owns browser persistence.
 
 ## Consequences
 
@@ -70,14 +83,17 @@ state resets to grow in `main.ts` without unit coverage. To close that gap:
   builds the player, asteroids, spawn state, score, survival time, and bonus-feedback fields.
   Both the initial module setup and `restartGame()` call it, so there is one place that defines
   "clean state" instead of two hand-written copies that can drift apart.
-- **Per-frame score/bonus math is core logic.** `applyScoreBonuses` and `updateBonusFeedbackTimer`
-  (`src/game/state.ts`) are pure functions, unit-tested the same way as the rest of `src/game/`.
+- **Per-frame updates are core logic.** `advanceRunningGame()`
+  (`src/game/state.ts`) returns the next `GameState` together with collision
+  information. Its movement, asteroid, scoring, and bonus-feedback helpers return
+  next values without mutating caller-owned state or collections.
 - **The frame-delta cap is core logic.** `capFrameDelta` (`src/game/engine.ts`) is a pure,
   unit-tested function instead of an inline `Math.min` in the render loop.
-- **`gameStatus` transitions themselves stay thin glue in `main.ts`.** Deciding *when* to move
-  from `idle` to `running` to `gameOver` is directly tied to keyboard input and the
-  `requestAnimationFrame` loop — there is little logic to unit-test in isolation, and the
-  transitions are already covered by E2E tests exercising the real input → status → DOM path.
+- **`gameStatus` transitions themselves stay thin glue in `main.ts`.** Browser E2E
+  covers starting and stable running-state DOM, accessibility, and persistence
+  behavior. Collision and state-transition rules stay covered at unit/property
+  level; the full browser `gameOver → restart` flow is intentionally a manual
+  smoke check after removal of the timing-dependent seeded E2E scenario.
 
 This does not change the trade-off described above: rendering stays out of `src/game/`, and
 `main.ts` stays thin glue that wires input, state, rendering, and storage together.

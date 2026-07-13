@@ -1,5 +1,4 @@
 :root {
-  /* Kept in sync with FONT_FAMILY in src/rendering/theme.ts — update both together. */
   font-family:
     "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   color: #f6f0ff;

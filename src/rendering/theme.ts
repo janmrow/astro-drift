@@ -21,10 +21,6 @@ export const PALETTE = {
   starCool: "#f2d9ff",
 } as const;
 
-// Kept in sync with the font-family in src/style.css — update both together.
-export const FONT_FAMILY =
-  '"Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace';
-
 export const FONT_SCALE = {
   xs: 12,
   sm: 16,
@@ -33,6 +29,10 @@ export const FONT_SCALE = {
   xxl: 56,
 } as const;
 
-export function fontStyle(size: keyof typeof FONT_SCALE, weight: 400 | 700 = 400): string {
-  return `${weight} ${FONT_SCALE[size]}px ${FONT_FAMILY}`;
+export function fontStyle(
+  size: keyof typeof FONT_SCALE,
+  fontFamily: string,
+  weight: 400 | 700 = 400,
+): string {
+  return `${weight} ${FONT_SCALE[size]}px ${fontFamily}`;
 }

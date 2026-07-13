@@ -1,6 +1,7 @@
 import { BONUS_FEEDBACK_DURATION } from "../game/balance";
 import { GAME_HEIGHT, GAME_WIDTH, PLAYER_AREA_MAX_X } from "../game/engine";
 import { formatScore, formatTime } from "../game/format";
+import type { BonusFeedback } from "../game/state";
 import {
   assertNever,
   type Asteroid,
@@ -20,6 +21,19 @@ export type Star = {
 };
 
 type StarLayer = "far" | "near";
+
+export type RenderFrameInput = {
+  context: CanvasRenderingContext2D;
+  stars: Star[];
+  player: Player;
+  asteroids: Asteroid[];
+  status: GameStatus;
+  score: number;
+  survivalTime: number;
+  bestScore: number;
+  bonusFeedback: BonusFeedback;
+  fontFamily: string;
+};
 
 const STAR_WRAP_PADDING = 4;
 
@@ -112,37 +126,37 @@ export function updateStars(starField: Star[], deltaTime: number): void {
   }
 }
 
-export function renderFrame(
-  ctx: CanvasRenderingContext2D,
-  starField: Star[],
-  currentPlayer: Player,
-  currentAsteroids: Asteroid[],
-  currentStatus: GameStatus,
-  currentScore: number,
-  currentSurvivalTime: number,
-  currentBestScore: number,
-  bonusFeedbackText: string | null,
-  bonusFeedbackTimeLeft: number,
-): void {
+export function renderFrame({
+  context: ctx,
+  stars: starField,
+  player: currentPlayer,
+  asteroids: currentAsteroids,
+  status: currentStatus,
+  score: currentScore,
+  survivalTime: currentSurvivalTime,
+  bestScore: currentBestScore,
+  bonusFeedback,
+  fontFamily,
+}: RenderFrameInput): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
   drawPlayerAreaGuide(ctx);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer);
-  drawScore(ctx, currentScore, currentSurvivalTime);
+  drawScore(ctx, currentScore, currentSurvivalTime, fontFamily);
 
-  if (bonusFeedbackText) {
-    drawBonusFeedback(ctx, bonusFeedbackText, currentPlayer, bonusFeedbackTimeLeft);
+  if (bonusFeedback) {
+    drawBonusFeedback(ctx, bonusFeedback.text, currentPlayer, bonusFeedback.timeLeft, fontFamily);
   }
 
   drawVignette(ctx);
 
   if (currentStatus === "idle") {
-    drawStartOverlay(ctx);
+    drawStartOverlay(ctx, fontFamily);
   }
 
   if (currentStatus === "gameOver") {
-    drawGameOverOverlay(ctx, currentScore, currentSurvivalTime, currentBestScore);
+    drawGameOverOverlay(ctx, currentScore, currentSurvivalTime, currentBestScore, fontFamily);
   }
 }
 
@@ -325,7 +339,12 @@ function drawOutlinedText(
 // docs/VISUAL-STYLE-CONSTRAINTS.md).
 let hudScrimGradient: CanvasGradient | null = null;
 
-function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentSurvivalTime: number): void {
+function drawScore(
+  ctx: CanvasRenderingContext2D,
+  currentScore: number,
+  currentSurvivalTime: number,
+  fontFamily: string,
+): void {
   const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
 
   if (!hudScrimGradient) {
@@ -352,11 +371,27 @@ function drawScore(ctx: CanvasRenderingContext2D, currentScore: number, currentS
   const scoreText = formatScore(currentScore);
   const timeText = formatTime(currentSurvivalTime);
 
-  drawOutlinedText(ctx, scoreText, x, scoreBaseline, fontStyle("md", 700), 4, PALETTE.textPrimary);
-  drawOutlinedText(ctx, timeText, x, timeBaseline, fontStyle("sm"), 3, PALETTE.textMuted);
+  drawOutlinedText(
+    ctx,
+    scoreText,
+    x,
+    scoreBaseline,
+    fontStyle("md", fontFamily, 700),
+    4,
+    PALETTE.textPrimary,
+  );
+  drawOutlinedText(
+    ctx,
+    timeText,
+    x,
+    timeBaseline,
+    fontStyle("sm", fontFamily),
+    3,
+    PALETTE.textMuted,
+  );
 }
 
-function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
+function drawStartOverlay(ctx: CanvasRenderingContext2D, fontFamily: string): void {
   ctx.fillStyle = "rgba(7, 4, 23, 0.68)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
@@ -364,19 +399,19 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D): void {
   ctx.textAlign = "center";
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("xxl", 700);
+  ctx.font = fontStyle("xxl", fontFamily, 700);
   ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("md");
+  ctx.font = fontStyle("md", fontFamily);
   ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
 
   ctx.fillStyle = PALETTE.hazardStandard;
-  ctx.font = fontStyle("md", 700);
+  ctx.font = fontStyle("md", fontFamily, 700);
   ctx.fillText("Press Enter or Space to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("sm");
+  ctx.font = fontStyle("sm", fontFamily);
   ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
   ctx.restore();
@@ -387,6 +422,7 @@ function drawGameOverOverlay(
   finalScore: number,
   finalSurvivalTime: number,
   bestScore: number,
+  fontFamily: string,
 ): void {
   ctx.fillStyle = "rgba(7, 4, 23, 0.76)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -395,23 +431,23 @@ function drawGameOverOverlay(
   ctx.textAlign = "center";
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("xxl", 700);
+  ctx.font = fontStyle("xxl", fontFamily, 700);
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
   ctx.fillStyle = PALETTE.reward;
-  ctx.font = fontStyle("lg", 700);
+  ctx.font = fontStyle("lg", fontFamily, 700);
   ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("md", 700);
+  ctx.font = fontStyle("md", fontFamily, 700);
   ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("md");
+  ctx.font = fontStyle("md", fontFamily);
   ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("md", 700);
+  ctx.font = fontStyle("md", fontFamily, 700);
   ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
   ctx.restore();
@@ -442,6 +478,7 @@ function drawBonusFeedback(
   text: string,
   currentPlayer: Player,
   feedbackTimeLeft: number,
+  fontFamily: string,
 ): void {
   const feedbackFraction = Math.max(0, Math.min(1, feedbackTimeLeft / BONUS_FEEDBACK_DURATION));
   const elapsedFraction = 1 - feedbackFraction;
@@ -454,7 +491,7 @@ function drawBonusFeedback(
   ctx.save();
   ctx.globalAlpha = feedbackFraction;
   ctx.textAlign = "center";
-  drawOutlinedText(ctx, text, x, y, fontStyle("xs", 700), 2, PALETTE.reward);
+  drawOutlinedText(ctx, text, x, y, fontStyle("xs", fontFamily, 700), 2, PALETTE.reward);
   ctx.restore();
 }
 

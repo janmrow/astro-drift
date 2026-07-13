@@ -15,9 +15,8 @@
     "test:coverage": "vitest run --coverage",
     "typecheck:tests": "tsc -p tsconfig.tests.json",
     "lint": "eslint .",
-    "test:e2e": "playwright test",
-    "check:ci": "npm run lint && npm run typecheck:tests && npm test && npm run test:e2e",
-    "check": "npm run check:ci && npm run build"
+    "test:e2e": "npm run build && playwright test",
+    "check": "npm run lint && npm run typecheck:tests && npm test && npm run test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

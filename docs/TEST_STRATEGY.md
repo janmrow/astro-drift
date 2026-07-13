@@ -26,81 +26,73 @@ The most important risks are:
 
 ### Unit tests
 
-Unit tests cover pure game logic.
+Unit tests cover game rules and small boundary modules. Game update tests assert
+next values and, where valuable, verify that caller-owned inputs are unchanged.
 
 Current focus:
 
-- player initial state;
-- player movement;
-- movement boundaries;
-- input state defaults;
-- scoring;
-- passed asteroid bonuses;
-- difficulty calculation;
-- collision detection;
-- asteroid movement;
-- asteroid cleanup;
-- asteroid spawn state;
-- local best score storage.
+- engine rules: initial player/input state, movement, boundaries, scoring,
+  difficulty, pass bonuses, collision, and frame-delta capping;
+- asteroid spawning, ranges, variants, movement, bouncing, rotation, and cleanup;
+- running-state advancement, initial/reset state creation, score bonuses, and
+  bonus-feedback timing;
+- deterministic RNG repeatability and output range;
+- score and time formatting;
+- keyboard movement/action mapping, default prevention, blur reset, and explicit
+  input reset; and
+- local best-score storage, normalization, and storage-failure behavior.
 
 These tests should stay fast and independent from the browser.
 
 ### Property-based tests
 
-`engine.properties.test.ts` uses `fast-check` to check invariants that hold across
-many generated inputs, not just hand-picked examples — e.g. player movement always
-stays within its bounds, score never decreases, and collision detection always
-triggers when an asteroid's center is inside the player hitbox and never triggers
-once it is farther than its hit radius away. Where an invariant is meant to reflect
-actual single-frame gameplay (not just the pure function's general robustness), the
-delta-time arbitrary is bounded to the runtime's ~0.033s frame cap rather than the
-wider range used elsewhere.
+[`engine.properties.test.ts`](../tests/unit/engine.properties.test.ts) uses
+`fast-check` to check invariants that hold across many generated inputs, not just
+hand-picked examples — e.g. player movement always stays within its bounds, score
+never decreases, and collision detection always triggers when an asteroid's center
+is inside the player hitbox and never triggers once it is farther than its hit
+radius away. Delta-time properties use a shared broad arbitrary spanning 0 to 10
+seconds, exercising the retained invariants beyond ordinary single-frame timing
+without defining separate runtime-frame-specific property coverage.
 
 ### E2E tests
 
 E2E tests cover the main browser contract:
 
-- page loads;
-- canvas exists;
-- game starts with Enter or Space;
-- game status changes from `idle` to `running`;
-- score, time, and asteroid count update while playing;
-- collision moves status to `gameOver`, and pressing `R` restarts into a clean state
-  (using a `?seed=` query param for a deterministic asteroid RNG, see `src/game/rng.ts`).
+- the initial Canvas and DOM status/stat contract;
+- starting with Enter or Space;
+- rejecting the restart key while the game is still `idle`;
+- `running` status plus score, time, and asteroid-count progression;
+- limiting `aria-live` announcements to game status; and
+- persisting the best score when a running tab becomes hidden.
 
 E2E tests should use DOM status hooks where possible instead of reading Canvas pixels.
 
+Full browser `gameOver`/restart behavior is a manual smoke check. Collision and
+clean initial-state behavior remain covered directly by unit tests, but the suite
+does not claim automated browser coverage for the complete restart flow.
+
+Randomized game rules continue to accept an injected RNG function. The retained
+`createSeededRng` utility is unit-tested and supports deterministic unit scenarios;
+browser gameplay supplies randomness from the application shell and does not
+expose a seed query contract.
+
 ## What is automated now
 
-Current automated checks:
+`npm run check` is the canonical quality gate. Its executable graph lives in
+[`package.json`](../package.json) and covers lint, TypeScript checking for tests,
+unit tests, one production build, preview startup, and Playwright E2E.
 
-```text
-npm run lint
-npm test
-npm run test:e2e
-npm run build
-```
-
-`npm run test:coverage` reports unit test coverage. There is no enforced threshold yet — it exists as a backstop to catch silent coverage regressions.
-
-Current unit test areas:
-
-- `src/game/engine.ts`;
-- `src/game/asteroids.ts`;
-- `src/game/state.ts` (initial/restart state creation, score-bonus and bonus-feedback-timer math);
-- `src/game/rng.ts` (seeded RNG used for deterministic asteroid spawning);
-- `src/storage/bestScoreStorage.ts`.
+`npm run test:coverage` is an optional, on-demand unit coverage report. No
+coverage threshold is enforced, and coverage is not part of the canonical gate.
+The report does not by itself detect or prevent regressions.
 
 ### CI
 
-CI should run these checks on pull requests and main branch updates:
-
-```text
-npm run lint
-npm test
-npm run test:e2e
-npm run build
-```
+GitHub Actions invokes the canonical npm gate rather than maintaining another
+expanded check sequence. Workflow triggers, permissions, job dependencies,
+report upload, concurrency, and Pages deployment are owned by
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 ## What we do not test
 

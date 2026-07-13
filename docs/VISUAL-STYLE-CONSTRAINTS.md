@@ -40,9 +40,15 @@ silently reversed by a style change:
   architectural decision, not a style tweak, and should be flagged as such if ever
   proposed.
 - **Engine/rendering separation (ADR-001).** Gameplay rules, proximity/collision
-  logic, and scoring stay in `src/game/`. Rendering stays in
-  `src/rendering/canvasRenderer.ts`. A style change should only ever touch the
-  rendering layer.
+  logic, and scoring stay in `src/game/`. Canvas drawing and Canvas caches stay in
+  `src/rendering/canvasRenderer.ts`; Canvas palette, typography scale, and the
+  font-string helper stay in `src/rendering/theme.ts`. DOM styling and the sole
+  maintained font-family declaration stay in `src/style.css`. Visual work should
+  respect those ownership boundaries rather than moving game rules into presentation
+  code.
+- **Asteroid behavior and tuning stay in the game core.** Spawning and movement
+  behavior live in `src/game/asteroids.ts`; density, speed, variant, and related
+  tuning values live in `src/game/balance.ts`.
 - **No Canvas pixel testing.** Visual correctness is not asserted via pixel
   comparisons. This remains true regardless of how elaborate the rendering becomes.
   DOM status hooks (`data-testid`) remain the contract E2E tests rely on.
@@ -63,10 +69,10 @@ a budget when evaluating any style proposal:
 | Expensive (use sparingly, budget explicitly) | `shadowBlur`/glow, `ctx.filter` (blur, etc.) | Cost scales with object count and blur radius; a handful of instances is fine, applying it per-asteroid at scale is not |
 | Avoid at current scale | full-frame software filters, per-frame `getImageData`/pixel manipulation | Disproportionate cost for a 2D arcade game of this scope |
 
-Gradients in `canvasRenderer.ts` (`backgroundGradient`, `hudScrimGradient`,
-`vignetteGradient`) are cached as module-level variables built once behind
-`if (!x)` guards, not recreated per frame. Keep new gradient work to that same
-pattern.
+Gradients in `src/rendering/canvasRenderer.ts` (`backgroundGradient`,
+`hudScrimGradient`, `vignetteGradient`) are cached as module-level variables built
+once behind `if (!x)` guards, not recreated per frame. Keep new gradient work to
+that same pattern.
 
 ## Style-neutral degrees of freedom
 
@@ -91,7 +97,8 @@ not a side effect of a palette change:
   dependent on frame N-1's pixels. It stays entirely inside the rendering layer and
   does not violate ADR-001, but it's a real change to the render loop's contract and
   should be tuned/tested against actual gameplay speed (asteroid density and
-  velocity from `engine.ts`), not judged from a slow mockup.
+  velocity behavior in `src/game/asteroids.ts` and tuning in
+  `src/game/balance.ts`), not judged from a slow mockup.
 
   **Attempted 2026-07 and reverted.** Every existing draw call that is (a)
   translucent and (b) drawn at a fixed screen position every frame silently
@@ -110,9 +117,10 @@ not a side effect of a palette change:
 
 ## Testability implications of a richer rendering layer
 
-- Style tokens (palette, sizing constants) should stay as plain data (objects/consts),
-  not computed inline — this doesn't make them unit-tested by itself, but it keeps
-  them easy to reason about and swap without touching drawing logic.
+- Canvas style tokens (palette and typography scale) should stay as plain data in
+  `src/rendering/theme.ts`, not computed inline — this doesn't make them unit-tested
+  by itself, but it keeps them easy to reason about and swap without touching
+  drawing logic. DOM tokens stay in `src/style.css`.
 - If a redesign introduces new *pure* helper functions in the rendering layer
   (e.g., a easing/interpolation helper, a color-mixing function), those are
   legitimate unit test candidates — same standard as any pure function elsewhere in
@@ -121,6 +129,8 @@ not a side effect of a palette change:
   and gates star motion through `ambientMotionSuppressed`. Any new motion-based
   style work should route through the same flag rather than adding a parallel
   check.
+- `src/main.ts` reads the computed font family from the styled Canvas and passes it
+  to rendering; `src/style.css` remains the only maintained font-family literal.
 
 ## Open decisions log
 
@@ -128,9 +138,10 @@ Running list of things intentionally left unresolved — revisit when doing conc
 style work, don't assume an answer by default:
 
 - ~~Faceted vs rounded shape language~~ — resolved: faceted. Player hull has an
-  added shoulder/notch bevel (`PLAYER_SHIP` geometry, `canvasRenderer.ts:77-83,222-234`)
+  added shoulder/notch bevel (`PLAYER_SHIP` geometry and `drawPlayer` in
+  `src/rendering/canvasRenderer.ts`)
   and asteroids are irregular polygons via per-point `distanceMultiplier`
-  (`asteroids.ts:210-226`).
+  (`createAsteroidPoints` in `src/game/asteroids.ts`).
 - ~~Outlined silhouettes vs stroke-free flat shapes~~ — resolved: outlined. Ship,
   asteroids, and all HUD/overlay text use stroke+fill (`drawPlayer`, `drawAsteroid`,
   `drawOutlinedText`).
@@ -139,12 +150,13 @@ style work, don't assume an answer by default:
 - Extent of idle motion (none / subtle / prominent) and its performance budget
 - Whether motion trails (see above) are worth their added render-loop complexity
 - ~~Typeface family and weight strategy~~ — resolved: deliberate contrast.
-  `fontStyle(size, 700)` is used for titles/emphasis, default `400` for body/muted
-  text throughout `canvasRenderer.ts`.
+  `fontStyle(size, fontFamily, 700)` is used for titles/emphasis, with default
+  weight `400` for body/muted text throughout
+  `src/rendering/canvasRenderer.ts`.
 
 ## References
 
-- `docs/ADR-001-separate-engine-from-rendering.md`
-- `TEST_STRATEGY.md`
+- [ADR-001: Separate game engine from rendering](ADR-001-separate-engine-from-rendering.md)
+- [Test strategy](TEST_STRATEGY.md)
 - Design exploration thread (mockup): style directions considered, evaluated against
   this cost model, before this document was written

@@ -25,6 +25,7 @@ const timeElement = getRequiredElement("[data-testid='game-time']");
 const asteroidCountElement = getRequiredElement("[data-testid='asteroid-count']");
 
 const context = getRequiredContext(canvas);
+const fontFamily = window.getComputedStyle(canvas).fontFamily;
 
 const STAR_COUNT = 90;
 
@@ -79,19 +80,18 @@ function runGameLoop(currentFrameTime: number): void {
     }
   }
 
-  renderFrame(
+  renderFrame({
     context,
     stars,
-    gameState.player,
-    gameState.asteroids,
-    gameStatus,
-    gameState.score,
-    gameState.survivalTime,
+    player: gameState.player,
+    asteroids: gameState.asteroids,
+    status: gameStatus,
+    score: gameState.score,
+    survivalTime: gameState.survivalTime,
     bestScore,
-    gameState.bonusFeedback?.text ?? null,
-    // Raw time remaining; the renderer derives the fade/rise fraction so the animation curve stays a rendering concern.
-    gameState.bonusFeedback?.timeLeft ?? 0,
-  );
+    bonusFeedback: gameState.bonusFeedback,
+    fontFamily,
+  });
   updateDomStatus();
 
   requestAnimationFrame(runGameLoop);

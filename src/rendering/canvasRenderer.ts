@@ -1,5 +1,5 @@
 import { BONUS_FEEDBACK_DURATION } from "../game/balance";
-import { GAME_HEIGHT, GAME_WIDTH, PLAYER_AREA_MAX_X } from "../game/engine";
+import { GAME_HEIGHT, GAME_WIDTH } from "../game/engine";
 import { formatScore, formatTime } from "../game/format";
 import type { BonusFeedback } from "../game/state";
 import {
@@ -74,20 +74,6 @@ const HUD_CORNER = {
   timeBaseline: 74,
 };
 
-const HUD_SCRIM = {
-  centerX: 110,
-  centerY: 50,
-  radius: 140,
-  // Beyond this fraction of the radius the gradient has already faded to
-  // near-transparent, so the fill only needs to cover up to here.
-  visibleExtent: 0.8,
-};
-
-const PLAYER_SECTOR_GUIDE = {
-  xOffset: 24,
-  verticalPadding: 36,
-};
-
 const PLAYER_SHIP = {
   hullNotchInset: 12,
   hullOutlineWidth: 3,
@@ -140,7 +126,6 @@ export function renderFrame({
 }: RenderFrameInput): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
-  drawPlayerAreaGuide(ctx);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer);
   drawScore(ctx, currentScore, currentSurvivalTime, fontFamily);
@@ -334,11 +319,6 @@ function drawOutlinedText(
   ctx.fillText(text, x, y);
 }
 
-// Static position, so the gradient is built once on first use and reused
-// every frame rather than recreated per frame (see the gradient cost note in
-// docs/VISUAL-STYLE-CONSTRAINTS.md).
-let hudScrimGradient: CanvasGradient | null = null;
-
 function drawScore(
   ctx: CanvasRenderingContext2D,
   currentScore: number,
@@ -346,27 +326,6 @@ function drawScore(
   fontFamily: string,
 ): void {
   const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
-
-  if (!hudScrimGradient) {
-    hudScrimGradient = ctx.createRadialGradient(
-      HUD_SCRIM.centerX,
-      HUD_SCRIM.centerY,
-      0,
-      HUD_SCRIM.centerX,
-      HUD_SCRIM.centerY,
-      HUD_SCRIM.radius,
-    );
-    hudScrimGradient.addColorStop(0, withAlpha(PALETTE.backgroundBottom, 0.55));
-    hudScrimGradient.addColorStop(1, withAlpha(PALETTE.backgroundBottom, 0));
-  }
-
-  ctx.fillStyle = hudScrimGradient;
-  ctx.fillRect(
-    0,
-    0,
-    HUD_SCRIM.centerX + HUD_SCRIM.radius * HUD_SCRIM.visibleExtent,
-    HUD_SCRIM.centerY + HUD_SCRIM.radius * HUD_SCRIM.visibleExtent,
-  );
 
   const scoreText = formatScore(currentScore);
   const timeText = formatTime(currentSurvivalTime);
@@ -408,11 +367,11 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D, fontFamily: string): vo
 
   ctx.fillStyle = PALETTE.hazardStandard;
   ctx.font = fontStyle("md", fontFamily, 700);
-  ctx.fillText("Press Enter or Space to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
+  ctx.fillText("Press Enter to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
   ctx.fillStyle = PALETTE.textMuted;
   ctx.font = fontStyle("sm", fontFamily);
-  ctx.fillText("Move with Arrow Keys or WASD", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
+  ctx.fillText("Move with Arrow Up / Arrow Down", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
   ctx.restore();
 }
@@ -448,29 +407,14 @@ function drawGameOverOverlay(
 
   ctx.fillStyle = PALETTE.textPrimary;
   ctx.font = fontStyle("md", fontFamily, 700);
-  ctx.fillText("Press R, Enter or Space to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
+  ctx.fillText("Press Enter to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
   ctx.restore();
 }
 
-const PLAYER_SECTOR_GUIDE_LINE_ALPHA = 0.22;
-
-function drawPlayerAreaGuide(ctx: CanvasRenderingContext2D): void {
-  const guideX = PLAYER_AREA_MAX_X + PLAYER_SECTOR_GUIDE.xOffset;
-
-  ctx.strokeStyle = withAlpha(PALETTE.chrome, PLAYER_SECTOR_GUIDE_LINE_ALPHA);
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 10]);
-  ctx.beginPath();
-  ctx.moveTo(guideX, PLAYER_SECTOR_GUIDE.verticalPadding);
-  ctx.lineTo(guideX, GAME_HEIGHT - PLAYER_SECTOR_GUIDE.verticalPadding);
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-
 const BONUS_FEEDBACK_RISE_DISTANCE = 18;
-// Keeps the popup clear of the HUD corner text/scrim when the player is near
-// the top-left of the play area.
+// Keeps the popup clear of the HUD corner text when the player is near the
+// top-left of the play area.
 const BONUS_FEEDBACK_MIN_Y = HUD_CORNER.timeBaseline + 16;
 
 function drawBonusFeedback(

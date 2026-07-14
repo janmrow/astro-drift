@@ -9,8 +9,7 @@ import type { Asteroid, InputState, Player, PlayerHitbox } from "./types";
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
 
-export const PLAYER_AREA_MAX_X = GAME_WIDTH * 0.4;
-export const PLAYER_START_X = 170;
+export const PLAYER_START_X = GAME_WIDTH / 3;
 export const PLAYER_START_Y = GAME_HEIGHT / 2;
 
 // Caps long frames after tab switches so movement does not jump across the field.
@@ -35,8 +34,6 @@ export function createInputState(): InputState {
   return {
     up: false,
     down: false,
-    left: false,
-    right: false,
   };
 }
 
@@ -45,26 +42,16 @@ export function updatePlayer(
   currentInput: InputState,
   deltaTime: number,
 ): Player {
-  const directionX = Number(currentInput.right) - Number(currentInput.left);
   const directionY = Number(currentInput.down) - Number(currentInput.up);
-  const directionLength = Math.hypot(directionX, directionY);
 
-  if (directionLength === 0) {
+  if (directionY === 0) {
     return currentPlayer;
   }
 
-  const normalizedX = directionX / directionLength;
-  const normalizedY = directionY / directionLength;
-
   return {
     ...currentPlayer,
-    x: clamp(
-      currentPlayer.x + normalizedX * PLAYER_SPEED * deltaTime,
-      currentPlayer.width / 2 + PLAYER_SCREEN_PADDING,
-      PLAYER_AREA_MAX_X,
-    ),
     y: clamp(
-      currentPlayer.y + normalizedY * PLAYER_SPEED * deltaTime,
+      currentPlayer.y + directionY * PLAYER_SPEED * deltaTime,
       currentPlayer.height / 2 + PLAYER_SCREEN_PADDING,
       GAME_HEIGHT - currentPlayer.height / 2 - PLAYER_SCREEN_PADDING,
     ),

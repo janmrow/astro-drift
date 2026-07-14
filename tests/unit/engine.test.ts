@@ -11,8 +11,8 @@ import {
 import { getAsteroidSpawnInterval, updateAsteroids } from "../../src/game/asteroids";
 import {
   GAME_HEIGHT,
+  GAME_WIDTH,
   MAX_FRAME_DELTA_SECONDS,
-  PLAYER_AREA_MAX_X,
   PLAYER_SCREEN_PADDING,
   collectPassBonuses,
   capFrameDelta,
@@ -32,18 +32,15 @@ function idleInput(): InputState {
   return {
     up: false,
     down: false,
-    left: false,
-    right: false,
   };
 }
 
 describe("game engine", () => {
   describe("player movement", () => {
-    it("creates the initial player in the player sector", () => {
+    it("creates the initial player at its fixed horizontal position", () => {
       const player = createInitialPlayer();
 
-      expect(player.x).toBeGreaterThan(0);
-      expect(player.x).toBeLessThan(PLAYER_AREA_MAX_X);
+      expect(player.x).toBe(GAME_WIDTH / 3);
       expect(player.y).toBe(GAME_HEIGHT / 2);
       expect(player.width).toBeGreaterThan(0);
       expect(player.height).toBeGreaterThan(0);
@@ -62,41 +59,30 @@ describe("game engine", () => {
       expect(updatedPlayer.y).toBe(player.y);
     });
 
-    it("moves the player according to input", () => {
+    it("moves the player vertically with immediate response", () => {
       const player = createInitialPlayer();
+      const deltaTime = 0.25;
       const input: InputState = {
         ...idleInput(),
-        right: true,
-      };
-
-      const updatedPlayer = updatePlayer(player, input, 0.5);
-
-      expect(updatedPlayer.x).toBeGreaterThan(player.x);
-      expect(updatedPlayer.y).toBe(player.y);
-    });
-
-    it("normalizes diagonal movement so it is not faster than straight movement", () => {
-      const player = createInitialPlayer();
-      const deltaTime = 0.5;
-      const input: InputState = {
-        ...idleInput(),
-        right: true,
         up: true,
       };
 
       const updatedPlayer = updatePlayer(player, input, deltaTime);
-      const expectedOffset = (PLAYER_SPEED * deltaTime) / Math.sqrt(2);
 
-      expect(updatedPlayer.x).toBeCloseTo(player.x + expectedOffset);
-      expect(updatedPlayer.y).toBeCloseTo(player.y - expectedOffset);
+      expect(updatedPlayer.x).toBe(player.x);
+      expect(updatedPlayer.y).toBe(player.y - PLAYER_SPEED * deltaTime);
     });
 
-    it("does not move the player when opposite horizontal inputs cancel out", () => {
+    it("uses the approved initial vertical speed", () => {
+      expect(PLAYER_SPEED).toBe(400);
+    });
+
+    it("does not move the player when opposite vertical inputs cancel out", () => {
       const player = createInitialPlayer();
       const input: InputState = {
         ...idleInput(),
-        left: true,
-        right: true,
+        up: true,
+        down: true,
       };
 
       const updatedPlayer = updatePlayer(player, input, 0.5);
@@ -105,52 +91,19 @@ describe("game engine", () => {
       expect(updatedPlayer.y).toBe(player.y);
     });
 
-    it("keeps the player inside the right edge of the player sector", () => {
+    it("keeps the player's current horizontal position unchanged", () => {
       const player: Player = {
         ...createInitialPlayer(),
-        x: PLAYER_AREA_MAX_X - 2,
+        x: 731.25,
       };
-
       const input: InputState = {
         ...idleInput(),
-        right: true,
+        down: true,
       };
 
-      const updatedPlayer = updatePlayer(player, input, 10);
+      const updatedPlayer = updatePlayer(player, input, 0.1);
 
-      expect(updatedPlayer.x).toBe(PLAYER_AREA_MAX_X);
-    });
-
-    it("keeps the player clamped when starting exactly on the right movement bound", () => {
-      const player: Player = {
-        ...createInitialPlayer(),
-        x: PLAYER_AREA_MAX_X,
-      };
-
-      const input: InputState = {
-        ...idleInput(),
-        right: true,
-      };
-
-      const updatedPlayer = updatePlayer(player, input, 0.5);
-
-      expect(updatedPlayer.x).toBe(PLAYER_AREA_MAX_X);
-    });
-
-    it("keeps the player inside the left edge of the screen", () => {
-      const player: Player = {
-        ...createInitialPlayer(),
-        x: 14,
-      };
-
-      const input: InputState = {
-        ...idleInput(),
-        left: true,
-      };
-
-      const updatedPlayer = updatePlayer(player, input, 10);
-
-      expect(updatedPlayer.x).toBe(player.width / 2 + PLAYER_SCREEN_PADDING);
+      expect(updatedPlayer.x).toBe(player.x);
     });
 
     it("keeps the player inside the top screen bound", () => {
@@ -198,22 +151,31 @@ describe("game engine", () => {
       expect(updatedPlayer.y).toBe(bottomY);
     });
 
-    it("corrects an out-of-bounds player when movement is applied", () => {
+    it("corrects an out-of-bounds vertical position when movement is applied", () => {
       const player: Player = {
         ...createInitialPlayer(),
-        x: PLAYER_AREA_MAX_X + 100,
+        x: 731.25,
         y: GAME_HEIGHT + 100,
       };
       const input: InputState = {
         ...idleInput(),
-        right: true,
         down: true,
       };
 
       const updatedPlayer = updatePlayer(player, input, 0.1);
 
-      expect(updatedPlayer.x).toBe(PLAYER_AREA_MAX_X);
+      expect(updatedPlayer.x).toBe(player.x);
       expect(updatedPlayer.y).toBe(GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING);
+    });
+
+    it("does not mutate the caller-owned player", () => {
+      const player = createInitialPlayer();
+      const originalPlayer = { ...player };
+
+      const updatedPlayer = updatePlayer(player, { ...idleInput(), down: true }, 0.1);
+
+      expect(player).toEqual(originalPlayer);
+      expect(updatedPlayer).not.toBe(player);
     });
   });
 

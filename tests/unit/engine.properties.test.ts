@@ -9,7 +9,6 @@ import {
 } from "../../src/game/balance";
 import {
   GAME_HEIGHT,
-  PLAYER_AREA_MAX_X,
   PLAYER_SCREEN_PADDING,
   collectPassBonuses,
   getAsteroidPassBonus,
@@ -40,8 +39,6 @@ const unitIntervalArbitrary = fc.float({ min: 0, max: 1, noNaN: true });
 const inputArbitrary: fc.Arbitrary<InputState> = fc.record({
   up: fc.boolean(),
   down: fc.boolean(),
-  left: fc.boolean(),
-  right: fc.boolean(),
 });
 
 const playerArbitrary: fc.Arbitrary<Player> = fc
@@ -50,13 +47,11 @@ const playerArbitrary: fc.Arbitrary<Player> = fc
     height: fc.integer({ min: 36, max: 72 }),
   })
   .chain(({ width, height }) => {
-    const minX = width / 2 + PLAYER_SCREEN_PADDING;
-    const maxX = PLAYER_AREA_MAX_X;
     const minY = height / 2 + PLAYER_SCREEN_PADDING;
     const maxY = GAME_HEIGHT - height / 2 - PLAYER_SCREEN_PADDING;
 
     return fc.record({
-      x: fc.integer({ min: Math.ceil(minX), max: Math.floor(maxX) }),
+      x: fc.integer({ min: -1_000, max: 2_000 }),
       y: fc.integer({ min: Math.ceil(minY), max: Math.floor(maxY) }),
       width: fc.constant(width),
       height: fc.constant(height),
@@ -78,23 +73,24 @@ const asteroidArbitrary: fc.Arbitrary<Asteroid> = fc.record({
 });
 
 describe("game engine properties", () => {
-  it("keeps an in-bounds player inside the playable movement bounds", () => {
+  it("keeps player X unchanged and player Y inside the vertical movement bounds", () => {
     fc.assert(
       fc.property(
         playerArbitrary,
         inputArbitrary,
         deltaTimeArbitrary,
         (player, input, deltaTime) => {
+          const originalPlayer = { ...player };
           const updatedPlayer = updatePlayer(player, input, deltaTime);
 
-          expect(updatedPlayer.x).toBeGreaterThanOrEqual(player.width / 2 + PLAYER_SCREEN_PADDING);
-          expect(updatedPlayer.x).toBeLessThanOrEqual(PLAYER_AREA_MAX_X);
+          expect(updatedPlayer.x).toBe(player.x);
           expect(updatedPlayer.y).toBeGreaterThanOrEqual(
             player.height / 2 + PLAYER_SCREEN_PADDING,
           );
           expect(updatedPlayer.y).toBeLessThanOrEqual(
             GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING,
           );
+          expect(player).toEqual(originalPlayer);
         },
       ),
       { numRuns: PROPERTY_RUNS },

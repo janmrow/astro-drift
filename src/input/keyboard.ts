@@ -1,7 +1,7 @@
 import { createInputState } from "../game/engine";
 import type { InputState } from "../game/types";
 
-type GameActionHandler = (key: string) => void;
+type GameActionHandler = () => void;
 
 export function setupKeyboardControls(
   currentInput: InputState,
@@ -10,7 +10,7 @@ export function setupKeyboardControls(
   window.addEventListener("keydown", (event) => {
     if (isActionKey(event.key)) {
       event.preventDefault();
-      onGameActionRequested(event.key);
+      onGameActionRequested();
       return;
     }
 
@@ -48,23 +48,13 @@ function updateInputFromKey(key: string, isPressed: boolean, currentInput: Input
     case "s":
       currentInput.down = isPressed;
       break;
-    case "arrowleft":
-    case "a":
-      currentInput.left = isPressed;
-      break;
-    case "arrowright":
-    case "d":
-      currentInput.right = isPressed;
-      break;
   }
 }
 
 function isMovementKey(key: string): boolean {
-  return ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
-    key.toLowerCase(),
-  );
+  return ["arrowup", "arrowdown", "w", "s"].includes(key.toLowerCase());
 }
 
 function isActionKey(key: string): boolean {
-  return ["r", "enter", " "].includes(key.toLowerCase());
+  return key.toLowerCase() === "enter";
 }

@@ -4,12 +4,15 @@ import {
   ASTEROID_BASE_MAX_SPEED,
   ASTEROID_BASE_MIN_SPEED,
   ASTEROID_BASE_SPAWN_INTERVAL,
+  ASTEROID_INITIAL_SPAWN_TIMER,
   ASTEROID_MAX_RADIUS,
   ASTEROID_MAX_ROTATION_SPEED,
   ASTEROID_MIN_RADIUS,
   ASTEROID_MIN_ROTATION_SPEED,
+  ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_SPEED_HARD_CAP,
   ASTEROID_SPEED_RAMP,
+  ASTEROID_SPAWN_RAMP,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
   FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
@@ -19,6 +22,7 @@ import {
 import {
   ASTEROID_REMOVE_PADDING,
   createInitialAsteroidSpawnState,
+  getAsteroidSpawnInterval,
   updateAsteroidSpawning,
   updateAsteroids,
 } from "../../src/game/asteroids";
@@ -51,9 +55,37 @@ describe("asteroid logic", () => {
     const spawnState = createInitialAsteroidSpawnState();
 
     expect(spawnState).toEqual({
-      timer: 0,
+      timer: ASTEROID_INITIAL_SPAWN_TIMER,
       nextId: 1,
     });
+    expect(ASTEROID_INITIAL_SPAWN_TIMER).toBe(0.85);
+  });
+
+  it("uses the initial timer to spawn the first ordinary asteroid after 0.6 seconds", () => {
+    const timeUntilFirstSpawn =
+      ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_INITIAL_SPAWN_TIMER;
+    const beforeThreshold = updateAsteroidSpawning(
+      [],
+      createInitialAsteroidSpawnState(),
+      timeUntilFirstSpawn - 0.01,
+      0,
+    );
+    const atThreshold = updateAsteroidSpawning(
+      beforeThreshold.asteroids,
+      beforeThreshold.spawnState,
+      0.01,
+      0,
+      constantRng(FIERY_ASTEROID_CHANCE),
+    );
+
+    expect(timeUntilFirstSpawn).toBeCloseTo(0.6);
+    expect(beforeThreshold.asteroids).toHaveLength(0);
+    expect(atThreshold.asteroids).toHaveLength(1);
+    expect(atThreshold.asteroids[0]).toMatchObject({
+      id: "asteroid-1",
+      variant: "standard",
+    });
+    expect(atThreshold.spawnState.timer).toBeCloseTo(0);
   });
 
   it("spawns an asteroid after the spawn interval passes", () => {
@@ -63,7 +95,7 @@ describe("asteroid logic", () => {
     const result = updateAsteroidSpawning(
       asteroids,
       spawnState,
-      ASTEROID_BASE_SPAWN_INTERVAL + 0.1,
+      ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_INITIAL_SPAWN_TIMER + 0.1,
       0,
     );
 
@@ -82,7 +114,7 @@ describe("asteroid logic", () => {
     const result = updateAsteroidSpawning(
       asteroids,
       spawnState,
-      ASTEROID_BASE_SPAWN_INTERVAL * 2 + 0.2,
+      ASTEROID_BASE_SPAWN_INTERVAL * 2 - ASTEROID_INITIAL_SPAWN_TIMER + 0.2,
       0,
     );
 
@@ -127,7 +159,7 @@ describe("asteroid logic", () => {
       "asteroid-4",
     ]);
     expect(result.spawnState.nextId).toBe(5);
-    expect(result.spawnState.timer).toBeCloseTo(0.2);
+    expect(result.spawnState.timer).toBeCloseTo(0.05);
   });
 
   it("continues spawning from an existing timer and id", () => {
@@ -153,7 +185,7 @@ describe("asteroid logic", () => {
     const result = updateAsteroidSpawning(
       asteroids,
       spawnState,
-      ASTEROID_BASE_SPAWN_INTERVAL - 0.1,
+      ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_INITIAL_SPAWN_TIMER - 0.1,
       0,
     );
 
@@ -161,6 +193,17 @@ describe("asteroid logic", () => {
     expect(result.asteroids).toHaveLength(0);
     expect(result.spawnState.nextId).toBe(1);
     expect(result.spawnState.timer).toBeCloseTo(ASTEROID_BASE_SPAWN_INTERVAL - 0.1);
+  });
+
+  it("uses the approved base and minimum spawn intervals", () => {
+    const minimumThreshold =
+      (ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_MIN_SPAWN_INTERVAL) /
+      ASTEROID_SPAWN_RAMP;
+
+    expect(getAsteroidSpawnInterval(0)).toBe(1.45);
+    expect(minimumThreshold).toBeCloseTo(325);
+    expect(getAsteroidSpawnInterval(minimumThreshold)).toBe(0.8);
+    expect(getAsteroidSpawnInterval(minimumThreshold + 1_000)).toBe(0.8);
   });
 
   it("creates spawned asteroids inside the expected gameplay ranges", () => {
@@ -188,20 +231,38 @@ describe("asteroid logic", () => {
     }
   });
 
-  it("increases spawned asteroid speed as survival time grows", () => {
-    const earlyAsteroid = spawnAsteroid(0.5);
-    const laterAsteroid = spawnAsteroid(0.5, 60);
+  it("uses the approved initial standard speed for a stable midpoint sample", () => {
+    const asteroid = spawnAsteroid(0.5);
 
-    expect(laterAsteroid.speed).toBeGreaterThan(earlyAsteroid.speed);
+    expect(asteroid.variant).toBe("standard");
+    expect(asteroid.speed).toBeCloseTo(247.5);
   });
 
-  it("does not exceed the maximum asteroid speed after long survival times", () => {
-    const asteroid = spawnAsteroid(1, 10_000);
+  it("caps standard and fiery asteroid speeds after long survival times", () => {
+    const standardAsteroid = spawnAsteroid(0.5, 10_000);
+    const fieryAsteroid = spawnAsteroid(0, 10_000);
 
+    expect(standardAsteroid.variant).toBe("standard");
+    expect(fieryAsteroid.variant).toBe("fiery");
+    expect(standardAsteroid.speed).toBe(ASTEROID_SPEED_HARD_CAP);
+    expect(fieryAsteroid.speed).toBe(ASTEROID_SPEED_HARD_CAP);
+  });
+
+  it("applies the hard cap after the fiery speed multiplier", () => {
+    const survivalTime = 120;
+    const uncappedBaseSpeed = ASTEROID_BASE_MIN_SPEED + survivalTime * ASTEROID_SPEED_RAMP;
+    const asteroid = spawnAsteroid(0, survivalTime);
+
+    expect(uncappedBaseSpeed).toBeLessThan(ASTEROID_SPEED_HARD_CAP);
+    expect(uncappedBaseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER).toBeGreaterThan(
+      ASTEROID_SPEED_HARD_CAP,
+    );
+    expect(asteroid.variant).toBe("fiery");
     expect(asteroid.speed).toBe(ASTEROID_SPEED_HARD_CAP);
   });
 
   it("uses the fiery asteroid chance as an exclusive variant boundary", () => {
+    expect(FIERY_ASTEROID_CHANCE).toBe(0.12);
     expect(spawnAsteroid(slightlyBelow(FIERY_ASTEROID_CHANCE)).variant).toBe("fiery");
     expect(spawnAsteroid(FIERY_ASTEROID_CHANCE).variant).toBe("standard");
   });

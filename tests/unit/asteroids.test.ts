@@ -12,14 +12,9 @@ import {
   ASTEROID_SPEED_RAMP,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
-  FIERY_ASTEROID_MAX_VERTICAL_SPEED,
   FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
-  FIERY_ASTEROID_MIN_VERTICAL_SPEED,
   FIERY_ASTEROID_ROTATION_MULTIPLIER,
   FIERY_ASTEROID_SPEED_MULTIPLIER,
-  STANDARD_ASTEROID_DIAGONAL_CHANCE,
-  STANDARD_ASTEROID_MAX_VERTICAL_SPEED,
-  STANDARD_ASTEROID_MIN_VERTICAL_SPEED,
 } from "../../src/game/balance";
 import {
   ASTEROID_REMOVE_PADDING,
@@ -181,7 +176,6 @@ describe("asteroid logic", () => {
       x: GAME_WIDTH + radius,
       y: GAME_HEIGHT / 2,
       speed: (ASTEROID_BASE_MIN_SPEED + ASTEROID_BASE_MAX_SPEED) / 2 + speedBonus,
-      verticalSpeed: 0,
       rotation: Math.PI,
       rotationSpeed: (ASTEROID_MIN_ROTATION_SPEED + ASTEROID_MAX_ROTATION_SPEED) / 2,
       hasAwardedPassBonus: false,
@@ -234,36 +228,6 @@ describe("asteroid logic", () => {
     );
   });
 
-  it("keeps fiery asteroid vertical drift small compared to standard diagonal drift", () => {
-    const rngValue = FIERY_ASTEROID_CHANCE / 2;
-    const fieryAsteroid = spawnAsteroid(rngValue);
-    const expectedVerticalSpeed =
-      -(FIERY_ASTEROID_MIN_VERTICAL_SPEED +
-        rngValue * (FIERY_ASTEROID_MAX_VERTICAL_SPEED - FIERY_ASTEROID_MIN_VERTICAL_SPEED));
-
-    expect(fieryAsteroid.verticalSpeed).toBeCloseTo(expectedVerticalSpeed);
-    expect(FIERY_ASTEROID_MAX_VERTICAL_SPEED).toBeLessThan(STANDARD_ASTEROID_MIN_VERTICAL_SPEED);
-  });
-
-  it("creates diagonal standard asteroids below the diagonal chance boundary", () => {
-    const rngValue = slightlyBelow(STANDARD_ASTEROID_DIAGONAL_CHANCE);
-    const asteroid = spawnAsteroid(rngValue);
-    const expectedVerticalSpeed =
-      -(STANDARD_ASTEROID_MIN_VERTICAL_SPEED +
-        rngValue *
-          (STANDARD_ASTEROID_MAX_VERTICAL_SPEED - STANDARD_ASTEROID_MIN_VERTICAL_SPEED));
-
-    expect(asteroid.variant).toBe("standard");
-    expect(asteroid.verticalSpeed).toBeCloseTo(expectedVerticalSpeed);
-  });
-
-  it("keeps standard asteroids moving straight at the diagonal chance boundary", () => {
-    const asteroid = spawnAsteroid(STANDARD_ASTEROID_DIAGONAL_CHANCE);
-
-    expect(asteroid.variant).toBe("standard");
-    expect(asteroid.verticalSpeed).toBe(0);
-  });
-
   it("creates asteroid rotation speeds with noticeable but bounded spin", () => {
     const leftSpinAsteroid = spawnAsteroid(FIERY_ASTEROID_CHANCE);
     const rightSpinAsteroid = spawnAsteroid(1);
@@ -292,42 +256,17 @@ describe("asteroid logic", () => {
     expect(asteroids[0].x).toBe(500);
   });
 
-  it("moves asteroids vertically according to their vertical speed", () => {
+  it("keeps each asteroid at its spawn height", () => {
     const asteroids = [
       createAsteroid({
         y: 250,
-        verticalSpeed: 30,
       }),
     ];
 
     const updatedAsteroids = updateAsteroids(asteroids, 0.5);
 
-    expect(updatedAsteroids[0].y).toBe(265);
+    expect(updatedAsteroids[0].y).toBe(250);
     expect(asteroids[0].y).toBe(250);
-  });
-
-  it("bounces asteroids away from the top and bottom movement bounds", () => {
-    const topAsteroid = createAsteroid({
-      y: 10,
-      radius: 30,
-      verticalSpeed: -30,
-    });
-    const bottomAsteroid = createAsteroid({
-      y: GAME_HEIGHT - 10,
-      radius: 30,
-      verticalSpeed: 30,
-    });
-
-    const asteroids = [topAsteroid, bottomAsteroid];
-
-    const updatedAsteroids = updateAsteroids(asteroids, 0.5);
-
-    expect(updatedAsteroids[0].y).toBe(46);
-    expect(updatedAsteroids[0].verticalSpeed).toBe(30);
-    expect(updatedAsteroids[1].y).toBe(GAME_HEIGHT - 46);
-    expect(updatedAsteroids[1].verticalSpeed).toBe(-30);
-    expect(topAsteroid.y).toBe(10);
-    expect(bottomAsteroid.y).toBe(GAME_HEIGHT - 10);
   });
 
   it("updates asteroid rotation", () => {

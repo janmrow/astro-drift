@@ -20,7 +20,6 @@ import {
 } from "../../src/game/engine";
 import {
   ASTEROID_REMOVE_PADDING,
-  ASTEROID_VERTICAL_SPAWN_PADDING,
   getAsteroidSpawnInterval,
   updateAsteroids,
 } from "../../src/game/asteroids";
@@ -65,7 +64,6 @@ const asteroidArbitrary: fc.Arbitrary<Asteroid> = fc.record({
   y: fc.integer({ min: -100, max: GAME_HEIGHT + 100 }),
   radius: fc.integer({ min: 0, max: 80 }),
   speed: fc.integer({ min: 0, max: 500 }),
-  verticalSpeed: fc.integer({ min: -100, max: 100 }),
   rotation: fc.integer({ min: -360, max: 360 }),
   rotationSpeed: fc.integer({ min: -10, max: 10 }),
   points: fc.constant([]),
@@ -128,12 +126,12 @@ describe("game engine properties", () => {
     );
   });
 
-  it("moves asteroids left or keeps them still when elapsed time is non-negative", () => {
+  it("moves asteroids horizontally and rotates them without changing their height", () => {
     fc.assert(
       fc.property(asteroidArbitrary, deltaTimeArbitrary, (asteroid, deltaTime) => {
         const asteroids = [asteroid];
         const initialX = asteroid.x;
-        const expectedYBeforeBounds = asteroid.y + asteroid.verticalSpeed * deltaTime;
+        const initialY = asteroid.y;
         const initialRotation = asteroid.rotation;
 
         const updatedAsteroids = updateAsteroids(asteroids, deltaTime);
@@ -144,25 +142,13 @@ describe("game engine properties", () => {
         }
 
         expect(updatedAsteroids[0].x).toBeLessThanOrEqual(initialX);
-        expect(updatedAsteroids[0].y).toBeGreaterThanOrEqual(
-          asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING,
-        );
-        expect(updatedAsteroids[0].y).toBeLessThanOrEqual(
-          GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING,
-        );
+        expect(updatedAsteroids[0].y).toBe(initialY);
         expect(updatedAsteroids[0].rotation).toBe(
           initialRotation + asteroid.rotationSpeed * deltaTime,
         );
         expect(asteroid.x).toBe(initialX);
+        expect(asteroid.y).toBe(initialY);
         expect(asteroid.rotation).toBe(initialRotation);
-
-        if (expectedYBeforeBounds < asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING) {
-          expect(updatedAsteroids[0].verticalSpeed).toBeGreaterThanOrEqual(0);
-        }
-
-        if (expectedYBeforeBounds > GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING) {
-          expect(updatedAsteroids[0].verticalSpeed).toBeLessThanOrEqual(0);
-        }
       }),
       { numRuns: PROPERTY_RUNS },
     );

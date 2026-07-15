@@ -32,7 +32,6 @@ export type Asteroid = {
   y: number;
   radius: number;
   speed: number;
-  verticalSpeed: number;
   rotation: number;
   rotationSpeed: number;
   points: AsteroidPoint[];

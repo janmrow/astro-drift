@@ -2,6 +2,7 @@ import {
   ASTEROID_BASE_MAX_SPEED,
   ASTEROID_BASE_MIN_SPEED,
   ASTEROID_BASE_SPAWN_INTERVAL,
+  ASTEROID_INITIAL_SPAWN_TIMER,
   ASTEROID_MAX_RADIUS,
   ASTEROID_MAX_ROTATION_SPEED,
   ASTEROID_MIN_RADIUS,
@@ -33,7 +34,7 @@ const ASTEROID_MAX_POINT_RADIUS_RATIO = 1.2;
 
 export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   return {
-    timer: 0,
+    timer: ASTEROID_INITIAL_SPAWN_TIMER,
     nextId: 1,
   };
 }
@@ -89,10 +90,10 @@ function createAsteroid(currentSurvivalTime: number, id: number, rng: () => numb
   const baseRadius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS, rng);
   const radius = getAsteroidRadius(baseRadius, variant);
   const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
-  const speed = clamp(
-    randomBetween(ASTEROID_BASE_MIN_SPEED + speedBonus, ASTEROID_BASE_MAX_SPEED + speedBonus, rng),
-    ASTEROID_BASE_MIN_SPEED,
-    ASTEROID_SPEED_HARD_CAP,
+  const speed = randomBetween(
+    ASTEROID_BASE_MIN_SPEED + speedBonus,
+    ASTEROID_BASE_MAX_SPEED + speedBonus,
+    rng,
   );
   const rotationSpeed = createAsteroidRotationSpeed(variant, rng);
 
@@ -119,14 +120,20 @@ function createAsteroidVariant(rng: () => number): AsteroidVariant {
 }
 
 function getAsteroidSpeed(baseSpeed: number, variant: AsteroidVariant): number {
+  let finalSpeed: number;
+
   switch (variant) {
     case "fiery":
-      return baseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER;
+      finalSpeed = baseSpeed * FIERY_ASTEROID_SPEED_MULTIPLIER;
+      break;
     case "standard":
-      return baseSpeed;
+      finalSpeed = baseSpeed;
+      break;
     default:
       return assertNever(variant);
   }
+
+  return clamp(finalSpeed, ASTEROID_BASE_MIN_SPEED, ASTEROID_SPEED_HARD_CAP);
 }
 
 function createAsteroidRotationSpeed(variant: AsteroidVariant, rng: () => number): number {

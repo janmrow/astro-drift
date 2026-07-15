@@ -5,6 +5,7 @@ import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_PASS_BONUS,
+  ASTEROID_SPEED_HARD_CAP,
   FIERY_ASTEROID_PASS_BONUS,
 } from "../../src/game/balance";
 import {
@@ -20,7 +21,9 @@ import {
 } from "../../src/game/engine";
 import {
   ASTEROID_REMOVE_PADDING,
+  createInitialAsteroidSpawnState,
   getAsteroidSpawnInterval,
+  updateAsteroidSpawning,
   updateAsteroids,
 } from "../../src/game/asteroids";
 import { createAsteroid } from "./helpers";
@@ -120,6 +123,35 @@ describe("game engine properties", () => {
           expect(currentInterval).toBeGreaterThanOrEqual(ASTEROID_MIN_SPAWN_INTERVAL);
           expect(currentInterval).toBeLessThanOrEqual(ASTEROID_BASE_SPAWN_INTERVAL);
           expect(laterInterval).toBeLessThanOrEqual(currentInterval);
+        },
+      ),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it("keeps final standard and fiery speeds capped and non-decreasing for stable samples", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 10_000 }),
+        fc.integer({ min: 0, max: 10_000 }),
+        (survivalTime, elapsedTime) => {
+          const spawnAt = (time: number, rngValue: number): Asteroid =>
+            updateAsteroidSpawning(
+              [],
+              createInitialAsteroidSpawnState(),
+              ASTEROID_BASE_SPAWN_INTERVAL,
+              time,
+              () => rngValue,
+            ).asteroids[0];
+
+          for (const rngValue of [0, 0.5]) {
+            const currentAsteroid = spawnAt(survivalTime, rngValue);
+            const laterAsteroid = spawnAt(survivalTime + elapsedTime, rngValue);
+
+            expect(currentAsteroid.speed).toBeLessThanOrEqual(ASTEROID_SPEED_HARD_CAP);
+            expect(laterAsteroid.speed).toBeLessThanOrEqual(ASTEROID_SPEED_HARD_CAP);
+            expect(laterAsteroid.speed).toBeGreaterThanOrEqual(currentAsteroid.speed);
+          }
         },
       ),
       { numRuns: PROPERTY_RUNS },

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { BONUS_FEEDBACK_DURATION, SCORE_PER_SECOND } from "../../src/game/balance";
+import {
+  ASTEROID_INITIAL_SPAWN_TIMER,
+  BONUS_FEEDBACK_DURATION,
+  SCORE_PER_SECOND,
+} from "../../src/game/balance";
 import { createInitialPlayer, createInputState } from "../../src/game/engine";
 import {
   advanceRunningGame,
@@ -17,7 +21,7 @@ describe("createInitialGameState", () => {
     expect(state).toEqual({
       player: createInitialPlayer(),
       asteroids: [],
-      asteroidSpawnState: { timer: 0, nextId: 1 },
+      asteroidSpawnState: { timer: ASTEROID_INITIAL_SPAWN_TIMER, nextId: 1 },
       score: 0,
       survivalTime: 0,
       bonusFeedback: null,

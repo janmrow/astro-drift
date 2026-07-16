@@ -53,16 +53,16 @@ const STAR_LAYER_SETTINGS: Record<
     radiusRange: 1.1,
     alphaMin: 0.22,
     alphaRange: 0.42,
-    speedMin: 7,
-    speedRange: 10,
+    speedMin: 18,
+    speedRange: 12,
   },
   near: {
     radiusMin: 1.1,
     radiusRange: 1.45,
     alphaMin: 0.42,
     alphaRange: 0.42,
-    speedMin: 22,
-    speedRange: 18,
+    speedMin: 55,
+    speedRange: 30,
   },
 };
 

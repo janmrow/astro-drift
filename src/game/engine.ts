@@ -2,7 +2,6 @@ import {
   ASTEROID_PASS_BONUS,
   FIERY_ASTEROID_PASS_BONUS,
   PLAYER_SPEED,
-  SCORE_PER_SECOND,
 } from "./balance";
 import type { Asteroid, InputState, Player, PlayerHitbox } from "./types";
 
@@ -58,26 +57,25 @@ export function updatePlayer(
   };
 }
 
-export function updateScore(currentScore: number, deltaTime: number): number {
-  return currentScore + SCORE_PER_SECOND * deltaTime;
-}
-
 export function collectPassBonuses(
   currentScore: number,
   currentPlayer: Player,
   currentAsteroids: Asteroid[],
-): { score: number; asteroids: Asteroid[] } {
+): { score: number; asteroids: Asteroid[]; lastAwardedBonus: number | null } {
   let nextScore = currentScore;
+  let lastAwardedBonus: number | null = null;
   const nextAsteroids = currentAsteroids.map((asteroid) => {
     if (!asteroid.hasAwardedPassBonus && hasAsteroidPassedPlayer(currentPlayer, asteroid)) {
-      nextScore += getAsteroidPassBonus(asteroid);
+      const awardedBonus = getAsteroidPassBonus(asteroid);
+      nextScore += awardedBonus;
+      lastAwardedBonus = awardedBonus;
       return { ...asteroid, hasAwardedPassBonus: true };
     }
 
     return asteroid;
   });
 
-  return { score: nextScore, asteroids: nextAsteroids };
+  return { score: nextScore, asteroids: nextAsteroids, lastAwardedBonus };
 }
 
 export function getAsteroidPassBonus(asteroid: Asteroid): number {

@@ -23,7 +23,6 @@ import {
   hasPlayerCollision,
   isPlayerCollidingWithAsteroid,
   updatePlayer,
-  updateScore,
 } from "../../src/game/engine";
 import type { InputState, Player } from "../../src/game/types";
 import { createAsteroid } from "./helpers";
@@ -179,13 +178,7 @@ describe("game engine", () => {
     });
   });
 
-  describe("scoring and difficulty", () => {
-    it("increases score over time", () => {
-      const updatedScore = updateScore(20, 2);
-
-      expect(updatedScore).toBe(40);
-    });
-
+  describe("difficulty", () => {
     it("reduces asteroid spawn interval as survival time grows", () => {
       const earlyInterval = getAsteroidSpawnInterval(0);
       const laterInterval = getAsteroidSpawnInterval(60);
@@ -319,6 +312,7 @@ describe("game engine", () => {
       const result = collectPassBonuses(100, player, [asteroid]);
 
       expect(result.score).toBe(100 + ASTEROID_PASS_BONUS);
+      expect(result.lastAwardedBonus).toBe(ASTEROID_PASS_BONUS);
       expect(result.asteroids[0].hasAwardedPassBonus).toBe(true);
       expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
@@ -334,6 +328,7 @@ describe("game engine", () => {
       const result = collectPassBonuses(100, player, [asteroid]);
 
       expect(result.score).toBe(100 + FIERY_ASTEROID_PASS_BONUS);
+      expect(result.lastAwardedBonus).toBe(FIERY_ASTEROID_PASS_BONUS);
       expect(result.asteroids[0].hasAwardedPassBonus).toBe(true);
       expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
@@ -355,6 +350,7 @@ describe("game engine", () => {
       const result = collectPassBonuses(100, player, [firstAsteroid, secondAsteroid]);
 
       expect(result.score).toBe(100 + ASTEROID_PASS_BONUS + FIERY_ASTEROID_PASS_BONUS);
+      expect(result.lastAwardedBonus).toBe(FIERY_ASTEROID_PASS_BONUS);
       expect(result.asteroids[0].hasAwardedPassBonus).toBe(true);
       expect(result.asteroids[1].hasAwardedPassBonus).toBe(true);
       expect(firstAsteroid.hasAwardedPassBonus).toBe(false);
@@ -371,6 +367,7 @@ describe("game engine", () => {
       const result = collectPassBonuses(100, player, [asteroid]);
 
       expect(result.score).toBe(100);
+      expect(result.lastAwardedBonus).toBeNull();
       expect(asteroid.hasAwardedPassBonus).toBe(false);
     });
 
@@ -385,6 +382,7 @@ describe("game engine", () => {
       const result = collectPassBonuses(100, player, [asteroid]);
 
       expect(result.score).toBe(100);
+      expect(result.lastAwardedBonus).toBeNull();
     });
 
     it("still credits the bonus when a large frame delta would otherwise remove the asteroid in the same frame", () => {

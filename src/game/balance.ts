@@ -1,6 +1,5 @@
 export const PLAYER_SPEED = 400;
 
-export const SCORE_PER_SECOND = 10;
 export const ASTEROID_PASS_BONUS = 25;
 export const FIERY_ASTEROID_PASS_BONUS = 100;
 

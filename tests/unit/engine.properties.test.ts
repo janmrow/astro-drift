@@ -17,7 +17,6 @@ import {
   hasAsteroidPassedPlayer,
   isPlayerCollidingWithAsteroid,
   updatePlayer,
-  updateScore,
 } from "../../src/game/engine";
 import {
   ASTEROID_REMOVE_PADDING,
@@ -92,19 +91,6 @@ describe("game engine properties", () => {
             GAME_HEIGHT - player.height / 2 - PLAYER_SCREEN_PADDING,
           );
           expect(player).toEqual(originalPlayer);
-        },
-      ),
-      { numRuns: PROPERTY_RUNS },
-    );
-  });
-
-  it("never decreases score when elapsed time is non-negative", () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: 1_000_000 }),
-        deltaTimeArbitrary,
-        (currentScore, deltaTime) => {
-          expect(updateScore(currentScore, deltaTime)).toBeGreaterThanOrEqual(currentScore);
         },
       ),
       { numRuns: PROPERTY_RUNS },
@@ -198,8 +184,17 @@ describe("game engine properties", () => {
             .reduce((totalBonus, asteroid) => totalBonus + getAsteroidPassBonus(asteroid), 0);
           const originalAsteroids = asteroids.map((asteroid) => ({ ...asteroid }));
           const result = collectPassBonuses(currentScore, player, asteroids);
+          const newlyPassedAsteroids = asteroids.filter(
+            (asteroid) =>
+              !asteroid.hasAwardedPassBonus && hasAsteroidPassedPlayer(player, asteroid),
+          );
+          const expectedLastBonus = newlyPassedAsteroids.length
+            ? getAsteroidPassBonus(newlyPassedAsteroids.at(-1)!)
+            : null;
 
           expect(result.score).toBe(currentScore + expectedBonus);
+          expect(Number.isInteger(result.score)).toBe(true);
+          expect(result.lastAwardedBonus).toBe(expectedLastBonus);
           expect(asteroids).toEqual(originalAsteroids);
         },
       ),

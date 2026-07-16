@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test("loads the initial game contract", async ({ page }) => {
   await page.goto("/");
@@ -42,36 +42,38 @@ test("restarts a game over round with Enter", async ({ page }) => {
 
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("game-status")).toHaveText("gameOver", { timeout: 8_000 });
-  const completedRoundScore = Number(await page.getByTestId("game-score").textContent());
+  await expect(page.getByTestId("game-score")).toHaveText("00000");
   const completedRoundTime = parseFormattedTime(await page.getByTestId("game-time").textContent());
 
   await page.keyboard.press("Enter");
 
   await expect(page.getByTestId("game-status")).toHaveText("running");
-  const restartedRoundScore = Number(await page.getByTestId("game-score").textContent());
+  await expect(page.getByTestId("game-score")).toHaveText("00000");
   const restartedRoundTime = parseFormattedTime(await page.getByTestId("game-time").textContent());
 
-  expect(restartedRoundScore).toBeLessThan(completedRoundScore);
   expect(restartedRoundTime).toBeLessThan(completedRoundTime);
 });
 
-test("updates the browser status while running", async ({ page }) => {
+test("keeps score pass-based while survival time advances", async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
   await page.goto("/");
 
   const score = page.getByTestId("game-score");
   const survivalTime = page.getByTestId("game-time");
   const asteroidCount = page.getByTestId("asteroid-count");
 
-  await page.keyboard.press("Enter");
+  await startGameMovingUp(page);
 
   await expect(page.getByTestId("game-status")).toHaveText("running");
-  await expect
-    .poll(async () => Number(await score.textContent()))
-    .toBeGreaterThan(0);
   await expect(survivalTime).not.toHaveText("0:00");
   await expect
     .poll(async () => Number(await asteroidCount.textContent()))
     .toBeGreaterThan(0);
+  await expect(score).toHaveText("00000");
+  await expect(score).toHaveText("00025", { timeout: 5_000 });
+  await page.keyboard.up("ArrowUp");
 });
 
 test("scopes aria-live to the status announcement only", async ({ page }) => {
@@ -82,13 +84,15 @@ test("scopes aria-live to the status announcement only", async ({ page }) => {
 });
 
 test("saves the best score when the tab is hidden mid-run", async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
   await page.goto("/");
 
-  await page.keyboard.press("Enter");
+  await startGameMovingUp(page);
   await expect(page.getByTestId("game-status")).toHaveText("running");
-  await expect
-    .poll(async () => Number(await page.getByTestId("game-score").textContent()))
-    .toBeGreaterThan(0);
+  await expect(page.getByTestId("game-score")).toHaveText("00025", { timeout: 5_000 });
+  await page.keyboard.up("ArrowUp");
 
   const scoreBeforeHiding = Number(await page.getByTestId("game-score").textContent());
 
@@ -103,6 +107,11 @@ test("saves the best score when the tab is hidden mid-run", async ({ page }) => 
 
   expect(storedBestScore).toBeGreaterThanOrEqual(scoreBeforeHiding);
 });
+
+async function startGameMovingUp(page: Page): Promise<void> {
+  await page.keyboard.down("ArrowUp");
+  await page.keyboard.press("Enter");
+}
 
 function parseFormattedTime(value: string | null): number {
   const [minutes = 0, seconds = 0] = (value ?? "").split(":").map(Number);

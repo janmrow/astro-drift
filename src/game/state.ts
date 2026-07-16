@@ -1,4 +1,4 @@
-import { collectPassBonuses, createInitialPlayer, hasPlayerCollision, updatePlayer, updateScore } from "./engine";
+import { collectPassBonuses, createInitialPlayer, hasPlayerCollision, updatePlayer } from "./engine";
 import { BONUS_FEEDBACK_DURATION } from "./balance";
 import {
   createInitialAsteroidSpawnState,
@@ -39,10 +39,13 @@ export function applyScoreBonuses(
   currentAsteroids: Asteroid[],
   currentBonusFeedback: BonusFeedback,
 ): { score: number; asteroids: Asteroid[]; bonusFeedback: BonusFeedback } {
-  const bonusResult = collectPassBonuses(currentScore, currentPlayer, currentAsteroids);
-  const bonusPoints = Math.floor(bonusResult.score - currentScore);
+  const { lastAwardedBonus, ...bonusResult } = collectPassBonuses(
+    currentScore,
+    currentPlayer,
+    currentAsteroids,
+  );
 
-  if (bonusPoints <= 0) {
+  if (lastAwardedBonus === null) {
     return {
       ...bonusResult,
       bonusFeedback: currentBonusFeedback,
@@ -52,7 +55,7 @@ export function applyScoreBonuses(
   return {
     ...bonusResult,
     bonusFeedback: {
-      text: `+${bonusPoints}`,
+      text: `+${lastAwardedBonus}`,
       timeLeft: BONUS_FEEDBACK_DURATION,
     },
   };
@@ -114,7 +117,6 @@ export function advanceRunningGame(
   return {
     gameState: {
       ...nextGameState,
-      score: updateScore(nextGameState.score, deltaTime),
       bonusFeedback: updateBonusFeedbackTimer(nextGameState.bonusFeedback, deltaTime),
     },
     collided: false,

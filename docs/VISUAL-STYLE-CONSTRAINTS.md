@@ -69,10 +69,9 @@ a budget when evaluating any style proposal:
 | Expensive (use sparingly, budget explicitly) | `shadowBlur`/glow, `ctx.filter` (blur, etc.) | Cost scales with object count and blur radius; a handful of instances is fine, applying it per-asteroid at scale is not |
 | Avoid at current scale | full-frame software filters, per-frame `getImageData`/pixel manipulation | Disproportionate cost for a 2D arcade game of this scope |
 
-Gradients in `src/rendering/canvasRenderer.ts` (`backgroundGradient`,
-`hudScrimGradient`, `vignetteGradient`) are cached as module-level variables built
-once behind `if (!x)` guards, not recreated per frame. Keep new gradient work to
-that same pattern.
+Gradients in `src/rendering/canvasRenderer.ts` (`backgroundGradient` and
+`vignetteGradient`) are cached as module-level variables built once behind `if (!x)`
+guards, not recreated per frame. Keep new gradient work to that same pattern.
 
 ## Style-neutral degrees of freedom
 
@@ -103,12 +102,12 @@ not a side effect of a palette change:
   **Attempted 2026-07 and reverted.** Every existing draw call that is (a)
   translucent and (b) drawn at a fixed screen position every frame silently
   compounds with its own residue once the canvas stops being fully cleared
-  each frame — it hit every pre-existing fixed overlay in this file in turn
-  (vignette, HUD scrim, idle/game-over scrims, the player-area guide line),
-  each discovered reactively from a bug report rather than up front. Before
-  attempting this again, audit every translucent, fixed-position draw call
-  in this file first and decide how each is excluded from the trail — don't
-  discover them one at a time from bug reports.
+  each frame. At the time of the experiment, that affected the vignette, HUD
+  scrim, idle/game-over scrims, and player-area guide line; some of those elements
+  have since been removed. Each interaction was discovered reactively from a bug
+  report rather than up front. Before attempting this again, audit every translucent,
+  fixed-position draw call that exists at that time and decide how each is excluded
+  from the trail — don't discover them one at a time from bug reports.
 - **`roundRect()`** is Baseline widely available (since October 2025) and safe to
   use without a polyfill.
 - Any technique that would require reading pixels back (`getImageData`) or

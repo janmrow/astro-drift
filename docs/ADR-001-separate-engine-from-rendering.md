@@ -60,7 +60,7 @@ This makes the project easier to test. Unit tests can cover the important game r
 Examples of rules that should be testable:
 
 - player does not leave the allowed area;
-- score grows with time;
+- passed asteroids award score exactly once;
 - asteroid spawn interval changes with survival time;
 - collision detection works;
 - restart creates a clean state.
@@ -90,10 +90,8 @@ state resets to grow in `main.ts` without unit coverage. To close that gap:
 - **The frame-delta cap is core logic.** `capFrameDelta` (`src/game/engine.ts`) is a pure,
   unit-tested function instead of an inline `Math.min` in the render loop.
 - **`gameStatus` transitions themselves stay thin glue in `main.ts`.** Browser E2E
-  covers starting and stable running-state DOM, accessibility, and persistence
-  behavior. Collision and state-transition rules stay covered at unit/property
-  level; the full browser `gameOver → restart` flow is intentionally a manual
-  smoke check after removal of the timing-dependent seeded E2E scenario.
+  covers selected state transitions and shell contracts. Collision and state rules
+  stay covered directly at unit/property level.
 
 This does not change the trade-off described above: rendering stays out of `src/game/`, and
 `main.ts` stays thin glue that wires input, state, rendering, and storage together.

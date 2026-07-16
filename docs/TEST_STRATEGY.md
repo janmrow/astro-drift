@@ -31,15 +31,20 @@ next values and, where valuable, verify that caller-owned inputs are unchanged.
 
 Current focus:
 
-- engine rules: initial player/input state, movement, boundaries, scoring,
-  difficulty, pass bonuses, collision, and frame-delta capping;
-- asteroid spawning, ranges, variants, movement, bouncing, rotation, and cleanup;
-- running-state advancement, initial/reset state creation, score bonuses, and
-  bonus-feedback timing;
+- engine rules: fixed horizontal player position, vertical movement and bounds,
+  pass-only scoring, exact standard (`25`) and fiery (`100`) rewards, one-time
+  reward accounting, collision, and frame-delta capping;
+- asteroid spawning across continuous vertical ranges, standard/fiery variant
+  chance and identity, horizontal movement at a stable Y position, rotation,
+  cleanup, and bounded speed and spawn-interval difficulty ramps, including the
+  final speed cap for both variants;
+- running-state advancement, initial/reset state creation, survival time remaining
+  independent from score, and individual `+25`/`+100` feedback timing;
 - deterministic RNG repeatability and output range;
 - score and time formatting;
-- keyboard movement/action mapping, default prevention, blur reset, and explicit
-  input reset; and
+- keyboard mapping for Arrow Up/Down and W/S vertical movement, Enter-only game
+  actions, ignored horizontal arrows/Space/R, default prevention, blur reset, and
+  explicit input reset; and
 - local best-score storage, normalization, and storage-failure behavior.
 
 These tests should stay fast and independent from the browser.
@@ -48,11 +53,13 @@ These tests should stay fast and independent from the browser.
 
 [`engine.properties.test.ts`](../tests/unit/engine.properties.test.ts) uses
 `fast-check` to check invariants that hold across many generated inputs, not just
-hand-picked examples — e.g. player movement always stays within its bounds, score
-never decreases, and collision detection always triggers when an asteroid's center
-is inside the player hitbox and never triggers once it is farther than its hit
-radius away. Delta-time properties use a shared broad arbitrary spanning 0 to 10
-seconds, exercising the retained invariants beyond ordinary single-frame timing
+hand-picked examples. These include preserving player X while keeping Y in bounds;
+keeping spawn intervals and final standard/fiery speeds within their limits as
+difficulty rises; moving and rotating asteroids without changing their Y position;
+and awarding only known pass values without duplicate rewards. Collision properties
+cover definite hits inside the player hitbox and definite misses beyond the
+asteroid hit radius. Delta-time properties use a shared broad arbitrary spanning
+0 to 10 seconds, exercising retained invariants beyond ordinary single-frame timing
 without defining separate runtime-frame-specific property coverage.
 
 ### E2E tests
@@ -60,17 +67,25 @@ without defining separate runtime-frame-specific property coverage.
 E2E tests cover the main browser contract:
 
 - the initial Canvas and DOM status/stat contract;
-- starting with Enter or Space;
-- rejecting the restart key while the game is still `idle`;
-- `running` status plus score, time, and asteroid-count progression;
+- starting with Enter while Space and R leave the game `idle`;
+- reaching `gameOver` through a deterministic browser scenario and restarting the
+  round with Enter;
+- survival time and asteroid count advancing while score remains pass-based, then
+  observing a standard `25`-point pass;
 - limiting `aria-live` announcements to game status; and
 - persisting the best score when a running tab becomes hidden.
 
 E2E tests should use DOM status hooks where possible instead of reading Canvas pixels.
 
-Full browser `gameOver`/restart behavior is a manual smoke check. Collision and
-clean initial-state behavior remain covered directly by unit tests, but the suite
-does not claim automated browser coverage for the complete restart flow.
+The browser persistence scenario verifies the visibility-change save boundary;
+storage parsing, normalization, higher-score selection, and failure handling remain
+unit-level coverage. Best score is derived from score, not survival time.
+
+Canvas-only presentation and feel remain manual browser checks. This includes the
+visual form and placement of individual pass feedback, asteroid and collision
+readability, layered star parallax, and reduced-motion behavior. The underlying
+feedback, collision, movement, and scoring rules are covered below the browser
+layer, but that does not make those visual contracts E2E-covered.
 
 Randomized game rules continue to accept an injected RNG function. The retained
 `createSeededRng` utility is unit-tested and supports deterministic unit scenarios;
@@ -111,8 +126,10 @@ Instead, we test stable behavior:
 
 - spawn state;
 - spawned asteroid ranges with controlled randomness;
-- movement;
+- horizontal movement with stable Y and retained rotation;
+- bounded speed and spawn-interval ramps;
 - cleanup;
+- one-time standard and fiery pass rewards; and
 - collision-related rules.
 
 ## Test data strategy

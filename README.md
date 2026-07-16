@@ -17,15 +17,17 @@ idle -> running -> gameOver
 Current gameplay:
 
 - Canvas-rendered retro arcade scene
-- keyboard controls with Arrow keys or WASD
-- start with Enter or Space
-- asteroids moving from right to left
+- fixed horizontal ship position with vertical movement using Arrow Up / Arrow Down
+- Enter starts the game and restarts after game over
+- asteroids spawning at random vertical positions and travelling straight from right to left
+- rotating standard and fiery asteroids, with bounded speed and spawn-rate difficulty ramps
 - collision detection
-- score increasing over time
-- bonus score for passing asteroids
-- local best score stored in the browser
+- pass-only scoring: standard asteroids award `25` and fiery asteroids award `100`
+- individual `+25` or `+100` pass feedback
+- survival time tracked separately from score
+- score-based local best stored in the browser
+- faster near stars that reinforce forward motion while preserving parallax and reduced-motion behavior
 - game over state
-- quick restart with R, Enter, or Space
 
 ## Tech Stack
 
@@ -195,21 +197,21 @@ Unit tests cover game rules and small boundary modules, including movement,
 boundaries, scoring, asteroid behavior, collision, state advancement, formatting,
 deterministic RNG behavior, keyboard input, and best-score storage. The suite
 includes example-based tests and property-based tests with `fast-check` for core
-invariants such as movement bounds, non-decreasing score, spawn interval limits,
-asteroid movement, and pass bonus rules.
+invariants such as fixed-X vertical movement, bounded difficulty, horizontal
+asteroid paths, and one-time pass rewards.
 
 Playwright tests cover the main browser smoke flow:
 
 - the initial Canvas and DOM contract
-- Enter and Space starting the game
-- the restart key not starting an idle game
-- running status, score, time, and asteroid-count progression
+- Enter starting the game while Space and R leave the idle state unchanged
+- game-over rounds restarting cleanly with Enter
+- pass-based score progression remaining separate from survival time
 - `aria-live` being limited to status announcements
 - best-score persistence when a running tab is hidden
 
-Full browser game-over/restart remains a manual smoke check rather than an
-automated E2E scenario. Collision and clean initial-state rules are tested
-directly at unit level.
+Canvas-only presentation and feel, including pass-feedback animation, collision
+readability, star parallax, and reduced-motion behavior, remain manual browser
+checks rather than pixel-tested E2E assertions.
 
 The project does not test Canvas pixels. Pixel-level tests are brittle and would make small visual changes look like gameplay regressions. Instead, game rules are tested directly and browser flow is checked through stable DOM hooks such as `data-testid`.
 

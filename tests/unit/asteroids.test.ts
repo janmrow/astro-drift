@@ -72,7 +72,7 @@ describe("asteroid logic", () => {
     expect(ASTEROID_INITIAL_SPAWN_TIMER).toBe(0.85);
   });
 
-  it("uses the initial timer to spawn the first ordinary asteroid after 0.6 seconds", () => {
+  it("uses the initial timer to spawn the first ordinary asteroid after 0.45 seconds", () => {
     const timeUntilFirstSpawn =
       ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_INITIAL_SPAWN_TIMER;
     const beforeThreshold = updateAsteroidSpawning(
@@ -89,7 +89,7 @@ describe("asteroid logic", () => {
       constantRng(FIERY_ASTEROID_CHANCE),
     );
 
-    expect(timeUntilFirstSpawn).toBeCloseTo(0.6);
+    expect(timeUntilFirstSpawn).toBeCloseTo(0.45);
     expect(beforeThreshold.asteroids).toHaveLength(0);
     expect(atThreshold.asteroids).toHaveLength(1);
     expect(atThreshold.asteroids[0]).toMatchObject({
@@ -170,7 +170,7 @@ describe("asteroid logic", () => {
       "asteroid-4",
     ]);
     expect(result.spawnState.nextId).toBe(5);
-    expect(result.spawnState.timer).toBeCloseTo(0.05);
+    expect(result.spawnState.timer).toBeCloseTo(0.65);
   });
 
   it("continues spawning from an existing timer and id", () => {
@@ -211,8 +211,8 @@ describe("asteroid logic", () => {
       (ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_MIN_SPAWN_INTERVAL) /
       ASTEROID_SPAWN_RAMP;
 
-    expect(getAsteroidSpawnInterval(0)).toBe(1.45);
-    expect(minimumThreshold).toBeCloseTo(325);
+    expect(getAsteroidSpawnInterval(0)).toBe(1.30);
+    expect(minimumThreshold).toBeCloseTo(250);
     expect(getAsteroidSpawnInterval(minimumThreshold)).toBe(0.8);
     expect(getAsteroidSpawnInterval(minimumThreshold + 1_000)).toBe(0.8);
   });

@@ -8,6 +8,8 @@ export const PALETTE = {
   textMuted: "#b9afc3",
   accentCopper: "#b8784d",
   accentAmber: "#d6a35d",
+  lineMuted: "#765064",
+  hudPanel: "#261a37",
   playerHull: "#cfc7be",
   playerShadow: "#84747a",
   asteroidStandard: "#443740",
@@ -16,6 +18,7 @@ export const PALETTE = {
   asteroidFiery: "#2b2022",
   asteroidHeat: "#c94f32",
   asteroidHeatBright: "#f09a55",
+  stateScrim: "#02050c",
   vignette: "#000000",
 } as const;
 
@@ -25,11 +28,18 @@ export type FontFamilies = {
 };
 
 export const FONT_SCALE = {
-  xs: 12,
-  sm: 16,
-  md: 20,
-  lg: 28,
-  xxl: 56,
+  hudLabel: 9,
+  stateLabel: 11,
+  controlHint: 14,
+  stateData: 15,
+  pointPopup: 17,
+  stateBest: 18,
+  hudValue: 19,
+  stateAction: 19,
+  body: 20,
+  idleAction: 22,
+  gameOverScore: 64,
+  idleTitle: 66,
 } as const;
 
 export function fontStyle(

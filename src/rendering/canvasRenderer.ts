@@ -65,11 +65,19 @@ const STAR_LAYER_SETTINGS: Record<
 
 const NEAR_STAR_RATIO = 0.3;
 
-const HUD_CORNER = {
-  x: 24,
-  scoreBaseline: 48,
-  timeBaseline: 74,
+const HUD_PANEL = {
+  x: 16,
+  y: 16,
+  width: 189,
+  height: 68,
+  cornerClip: 11,
+  scoreX: 30,
+  timeX: 124,
+  labelBaseline: 42,
+  valueBaseline: 69,
 };
+
+const IDLE_LOWER_STACK_SHIFT_Y = 48;
 
 const PLAYER_SHIP = {
   impulseLength: 10,
@@ -130,7 +138,8 @@ export function renderFrame({
   drawStars(ctx, starField);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer, currentStatus);
-  drawScore(ctx, currentScore, currentSurvivalTime, fontFamilies.monospace);
+
+  drawVignette(ctx);
 
   if (bonusFeedback) {
     drawBonusFeedback(
@@ -142,20 +151,24 @@ export function renderFrame({
     );
   }
 
-  drawVignette(ctx);
-
-  if (currentStatus === "idle") {
-    drawStartOverlay(ctx, fontFamilies);
-  }
-
-  if (currentStatus === "gameOver") {
-    drawGameOverOverlay(
-      ctx,
-      currentScore,
-      currentSurvivalTime,
-      currentBestScore,
-      fontFamilies,
-    );
+  switch (currentStatus) {
+    case "idle":
+      drawStartOverlay(ctx, fontFamilies);
+      break;
+    case "running":
+      drawRunningHud(ctx, currentScore, currentSurvivalTime, fontFamilies.monospace);
+      break;
+    case "gameOver":
+      drawGameOverOverlay(
+        ctx,
+        currentScore,
+        currentSurvivalTime,
+        currentBestScore,
+        fontFamilies,
+      );
+      break;
+    default:
+      assertNever(currentStatus);
   }
 }
 
@@ -451,78 +464,74 @@ function drawFieryAsteroidSurface(ctx: CanvasRenderingContext2D, radius: number)
   ctx.fill();
 }
 
-// Draws text with a solid-color outline so it stays legible over the
-// starfield/asteroids, without a background panel.
-function drawOutlinedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  font: string,
-  lineWidth: number,
-  fillColor: string,
-): void {
-  ctx.font = font;
-  ctx.strokeStyle = PALETTE.backgroundBottom;
-  ctx.lineWidth = lineWidth;
-  ctx.strokeText(text, x, y);
-  ctx.fillStyle = fillColor;
-  ctx.fillText(text, x, y);
-}
-
-function drawScore(
+function drawRunningHud(
   ctx: CanvasRenderingContext2D,
   currentScore: number,
   currentSurvivalTime: number,
   fontFamily: string,
 ): void {
-  const { x, scoreBaseline, timeBaseline } = HUD_CORNER;
-
   const scoreText = formatScore(currentScore);
   const timeText = formatTime(currentSurvivalTime);
 
-  drawOutlinedText(
-    ctx,
-    scoreText,
-    x,
-    scoreBaseline,
-    fontStyle("md", fontFamily, 700),
-    4,
-    PALETTE.textPrimary,
-  );
-  drawOutlinedText(
-    ctx,
-    timeText,
-    x,
-    timeBaseline,
-    fontStyle("sm", fontFamily),
-    3,
-    PALETTE.textMuted,
-  );
+  ctx.save();
+  ctx.textAlign = "left";
+
+  ctx.fillStyle = withAlpha(PALETTE.hudPanel, 0.92);
+  ctx.beginPath();
+  ctx.moveTo(HUD_PANEL.x, HUD_PANEL.y);
+  ctx.lineTo(HUD_PANEL.x + HUD_PANEL.width - HUD_PANEL.cornerClip, HUD_PANEL.y);
+  ctx.lineTo(HUD_PANEL.x + HUD_PANEL.width, HUD_PANEL.y + HUD_PANEL.cornerClip);
+  ctx.lineTo(HUD_PANEL.x + HUD_PANEL.width, HUD_PANEL.y + HUD_PANEL.height);
+  ctx.lineTo(HUD_PANEL.x, HUD_PANEL.y + HUD_PANEL.height);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = PALETTE.accentCopper;
+  ctx.font = fontStyle("hudLabel", fontFamily, 600);
+  ctx.fillText("SCORE", HUD_PANEL.scoreX, HUD_PANEL.labelBaseline);
+  ctx.fillText("TIME", HUD_PANEL.timeX, HUD_PANEL.labelBaseline);
+
+  ctx.fillStyle = PALETTE.textPrimary;
+  ctx.font = fontStyle("hudValue", fontFamily, 600);
+  ctx.fillText(scoreText, HUD_PANEL.scoreX, HUD_PANEL.valueBaseline);
+  ctx.fillText(timeText, HUD_PANEL.timeX, HUD_PANEL.valueBaseline);
+
+  ctx.restore();
 }
 
 function drawStartOverlay(ctx: CanvasRenderingContext2D, fontFamilies: FontFamilies): void {
-  ctx.fillStyle = "rgba(7, 4, 23, 0.68)";
+  ctx.save();
+  ctx.fillStyle = withAlpha(PALETTE.stateScrim, 0.58);
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-  ctx.save();
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
+
+  ctx.fillStyle = PALETTE.accentCopper;
+  ctx.fillRect(166, 153, 70, 3);
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("xxl", fontFamilies.sans, 700);
-  ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
+  ctx.font = fontStyle("idleTitle", fontFamilies.sans, 560);
+  ctx.fillText("Astro Drift", 166, 226);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("md", fontFamilies.sans);
-  ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
+  ctx.font = fontStyle("body", fontFamilies.sans);
+  ctx.fillText("Find a path through the twilight.", 169, 276 + IDLE_LOWER_STACK_SHIFT_Y);
 
   ctx.fillStyle = PALETTE.accentAmber;
-  ctx.font = fontStyle("md", fontFamilies.sans, 700);
-  ctx.fillText("Press Enter to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
+  ctx.font = fontStyle("idleAction", fontFamilies.sans, 650);
+  ctx.fillText("Press Enter to start", 169, 342 + IDLE_LOWER_STACK_SHIFT_Y);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("sm", fontFamilies.monospace);
-  ctx.fillText("Move with Arrow Up / Arrow Down", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
+  ctx.font = fontStyle("controlHint", fontFamilies.monospace, 500);
+  ctx.fillText("↑ / ↓ to steer", 171, 380 + IDLE_LOWER_STACK_SHIFT_Y);
+
+  ctx.strokeStyle = PALETTE.lineMuted;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(720, 150);
+  ctx.lineTo(792, 150);
+  ctx.lineTo(814, 172);
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -534,39 +543,44 @@ function drawGameOverOverlay(
   bestScore: number,
   fontFamilies: FontFamilies,
 ): void {
-  ctx.fillStyle = "rgba(7, 4, 23, 0.76)";
+  ctx.save();
+  ctx.fillStyle = withAlpha(PALETTE.stateScrim, 0.68);
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-  ctx.save();
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
 
-  ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("xxl", fontFamilies.sans, 700);
-  ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
-
-  ctx.fillStyle = PALETTE.accentAmber;
-  ctx.font = fontStyle("lg", fontFamilies.monospace, 700);
-  ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
-
-  ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("md", fontFamilies.monospace, 700);
-  ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
+  ctx.fillStyle = PALETTE.accentCopper;
+  ctx.font = fontStyle("stateLabel", fontFamilies.monospace, 650);
+  ctx.fillText("GAME OVER", 170, 129);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("md", fontFamilies.monospace);
-  ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
+  ctx.font = fontStyle("body", fontFamilies.sans, 450);
+  ctx.fillText("Final score", 170, 179);
+
+  ctx.fillStyle = PALETTE.accentAmber;
+  ctx.font = fontStyle("gameOverScore", fontFamilies.monospace, 650);
+  ctx.fillText(formatScore(finalScore), 164, 244);
+
+  ctx.fillStyle = PALETTE.accentCopper;
+  ctx.fillRect(170, 268, 360, 2);
+
+  ctx.fillStyle = PALETTE.textMuted;
+  ctx.font = fontStyle("stateData", fontFamilies.monospace, 500);
+  ctx.fillText(`SURVIVAL TIME   ${formatTime(finalSurvivalTime)}`, 170, 308);
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("md", fontFamilies.sans, 700);
-  ctx.fillText("Press Enter to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
+  ctx.font = fontStyle("stateBest", fontFamilies.monospace, 650);
+  ctx.fillText(`BEST SCORE      ${formatScore(bestScore)}`, 170, 347);
+
+  ctx.fillStyle = PALETTE.accentAmber;
+  ctx.font = fontStyle("stateAction", fontFamilies.sans, 650);
+  ctx.fillText("Press Enter to restart", 170, 414);
 
   ctx.restore();
 }
 
 const BONUS_FEEDBACK_RISE_DISTANCE = 18;
-// Keeps the popup clear of the HUD corner text when the player is near the
-// top-left of the play area.
-const BONUS_FEEDBACK_MIN_Y = HUD_CORNER.timeBaseline + 16;
+const BONUS_FEEDBACK_MIN_Y = HUD_PANEL.y + HUD_PANEL.height + 20;
 
 function drawBonusFeedback(
   ctx: CanvasRenderingContext2D,
@@ -586,15 +600,9 @@ function drawBonusFeedback(
   ctx.save();
   ctx.globalAlpha = feedbackFraction;
   ctx.textAlign = "center";
-  drawOutlinedText(
-    ctx,
-    text,
-    x,
-    y,
-    fontStyle("xs", fontFamily, 700),
-    2,
-    PALETTE.accentAmber,
-  );
+  ctx.fillStyle = PALETTE.accentAmber;
+  ctx.font = fontStyle("pointPopup", fontFamily, 700);
+  ctx.fillText(text, x, y);
   ctx.restore();
 }
 

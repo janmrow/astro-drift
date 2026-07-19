@@ -9,7 +9,7 @@ import {
   type GameStatus,
   type Player,
 } from "../game/types";
-import { fontStyle, PALETTE } from "./theme";
+import { fontStyle, PALETTE, type FontFamilies } from "./theme";
 
 export type Star = {
   x: number;
@@ -32,7 +32,7 @@ export type RenderFrameInput = {
   survivalTime: number;
   bestScore: number;
   bonusFeedback: BonusFeedback;
-  fontFamily: string;
+  fontFamilies: FontFamilies;
 };
 
 const STAR_WRAP_PADDING = 4;
@@ -42,31 +42,28 @@ const STAR_LAYER_SETTINGS: Record<
   {
     radiusMin: number;
     radiusRange: number;
-    alphaMin: number;
-    alphaRange: number;
+    alpha: number;
     speedMin: number;
     speedRange: number;
   }
 > = {
   far: {
-    radiusMin: 0.35,
-    radiusRange: 1.1,
-    alphaMin: 0.22,
-    alphaRange: 0.42,
+    radiusMin: 0.55,
+    radiusRange: 0.65,
+    alpha: 0.48,
     speedMin: 18,
     speedRange: 12,
   },
   near: {
-    radiusMin: 1.1,
-    radiusRange: 1.45,
-    alphaMin: 0.42,
-    alphaRange: 0.42,
+    radiusMin: 1.3,
+    radiusRange: 0.7,
+    alpha: 0.82,
     speedMin: 55,
     speedRange: 30,
   },
 };
 
-const NEAR_STAR_RATIO = 0.32;
+const NEAR_STAR_RATIO = 0.3;
 
 const HUD_CORNER = {
   x: 24,
@@ -94,7 +91,7 @@ export function createStars(count: number): Star[] {
       x: Math.random() * GAME_WIDTH,
       y: Math.random() * GAME_HEIGHT,
       radius: Math.random() * settings.radiusRange + settings.radiusMin,
-      alpha: Math.random() * settings.alphaRange + settings.alphaMin,
+      alpha: settings.alpha,
       speed: Math.random() * settings.speedRange + settings.speedMin,
       layer,
     };
@@ -122,26 +119,38 @@ export function renderFrame({
   survivalTime: currentSurvivalTime,
   bestScore: currentBestScore,
   bonusFeedback,
-  fontFamily,
+  fontFamilies,
 }: RenderFrameInput): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
   drawAsteroids(ctx, currentAsteroids);
   drawPlayer(ctx, currentPlayer);
-  drawScore(ctx, currentScore, currentSurvivalTime, fontFamily);
+  drawScore(ctx, currentScore, currentSurvivalTime, fontFamilies.monospace);
 
   if (bonusFeedback) {
-    drawBonusFeedback(ctx, bonusFeedback.text, currentPlayer, bonusFeedback.timeLeft, fontFamily);
+    drawBonusFeedback(
+      ctx,
+      bonusFeedback.text,
+      currentPlayer,
+      bonusFeedback.timeLeft,
+      fontFamilies.monospace,
+    );
   }
 
   drawVignette(ctx);
 
   if (currentStatus === "idle") {
-    drawStartOverlay(ctx, fontFamily);
+    drawStartOverlay(ctx, fontFamilies);
   }
 
   if (currentStatus === "gameOver") {
-    drawGameOverOverlay(ctx, currentScore, currentSurvivalTime, currentBestScore, fontFamily);
+    drawGameOverOverlay(
+      ctx,
+      currentScore,
+      currentSurvivalTime,
+      currentBestScore,
+      fontFamilies,
+    );
   }
 }
 
@@ -153,7 +162,7 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
   if (!backgroundGradient) {
     backgroundGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
     backgroundGradient.addColorStop(0, PALETTE.backgroundTop);
-    backgroundGradient.addColorStop(0.56, PALETTE.backgroundMid);
+    backgroundGradient.addColorStop(0.55, PALETTE.backgroundMid);
     backgroundGradient.addColorStop(1, PALETTE.backgroundBottom);
   }
 
@@ -163,11 +172,10 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
 
 function drawStars(ctx: CanvasRenderingContext2D, starField: Star[]): void {
   for (const star of starField) {
-    const alphaMultiplier = star.layer === "near" ? 0.86 : 0.64;
-    const baseColor = star.layer === "near" ? PALETTE.starCool : PALETTE.starWarm;
+    const baseColor = star.layer === "near" ? PALETTE.starNear : PALETTE.starFar;
 
     ctx.beginPath();
-    ctx.fillStyle = withAlpha(baseColor, star.alpha * alphaMultiplier);
+    ctx.fillStyle = withAlpha(baseColor, star.alpha);
     ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
     ctx.fill();
   }
@@ -213,15 +221,15 @@ function drawPlayer(ctx: CanvasRenderingContext2D, currentPlayer: Player): void 
   ctx.lineTo(shoulderX, centerY + shoulderYOffset);
   ctx.closePath();
 
-  ctx.fillStyle = PALETTE.playerAccent;
+  ctx.fillStyle = PALETTE.playerHull;
   ctx.fill();
 
-  ctx.strokeStyle = PALETTE.playerAccentDark;
+  ctx.strokeStyle = PALETTE.playerShadow;
   ctx.lineWidth = PLAYER_SHIP.hullOutlineWidth;
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.fillStyle = PALETTE.playerAccentDark;
+  ctx.fillStyle = PALETTE.accentAmber;
   ctx.arc(currentPlayer.x - PLAYER_SHIP.cockpitXOffset, centerY, PLAYER_SHIP.cockpitRadius, 0, Math.PI * 2);
   ctx.fill();
 }
@@ -276,13 +284,13 @@ function getAsteroidStyle(asteroid: Asteroid): {
   switch (asteroid.variant) {
     case "fiery":
       return {
-        fill: withAlpha(PALETTE.hazardEscalated, ASTEROID_FILL_ALPHA),
-        stroke: PALETTE.hazardEscalated,
+        fill: withAlpha(PALETTE.asteroidFiery, ASTEROID_FILL_ALPHA),
+        stroke: PALETTE.asteroidHeat,
       };
     case "standard":
       return {
-        fill: withAlpha(PALETTE.hazardStandard, ASTEROID_FILL_ALPHA),
-        stroke: PALETTE.hazardStandard,
+        fill: withAlpha(PALETTE.asteroidStandard, ASTEROID_FILL_ALPHA),
+        stroke: PALETTE.asteroidFacet,
       };
     default:
       return assertNever(asteroid.variant);
@@ -350,7 +358,7 @@ function drawScore(
   );
 }
 
-function drawStartOverlay(ctx: CanvasRenderingContext2D, fontFamily: string): void {
+function drawStartOverlay(ctx: CanvasRenderingContext2D, fontFamilies: FontFamilies): void {
   ctx.fillStyle = "rgba(7, 4, 23, 0.68)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
@@ -358,19 +366,19 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D, fontFamily: string): vo
   ctx.textAlign = "center";
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("xxl", fontFamily, 700);
+  ctx.font = fontStyle("xxl", fontFamilies.sans, 700);
   ctx.fillText("Astro Drift", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 74);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("md", fontFamily);
+  ctx.font = fontStyle("md", fontFamilies.sans);
   ctx.fillText("Avoid incoming asteroids and survive as long as possible.", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 26);
 
-  ctx.fillStyle = PALETTE.hazardStandard;
-  ctx.font = fontStyle("md", fontFamily, 700);
+  ctx.fillStyle = PALETTE.accentAmber;
+  ctx.font = fontStyle("md", fontFamilies.sans, 700);
   ctx.fillText("Press Enter to start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("sm", fontFamily);
+  ctx.font = fontStyle("sm", fontFamilies.monospace);
   ctx.fillText("Move with Arrow Up / Arrow Down", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 68);
 
   ctx.restore();
@@ -381,7 +389,7 @@ function drawGameOverOverlay(
   finalScore: number,
   finalSurvivalTime: number,
   bestScore: number,
-  fontFamily: string,
+  fontFamilies: FontFamilies,
 ): void {
   ctx.fillStyle = "rgba(7, 4, 23, 0.76)";
   ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -390,23 +398,23 @@ function drawGameOverOverlay(
   ctx.textAlign = "center";
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("xxl", fontFamily, 700);
+  ctx.font = fontStyle("xxl", fontFamilies.sans, 700);
   ctx.fillText("Game Over", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70);
 
-  ctx.fillStyle = PALETTE.reward;
-  ctx.font = fontStyle("lg", fontFamily, 700);
+  ctx.fillStyle = PALETTE.accentAmber;
+  ctx.font = fontStyle("lg", fontFamilies.monospace, 700);
   ctx.fillText(`Final score: ${formatScore(finalScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24);
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("md", fontFamily, 700);
+  ctx.font = fontStyle("md", fontFamilies.monospace, 700);
   ctx.fillText(`Best score: ${formatScore(bestScore)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 14);
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = fontStyle("md", fontFamily);
+  ctx.font = fontStyle("md", fontFamilies.monospace);
   ctx.fillText(`Survival time: ${formatTime(finalSurvivalTime)}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
 
   ctx.fillStyle = PALETTE.textPrimary;
-  ctx.font = fontStyle("md", fontFamily, 700);
+  ctx.font = fontStyle("md", fontFamilies.sans, 700);
   ctx.fillText("Press Enter to restart", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
 
   ctx.restore();
@@ -435,7 +443,15 @@ function drawBonusFeedback(
   ctx.save();
   ctx.globalAlpha = feedbackFraction;
   ctx.textAlign = "center";
-  drawOutlinedText(ctx, text, x, y, fontStyle("xs", fontFamily, 700), 2, PALETTE.reward);
+  drawOutlinedText(
+    ctx,
+    text,
+    x,
+    y,
+    fontStyle("xs", fontFamily, 700),
+    2,
+    PALETTE.accentAmber,
+  );
   ctx.restore();
 }
 
@@ -448,15 +464,14 @@ function drawVignette(ctx: CanvasRenderingContext2D): void {
     vignetteGradient = ctx.createRadialGradient(
       GAME_WIDTH / 2,
       GAME_HEIGHT / 2,
-      GAME_WIDTH * 0.24,
+      125,
       GAME_WIDTH / 2,
       GAME_HEIGHT / 2,
-      GAME_WIDTH * 0.72,
+      550,
     );
 
-    vignetteGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-    vignetteGradient.addColorStop(0.72, "rgba(8, 3, 20, 0.14)");
-    vignetteGradient.addColorStop(1, "rgba(4, 1, 12, 0.42)");
+    vignetteGradient.addColorStop(0, withAlpha(PALETTE.vignette, 0));
+    vignetteGradient.addColorStop(1, withAlpha(PALETTE.vignette, 0.34));
   }
 
   ctx.fillStyle = vignetteGradient;

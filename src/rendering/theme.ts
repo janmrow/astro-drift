@@ -6,13 +6,16 @@ export const PALETTE = {
   starNear: "#efe4d2",
   textPrimary: "#efe4d2",
   textMuted: "#b9afc3",
+  accentCopper: "#b8784d",
   accentAmber: "#d6a35d",
   playerHull: "#cfc7be",
   playerShadow: "#84747a",
   asteroidStandard: "#443740",
   asteroidFacet: "#66515d",
+  asteroidMark: "#2a232c",
   asteroidFiery: "#2b2022",
   asteroidHeat: "#c94f32",
+  asteroidHeatBright: "#f09a55",
   vignette: "#000000",
 } as const;
 

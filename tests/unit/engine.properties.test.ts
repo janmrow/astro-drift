@@ -36,6 +36,12 @@ const deltaTimeArbitrary = fc
   .map((milliseconds) => milliseconds / 1_000);
 
 const unitIntervalArbitrary = fc.float({ min: 0, max: 1, noNaN: true });
+const rngSampleArbitrary = fc.double({
+  min: 0,
+  max: 1,
+  maxExcluded: true,
+  noNaN: true,
+});
 
 const inputArbitrary: fc.Arbitrary<InputState> = fc.record({
   up: fc.boolean(),
@@ -140,6 +146,32 @@ describe("game engine properties", () => {
           }
         },
       ),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it("creates stable asteroid silhouettes within the point geometry bounds", () => {
+    fc.assert(
+      fc.property(rngSampleArbitrary, (rngSample) => {
+        const asteroid = updateAsteroidSpawning(
+          [],
+          createInitialAsteroidSpawnState(),
+          ASTEROID_BASE_SPAWN_INTERVAL,
+          0,
+          () => rngSample,
+        ).asteroids[0];
+
+        expect(asteroid.points.length).toBeGreaterThanOrEqual(7);
+        expect(asteroid.points.length).toBeLessThanOrEqual(11);
+
+        for (const [index, point] of asteroid.points.entries()) {
+          expect(point.angle).toBeCloseTo(
+            (index * Math.PI * 2) / asteroid.points.length,
+          );
+          expect(point.distanceMultiplier).toBeGreaterThanOrEqual(0.8);
+          expect(point.distanceMultiplier).toBeLessThanOrEqual(1.2);
+        }
+      }),
       { numRuns: PROPERTY_RUNS },
     );
   });

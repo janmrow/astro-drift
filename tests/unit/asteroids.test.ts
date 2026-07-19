@@ -22,6 +22,7 @@ import {
 import {
   ASTEROID_REMOVE_PADDING,
   createInitialAsteroidSpawnState,
+  getAsteroidPointCount,
   getAsteroidSpawnInterval,
   updateAsteroidSpawning,
   updateAsteroids,
@@ -49,6 +50,16 @@ function spawnAsteroid(rngValue: number, survivalTime = 0): Asteroid {
 
   return result.asteroids[0];
 }
+
+describe("getAsteroidPointCount", () => {
+  it.each([
+    [0, 7],
+    [0.5, 9],
+    [slightlyBelow(1), 11],
+  ])("maps the valid RNG sample %s to %s points", (randomValue, expectedCount) => {
+    expect(getAsteroidPointCount(randomValue)).toBe(expectedCount);
+  });
+});
 
 describe("asteroid logic", () => {
   it("creates the initial asteroid spawn state", () => {
@@ -291,7 +302,7 @@ describe("asteroid logic", () => {
 
   it("creates asteroid rotation speeds with noticeable but bounded spin", () => {
     const leftSpinAsteroid = spawnAsteroid(FIERY_ASTEROID_CHANCE);
-    const rightSpinAsteroid = spawnAsteroid(1);
+    const rightSpinAsteroid = spawnAsteroid(slightlyBelow(1));
 
     expect(leftSpinAsteroid.rotationSpeed).toBeLessThan(0);
     expect(Math.abs(leftSpinAsteroid.rotationSpeed)).toBeGreaterThanOrEqual(
@@ -300,7 +311,17 @@ describe("asteroid logic", () => {
     expect(Math.abs(leftSpinAsteroid.rotationSpeed)).toBeLessThanOrEqual(
       ASTEROID_MAX_ROTATION_SPEED,
     );
-    expect(rightSpinAsteroid.rotationSpeed).toBe(ASTEROID_MAX_ROTATION_SPEED);
+    expect(rightSpinAsteroid.rotationSpeed).toBeCloseTo(ASTEROID_MAX_ROTATION_SPEED);
+  });
+
+  it("keeps a created asteroid's silhouette stable while it moves and rotates", () => {
+    const asteroid = spawnAsteroid(0.5);
+    const originalPoints = asteroid.points.map((point) => ({ ...point }));
+
+    const [updatedAsteroid] = updateAsteroids([asteroid], 0.5);
+
+    expect(updatedAsteroid.points).toEqual(originalPoints);
+    expect(asteroid.points).toEqual(originalPoints);
   });
 
   it("moves asteroids to the left according to their speed", () => {

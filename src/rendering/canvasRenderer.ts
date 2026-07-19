@@ -63,6 +63,11 @@ const STAR_LAYER_SETTINGS: Record<
   },
 };
 
+const RUNNING_STAR_SPEED_MULTIPLIERS: Record<StarLayer, number> = {
+  far: 1.25,
+  near: 1.5,
+};
+
 const NEAR_STAR_RATIO = 0.3;
 
 const HUD_PANEL = {
@@ -111,9 +116,16 @@ export function createStars(count: number): Star[] {
   });
 }
 
-export function updateStars(starField: Star[], deltaTime: number): void {
+export function updateStars(
+  starField: Star[],
+  deltaTime: number,
+  currentStatus: GameStatus,
+): void {
   for (const star of starField) {
-    star.x -= star.speed * deltaTime;
+    const speedMultiplier =
+      currentStatus === "running" ? RUNNING_STAR_SPEED_MULTIPLIERS[star.layer] : 1;
+
+    star.x -= star.speed * speedMultiplier * deltaTime;
 
     if (star.x < -STAR_WRAP_PADDING) {
       star.x = GAME_WIDTH + STAR_WRAP_PADDING;

@@ -64,7 +64,7 @@ function runGameLoop(currentFrameTime: number): void {
 
   const ambientMotionSuppressed = prefersReducedMotion && gameStatus !== "running";
 
-  updateStars(stars, ambientMotionSuppressed ? 0 : deltaTime);
+  updateStars(stars, ambientMotionSuppressed ? 0 : deltaTime, gameStatus);
 
   if (gameStatus === "running") {
     const result = advanceRunningGame(gameState, input, deltaTime, Math.random);

@@ -1,12 +1,16 @@
 # Astro Drift QA Lab
 
-Astro Drift QA Lab is a small browser arcade game built with TypeScript, Vite, and Canvas.
-
-The repo keeps game rules separate from rendering, with unit tests for core logic and Playwright smoke tests for the browser flow.
+Astro Drift is a small browser arcade game built with TypeScript, Vite, and Canvas.
+This repository presents it as a QA/SDET portfolio project, with game rules kept
+separate from rendering, unit tests for core logic, and Playwright smoke tests
+for the browser flow.
 
 ## What You Can Play
 
-You control a small spaceship and avoid incoming asteroids.
+You guide a friendly survey craft around incoming asteroids. The shipped
+Twilight Cartography presentation places the game in a restrained chart-window
+frame, with a layered deep-space field, rocky standard and fiery hazards, and
+a clear running HUD and state-screen hierarchy.
 
 The current game flow is:
 
@@ -16,7 +20,6 @@ idle -> running -> gameOver
 
 Current gameplay:
 
-- Canvas-rendered retro arcade scene
 - fixed horizontal ship position with vertical movement using Arrow Up / Arrow Down
 - Enter starts the game and restarts after game over
 - asteroids spawning at random vertical positions and travelling straight from right to left
@@ -178,7 +181,9 @@ collision information.
 
 Canvas drawing lives in `src/rendering/canvasRenderer.ts`; Canvas palette and
 typography helpers live in `src/rendering/theme.ts`. DOM styling, including the
-font-family source used by both DOM and Canvas text, lives in `src/style.css`.
+separate system sans and system monospace stacks, lives in `src/style.css`.
+`src/main.ts` reads both stacks at the browser boundary and passes them to Canvas
+rendering.
 
 Keyboard input lives in `src/input/keyboard.ts`.
 
@@ -202,7 +207,7 @@ asteroid paths, and one-time pass rewards.
 
 Playwright tests cover the main browser smoke flow:
 
-- the initial Canvas and DOM contract
+- the initial page, Canvas accessibility, and DOM status/stat contract
 - Enter starting the game while Space and R leave the idle state unchanged
 - game-over rounds restarting cleanly with Enter
 - pass-based score progression remaining separate from survival time

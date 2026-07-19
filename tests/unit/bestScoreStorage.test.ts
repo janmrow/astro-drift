@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { readBestScore, saveBestScore } from "../../src/storage/bestScoreStorage";
 
+const BEST_SCORE_KEY = "astro-drift-best-score:v2";
+const LEGACY_BEST_SCORE_KEY = "astro-drift-best-score";
+
 function stubLocalStorage(storedValue: string | null = null) {
-  const getItem = vi.fn(() => storedValue);
+  const getItem = vi.fn((key: string) => (key === BEST_SCORE_KEY ? storedValue : null));
   const setItem = vi.fn();
   vi.stubGlobal("localStorage", { getItem, setItem });
   return { getItem, setItem };
@@ -21,9 +24,21 @@ describe("best score storage", () => {
   });
 
   it("reads stored best score", () => {
-    stubLocalStorage("125");
+    const { getItem } = stubLocalStorage("125");
 
     expect(readBestScore()).toBe(125);
+    expect(getItem).toHaveBeenCalledWith(BEST_SCORE_KEY);
+  });
+
+  it("ignores a best score stored only under the previous key", () => {
+    const getItem = vi.fn((key: string) =>
+      key === LEGACY_BEST_SCORE_KEY ? "500" : null,
+    );
+    vi.stubGlobal("localStorage", { getItem, setItem: vi.fn() });
+
+    expect(readBestScore()).toBe(0);
+    expect(getItem).toHaveBeenCalledWith(BEST_SCORE_KEY);
+    expect(getItem).not.toHaveBeenCalledWith(LEGACY_BEST_SCORE_KEY);
   });
 
   it("reads stored best score with surrounding whitespace", () => {
@@ -80,7 +95,7 @@ describe("best score storage", () => {
     const bestScore = saveBestScore(150);
 
     expect(bestScore).toBe(150);
-    expect(setItem).toHaveBeenCalledWith("astro-drift-best-score", "150");
+    expect(setItem).toHaveBeenCalledWith(BEST_SCORE_KEY, "150");
   });
 
   it("keeps current best score when new score is lower", () => {
@@ -89,7 +104,7 @@ describe("best score storage", () => {
     const bestScore = saveBestScore(120);
 
     expect(bestScore).toBe(200);
-    expect(setItem).toHaveBeenCalledWith("astro-drift-best-score", "200");
+    expect(setItem).toHaveBeenCalledWith(BEST_SCORE_KEY, "200");
   });
 
   it("normalizes saved score before storing it", () => {
@@ -98,7 +113,7 @@ describe("best score storage", () => {
     const bestScore = saveBestScore(99.9);
 
     expect(bestScore).toBe(99);
-    expect(setItem).toHaveBeenCalledWith("astro-drift-best-score", "99");
+    expect(setItem).toHaveBeenCalledWith(BEST_SCORE_KEY, "99");
   });
 
   it("normalizes negative saved score to zero", () => {
@@ -107,6 +122,6 @@ describe("best score storage", () => {
     const bestScore = saveBestScore(-10);
 
     expect(bestScore).toBe(0);
-    expect(setItem).toHaveBeenCalledWith("astro-drift-best-score", "0");
+    expect(setItem).toHaveBeenCalledWith(BEST_SCORE_KEY, "0");
   });
 });

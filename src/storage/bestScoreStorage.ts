@@ -1,4 +1,4 @@
-const BEST_SCORE_KEY = "astro-drift-best-score";
+const BEST_SCORE_KEY = "astro-drift-best-score:v2";
 
 export function readBestScore(): number {
   try {

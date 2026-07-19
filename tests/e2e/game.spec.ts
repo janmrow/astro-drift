@@ -140,7 +140,7 @@ test("saves the best score when the tab is hidden mid-run", async ({ page }) => 
   });
 
   const storedBestScore = await page.evaluate(() =>
-    Number(localStorage.getItem("astro-drift-best-score")),
+    Number(localStorage.getItem("astro-drift-best-score:v2")),
   );
 
   expect(storedBestScore).toBeGreaterThanOrEqual(scoreBeforeHiding);

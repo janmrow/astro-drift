@@ -72,13 +72,18 @@ const HUD_CORNER = {
 };
 
 const PLAYER_SHIP = {
-  hullNotchInset: 12,
-  hullOutlineWidth: 3,
-  hullShoulderXInset: 0.35,
-  hullShoulderYInset: 0.32,
-  cockpitXOffset: 6,
-  cockpitRadius: 5,
+  impulseLength: 10,
+  impulseHalfHeight: 2,
+  impulseHullHalfHeight: 4,
 };
+
+const ASTEROID_SURFACE_LAYOUTS = [
+  { rotation: 0, mirrorY: 1, craterCount: 2 },
+  { rotation: (Math.PI * 2) / 3, mirrorY: -1, craterCount: 1 },
+  { rotation: (-Math.PI * 2) / 3, mirrorY: 1, craterCount: 2 },
+] as const;
+
+type AsteroidSurfaceLayout = (typeof ASTEROID_SURFACE_LAYOUTS)[number];
 
 export function createStars(count: number): Star[] {
   const nearStarStartIndex = Math.floor(count * (1 - NEAR_STAR_RATIO));
@@ -124,7 +129,7 @@ export function renderFrame({
   drawBackground(ctx);
   drawStars(ctx, starField);
   drawAsteroids(ctx, currentAsteroids);
-  drawPlayer(ctx, currentPlayer);
+  drawPlayer(ctx, currentPlayer, currentStatus);
   drawScore(ctx, currentScore, currentSurvivalTime, fontFamilies.monospace);
 
   if (bonusFeedback) {
@@ -205,33 +210,74 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function drawPlayer(ctx: CanvasRenderingContext2D, currentPlayer: Player): void {
-  const noseX = currentPlayer.x + currentPlayer.width / 2;
-  const tailX = currentPlayer.x - currentPlayer.width / 2;
-  const centerY = currentPlayer.y;
-  const shoulderX = noseX - currentPlayer.width * PLAYER_SHIP.hullShoulderXInset;
-  const shoulderYOffset = currentPlayer.height * PLAYER_SHIP.hullShoulderYInset;
+function drawPlayer(
+  ctx: CanvasRenderingContext2D,
+  currentPlayer: Player,
+  currentStatus: GameStatus,
+): void {
+  const halfWidth = currentPlayer.width / 2;
+  const halfHeight = currentPlayer.height / 2;
 
-  ctx.beginPath();
-  ctx.moveTo(noseX, centerY);
-  ctx.lineTo(shoulderX, centerY - shoulderYOffset);
-  ctx.lineTo(tailX, centerY - currentPlayer.height / 2);
-  ctx.lineTo(tailX + PLAYER_SHIP.hullNotchInset, centerY);
-  ctx.lineTo(tailX, centerY + currentPlayer.height / 2);
-  ctx.lineTo(shoulderX, centerY + shoulderYOffset);
-  ctx.closePath();
+  ctx.save();
+  ctx.translate(currentPlayer.x, currentPlayer.y);
+
+  if (currentStatus === "running") {
+    ctx.fillStyle = PALETTE.asteroidHeatBright;
+    ctx.beginPath();
+    ctx.moveTo(-halfWidth, -PLAYER_SHIP.impulseHullHalfHeight);
+    ctx.lineTo(-halfWidth - PLAYER_SHIP.impulseLength, -PLAYER_SHIP.impulseHalfHeight);
+    ctx.lineTo(-halfWidth - PLAYER_SHIP.impulseLength, PLAYER_SHIP.impulseHalfHeight);
+    ctx.lineTo(-halfWidth, PLAYER_SHIP.impulseHullHalfHeight);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   ctx.fillStyle = PALETTE.playerHull;
-  ctx.fill();
-
-  ctx.strokeStyle = PALETTE.playerShadow;
-  ctx.lineWidth = PLAYER_SHIP.hullOutlineWidth;
-  ctx.stroke();
-
   ctx.beginPath();
-  ctx.fillStyle = PALETTE.accentAmber;
-  ctx.arc(currentPlayer.x - PLAYER_SHIP.cockpitXOffset, centerY, PLAYER_SHIP.cockpitRadius, 0, Math.PI * 2);
+  ctx.moveTo(halfWidth, 0);
+  ctx.bezierCurveTo(halfWidth - 7, -7, halfWidth - 18, -11, 5, -12);
+  ctx.lineTo(-10, -23);
+  ctx.quadraticCurveTo(-18, -halfHeight, -29, -20);
+  ctx.lineTo(-25, -9);
+  ctx.quadraticCurveTo(-33, -8, -halfWidth, -4);
+  ctx.lineTo(-halfWidth, 4);
+  ctx.quadraticCurveTo(-33, 8, -25, 9);
+  ctx.lineTo(-29, 20);
+  ctx.quadraticCurveTo(-18, halfHeight, -10, 23);
+  ctx.lineTo(5, 12);
+  ctx.bezierCurveTo(halfWidth - 18, 11, halfWidth - 7, 7, halfWidth, 0);
+  ctx.closePath();
   ctx.fill();
+
+  ctx.fillStyle = PALETTE.playerShadow;
+  ctx.beginPath();
+  ctx.moveTo(halfWidth - 8, 0);
+  ctx.bezierCurveTo(14, -6, -3, -8, -23, -6);
+  ctx.quadraticCurveTo(-30, -3, -31, 0);
+  ctx.quadraticCurveTo(-30, 3, -23, 6);
+  ctx.bezierCurveTo(-3, 8, 14, 6, halfWidth - 8, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = PALETTE.accentCopper;
+  ctx.beginPath();
+  ctx.arc(-13, -14, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-13, 14, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = PALETTE.accentAmber;
+  ctx.beginPath();
+  ctx.ellipse(14, 0, 9, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = PALETTE.playerHull;
+  ctx.beginPath();
+  ctx.ellipse(16, -2, 3, 1.5, -0.18, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
 }
 
 function drawAsteroids(ctx: CanvasRenderingContext2D, currentAsteroids: Asteroid[]): void {
@@ -241,12 +287,22 @@ function drawAsteroids(ctx: CanvasRenderingContext2D, currentAsteroids: Asteroid
 }
 
 function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
-  const asteroidStyle = getAsteroidStyle(asteroid);
-
   ctx.save();
   ctx.translate(asteroid.x, asteroid.y);
   ctx.rotate(asteroid.rotation);
 
+  buildAsteroidPath(ctx, asteroid);
+  ctx.fillStyle = getAsteroidFill(asteroid.variant);
+  ctx.fill();
+
+  buildAsteroidPath(ctx, asteroid);
+  ctx.clip();
+  drawAsteroidSurface(ctx, asteroid);
+
+  ctx.restore();
+}
+
+function buildAsteroidPath(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   ctx.beginPath();
 
   for (const [index, point] of asteroid.points.entries()) {
@@ -262,50 +318,137 @@ function drawAsteroid(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
   }
 
   ctx.closePath();
+}
 
-  ctx.fillStyle = asteroidStyle.fill;
-  ctx.fill();
+function getAsteroidFill(variant: AsteroidVariant): string {
+  switch (variant) {
+    case "fiery":
+      return PALETTE.asteroidFiery;
+    case "standard":
+      return PALETTE.asteroidStandard;
+    default:
+      return assertNever(variant);
+  }
+}
 
-  ctx.strokeStyle = asteroidStyle.stroke;
-  ctx.lineWidth = getAsteroidStrokeWidth(asteroid.variant);
-  ctx.stroke();
+function drawAsteroidSurface(ctx: CanvasRenderingContext2D, asteroid: Asteroid): void {
+  const layout = selectAsteroidSurfaceLayout(asteroid);
+
+  ctx.save();
+  ctx.rotate(layout.rotation);
+  ctx.scale(1, layout.mirrorY);
+
+  switch (asteroid.variant) {
+    case "fiery":
+      drawFieryAsteroidSurface(ctx, asteroid.radius);
+      break;
+    case "standard":
+      drawStandardAsteroidSurface(ctx, asteroid.radius, layout);
+      break;
+    default:
+      assertNever(asteroid.variant);
+  }
 
   ctx.restore();
 }
 
-// High but not fully opaque, so the fill reads as a solid rock silhouette
-// (matching the pre-redesign look) rather than a background-dependent tint.
-const ASTEROID_FILL_ALPHA = 0.85;
+function selectAsteroidSurfaceLayout(asteroid: Asteroid): AsteroidSurfaceLayout {
+  let stableIdTotal = 0;
+  let stablePointTotal = 0;
 
-function getAsteroidStyle(asteroid: Asteroid): {
-  fill: string;
-  stroke: string;
-} {
-  switch (asteroid.variant) {
-    case "fiery":
-      return {
-        fill: withAlpha(PALETTE.asteroidFiery, ASTEROID_FILL_ALPHA),
-        stroke: PALETTE.asteroidHeat,
-      };
-    case "standard":
-      return {
-        fill: withAlpha(PALETTE.asteroidStandard, ASTEROID_FILL_ALPHA),
-        stroke: PALETTE.asteroidFacet,
-      };
-    default:
-      return assertNever(asteroid.variant);
+  for (const [index, character] of [...asteroid.id].entries()) {
+    stableIdTotal += character.charCodeAt(0) * (index + 1);
+  }
+
+  for (const [index, point] of asteroid.points.entries()) {
+    stablePointTotal += Math.round(point.distanceMultiplier * 100) * (index + 1);
+  }
+
+  const stableVariantOffset = asteroid.variant === "fiery" ? 1 : 0;
+  const layoutIndex =
+    (stableIdTotal +
+      stablePointTotal +
+      Math.round(asteroid.radius * 10) +
+      stableVariantOffset) %
+    ASTEROID_SURFACE_LAYOUTS.length;
+
+  return ASTEROID_SURFACE_LAYOUTS[layoutIndex];
+}
+
+function drawStandardAsteroidSurface(
+  ctx: CanvasRenderingContext2D,
+  radius: number,
+  layout: AsteroidSurfaceLayout,
+): void {
+  ctx.fillStyle = withAlpha(PALETTE.asteroidFacet, 0.52);
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.5, -radius * 0.16);
+  ctx.lineTo(-radius * 0.1, -radius * 0.48);
+  ctx.lineTo(radius * 0.16, -radius * 0.18);
+  ctx.lineTo(-radius * 0.08, radius * 0.05);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = withAlpha(PALETTE.asteroidMark, 0.58);
+  ctx.beginPath();
+  ctx.ellipse(
+    radius * 0.25,
+    radius * 0.2,
+    radius * 0.14,
+    radius * 0.1,
+    0.2,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+
+  if (layout.craterCount === 2) {
+    ctx.beginPath();
+    ctx.ellipse(
+      -radius * 0.3,
+      radius * 0.34,
+      radius * 0.09,
+      radius * 0.07,
+      -0.25,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
   }
 }
 
-function getAsteroidStrokeWidth(variant: AsteroidVariant): number {
-  switch (variant) {
-    case "fiery":
-      return 3;
-    case "standard":
-      return 2;
-    default:
-      return assertNever(variant);
-  }
+function drawFieryAsteroidSurface(ctx: CanvasRenderingContext2D, radius: number): void {
+  ctx.fillStyle = withAlpha(PALETTE.asteroidHeat, 0.82);
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.04, -radius * 0.32);
+  ctx.lineTo(radius * 0.45, -radius * 0.2);
+  ctx.lineTo(radius * 0.78, radius * 0.08);
+  ctx.lineTo(radius * 0.38, radius * 0.36);
+  ctx.lineTo(radius * 0.02, radius * 0.24);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = PALETTE.asteroidHeatBright;
+  ctx.beginPath();
+  ctx.moveTo(radius * 0.34, -radius * 0.12);
+  ctx.lineTo(radius * 0.62, radius * 0.05);
+  ctx.lineTo(radius * 0.34, radius * 0.18);
+  ctx.lineTo(radius * 0.17, radius * 0.02);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = withAlpha(PALETTE.asteroidMark, 0.7);
+  ctx.beginPath();
+  ctx.ellipse(
+    -radius * 0.32,
+    -radius * 0.18,
+    radius * 0.13,
+    radius * 0.1,
+    -0.25,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
 }
 
 // Draws text with a solid-color outline so it stays legible over the

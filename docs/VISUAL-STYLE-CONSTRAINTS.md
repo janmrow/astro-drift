@@ -1,16 +1,15 @@
-# Visual Style Constraints & Decision Framework
+# Visual Style Constraints & Current Decisions
 
 ## Purpose
 
-This document is not a style guide. It does not define a color palette, typography,
-or a visual direction. It exists to capture the **technical constraints and priorities**
-that any future visual style decision for Astro Drift QA Lab must respect, so that
-style work (palette, shapes, motion, composition) can be picked up later without
-re-deriving these boundaries from scratch.
+This document records the durable rendering constraints and current visual
+decisions for Astro Drift. It is not a pixel-perfect specification or a complete
+palette catalog. Its purpose is to keep future visual work consistent with the
+implemented Twilight Cartography direction, the game/rendering boundary, and the
+small-game scope.
 
-If a future style proposal conflicts with anything in this document, that conflict
-should be resolved explicitly — either by adjusting the style, or by consciously
-amending this document (and the underlying architecture) with a clear rationale.
+If a future proposal conflicts with these constraints, resolve that conflict
+explicitly rather than allowing the implementation and documentation to drift.
 
 ## Priorities, in order
 
@@ -34,27 +33,76 @@ reason to add process for its own sake.
 These come directly from decisions already made in the repo and should not be
 silently reversed by a style change:
 
-- **Code-as-graphics.** No image, font, or audio assets. All visuals are produced by
-  Canvas 2D drawing calls (paths, fills, strokes, transforms). This is a deliberate
-  scope boundary, not an oversight — introducing sprites/bitmaps would be a distinct
-  architectural decision, not a style tweak, and should be flagged as such if ever
-  proposed.
+- **Code-as-graphics.** No image, font, or audio assets. The game scene is produced
+  by Canvas 2D drawing calls, while the observation frame and hidden browser
+  contract remain HTML/CSS. The current treatment also excludes glow, blur,
+  filters, trails, particles, dust, and other per-frame visual effects. Introducing
+  sprites, bitmaps, external fonts, or those effects is a deliberate scope change
+  rather than a style tweak.
 - **Engine/rendering separation (ADR-001).** Gameplay rules, proximity/collision
   logic, and scoring stay in `src/game/`. Canvas drawing and Canvas caches stay in
   `src/rendering/canvasRenderer.ts`; Canvas palette, typography scale, and the
-  font-string helper stay in `src/rendering/theme.ts`. DOM styling and the sole
-  maintained font-family declaration stay in `src/style.css`. Visual work should
+  font-string helper stay in `src/rendering/theme.ts`. DOM styling and the maintained
+  system sans and system monospace stacks stay in `src/style.css`; `src/main.ts`
+  reads and passes them to Canvas rendering as thin browser glue. Visual work should
   respect those ownership boundaries rather than moving game rules into presentation
   code.
 - **Asteroid behavior and tuning stay in the game core.** Spawning and movement
   behavior live in `src/game/asteroids.ts`; density, speed, variant, and related
-  tuning values live in `src/game/balance.ts`.
-- **No Canvas pixel testing.** Visual correctness is not asserted via pixel
-  comparisons. This remains true regardless of how elaborate the rendering becomes.
-  DOM status hooks (`data-testid`) remain the contract E2E tests rely on.
+  tuning values live in `src/game/balance.ts`. Creation also owns the stable
+  7–11-point silhouette stored in each asteroid's existing `points` array. Do not
+  add presentation-only fields to game-domain types.
+- **Asteroid surface details stay renderer-owned and deterministic.** The renderer
+  selects bounded surface layouts from stable asteroid data, clips every mark to the
+  irregular silhouette, and recomputes the result without renderer-time randomness,
+  a visual-seed system, or a cache lifecycle.
+- **No Canvas presentation automation.** Visual correctness is not asserted through
+  pixel comparisons, screenshot assertions, or Canvas draw-call mocks. Stable DOM
+  hooks remain the browser-test contract; Canvas appearance and feel remain manual.
 - **Property-based tests stay focused on game rules**, not rendering. A richer visual
   layer does not imply testing draw calls; it implies, at most, unit-testing any new
-  *pure* helper functions the rendering layer happens to introduce (see below).
+  *pure* helper functions the rendering layer happens to introduce.
+- **Logical Canvas sizing remains stable.** The Canvas uses `960 × 540` logical
+  coordinates, displays at no more than 960 CSS pixels wide, and downscales
+  proportionally. HiDPI backing-store and `devicePixelRatio` handling remain
+  explicitly deferred.
+
+## Current Twilight Cartography decisions
+
+### Product shell and field
+
+- The game sits inside a restrained observation frame with clipped corners and the
+  label `CHART WINDOW · SECTOR 17`; it is an aperture, not a cockpit or dashboard.
+- The Canvas uses a deep indigo-to-violet field with a restrained vignette. Both
+  full-frame gradients are cached once at the renderer boundary.
+- The initial field contains exactly 50 stars: 35 far and 15 near. The two layers
+  retain circular shapes, separate size/speed roles, horizontal parallax, and the
+  existing creation-and-wrap lifecycle.
+- Reduced motion suppresses ambient star movement in idle and game-over states;
+  running gameplay motion remains active.
+
+### Player and hazards
+
+- The player is a rounded, friendly survey craft drawn inside the unchanged
+  `72 × 54` gameplay footprint and unchanged hitbox. Its hull is a stroke-free flat
+  shape with restrained construction details and a clear canopy.
+- One short static engine impulse is visible only while the game is running. It has
+  no animation, glow, trail, or particle effect.
+- Standard and fiery asteroids share classic irregular 7–11-point rocky silhouettes
+  and use stroke-free flat fills. Standard rocks use sparse facets and crater marks;
+  fiery rocks use flat heated surface patches without cracks, glow, or an incoming
+  warning cue.
+
+### Interface and typography
+
+- The running HUD is a compact two-column panel shown only while the game is
+  running. Idle and game-over states use separate left-aligned editorial
+  compositions, so the HUD does not remain underneath them.
+- Canvas UI and state text use filled glyphs without outlines. System sans serves
+  titles, descriptive copy, and actions; system monospace serves labels, values,
+  control hints, and pass feedback.
+- Pass feedback keeps its rise-and-fade behavior as centered filled monospace text,
+  without a panel, outline, underline, or glow.
 
 ## Rendering cost model
 
@@ -64,7 +112,7 @@ a budget when evaluating any style proposal:
 
 | Cost tier | Operations | Notes |
 |---|---|---|
-| Cheap (use freely) | flat `fill`/`stroke`, alpha blending, `translate`/`rotate`/`scale`, static polygon geometry computed once | This is the safe default for most drawing |
+| Cheap (use freely) | flat `fill`/`stroke`, alpha blending, `translate`/`rotate`/`scale`, bounded path geometry | This is the safe default for most drawing |
 | Moderate (cache or bound it) | gradients, `roundRect`, text rendering | Fine in small numbers or when created once and reused; expensive if rebuilt every frame per object |
 | Expensive (use sparingly, budget explicitly) | `shadowBlur`/glow, `ctx.filter` (blur, etc.) | Cost scales with object count and blur radius; a handful of instances is fine, applying it per-asteroid at scale is not |
 | Avoid at current scale | full-frame software filters, per-frame `getImageData`/pixel manipulation | Disproportionate cost for a 2D arcade game of this scope |
@@ -73,16 +121,12 @@ Gradients in `src/rendering/canvasRenderer.ts` (`backgroundGradient` and
 `vignetteGradient`) are cached as module-level variables built once behind `if (!x)`
 guards, not recreated per frame. Keep new gradient work to that same pattern.
 
-## Style-neutral degrees of freedom
+## Change control
 
-Everything below is open and unconstrained by architecture — these are levers, not
-answers:
-
-- Color palette and semantic use of color
-- Shape language (faceted vs rounded, silhouette vs outlined, point density)
-- Typography (family, weight, scale, hierarchy)
-- Motion and animation (idle motion, transitions, feedback juice)
-- Composition (HUD layout, use of negative space, panel vs boxless UI)
+Exact palette tokens, type sizes, spacing, and opacity may be tuned when a concrete
+readability problem justifies it. Changes to logical sizing, hitboxes, star counts,
+shape ownership, rendering randomness, test boundaries, or the selected player,
+hazard, and HUD language are broader decisions and should be reviewed explicitly.
 
 ## Techniques that change a rendering *assumption*, not just a *look*
 
@@ -120,42 +164,23 @@ not a side effect of a palette change:
   `src/rendering/theme.ts`, not computed inline — this doesn't make them unit-tested
   by itself, but it keeps them easy to reason about and swap without touching
   drawing logic. DOM tokens stay in `src/style.css`.
-- If a redesign introduces new *pure* helper functions in the rendering layer
-  (e.g., a easing/interpolation helper, a color-mixing function), those are
-  legitimate unit test candidates — same standard as any pure function elsewhere in
-  the repo. Drawing calls themselves remain untested, as already decided.
 - `prefers-reduced-motion` is already read via `window.matchMedia` in `src/main.ts`
   and gates star motion through `ambientMotionSuppressed`. Any new motion-based
   style work should route through the same flag rather than adding a parallel
   check.
-- `src/main.ts` reads the computed font family from the styled Canvas and passes it
-  to rendering; `src/style.css` remains the only maintained font-family literal.
+- `src/main.ts` reads the computed sans and monospace stacks from the styled Canvas
+  and passes them to rendering; `src/style.css` remains their ownership boundary.
+- Renderer-owned asteroid surface selection stays deterministic and local, while
+  its Canvas clipping and appearance remain part of manual visual verification.
 
-## Open decisions log
+## Deferred work
 
-Running list of things intentionally left unresolved — revisit when doing concrete
-style work, don't assume an answer by default:
-
-- ~~Faceted vs rounded shape language~~ — resolved: faceted. Player hull has an
-  added shoulder/notch bevel (`PLAYER_SHIP` geometry and `drawPlayer` in
-  `src/rendering/canvasRenderer.ts`)
-  and asteroids are irregular polygons via per-point `distanceMultiplier`
-  (`createAsteroidPoints` in `src/game/asteroids.ts`).
-- ~~Outlined silhouettes vs stroke-free flat shapes~~ — resolved: outlined. Ship,
-  asteroids, and all HUD/overlay text use stroke+fill (`drawPlayer`, `drawAsteroid`,
-  `drawOutlinedText`).
-- ~~Boxed HUD panel vs boxless/floating status text~~ — resolved: boxless. The HUD
-  redesign removed `HUD_PANEL` and related bounding-box constants.
-- Extent of idle motion (none / subtle / prominent) and its performance budget
-- Whether motion trails (see above) are worth their added render-loop complexity
-- ~~Typeface family and weight strategy~~ — resolved: deliberate contrast.
-  `fontStyle(size, fontFamily, 700)` is used for titles/emphasis, with default
-  weight `400` for body/muted text throughout
-  `src/rendering/canvasRenderer.ts`.
+- HiDPI backing-store support remains a separate focused follow-up. Do not introduce
+  it as incidental visual work.
+- Motion trails remain unapproved and require the full rendering-assumption audit
+  described above before another experiment.
 
 ## References
 
 - [ADR-001: Separate game engine from rendering](ADR-001-separate-engine-from-rendering.md)
 - [Test strategy](TEST_STRATEGY.md)
-- Design exploration thread (mockup): style directions considered, evaluated against
-  this cost model, before this document was written

@@ -66,7 +66,10 @@ without defining separate runtime-frame-specific property coverage.
 
 E2E tests cover the main browser contract:
 
-- the initial Canvas and DOM status/stat contract;
+- the initial page contract: the exact browser title, visible Canvas and its
+  accessible name and control description, visually hidden page heading and
+  control guidance, visible chart-window label, removed legacy visible chrome,
+  and initial DOM status/stat values;
 - starting with Enter while Space and R leave the game `idle`;
 - reaching `gameOver` through a deterministic browser scenario and restarting the
   round with Enter;
@@ -81,11 +84,13 @@ The browser persistence scenario verifies the visibility-change save boundary;
 storage parsing, normalization, higher-score selection, and failure handling remain
 unit-level coverage. Best score is derived from score, not survival time.
 
-Canvas-only presentation and feel remain manual browser checks. This includes the
-visual form and placement of individual pass feedback, asteroid and collision
-readability, layered star parallax, and reduced-motion behavior. The underlying
-feedback, collision, movement, and scoring rules are covered below the browser
-layer, but that does not make those visual contracts E2E-covered.
+Canvas-only presentation and feel remain manual browser checks. This includes
+palette and visual hierarchy; player and asteroid appearance; asteroid surface
+clipping; engine-impulse appearance; HUD, state-screen, and pass-feedback
+readability; responsive balance; layered star parallax; reduced-motion appearance;
+contrast, overlap, and gameplay-speed clarity; and any screenshot comparison.
+The underlying feedback, collision, movement, and scoring rules are covered below
+the browser layer, but that does not make those visual contracts E2E-covered.
 
 Randomized game rules continue to accept an injected RNG function. The retained
 `createSeededRng` utility is unit-tested and supports deterministic unit scenarios;
@@ -111,7 +116,8 @@ report upload, concurrency, and Pages deployment are owned by
 
 ## What we do not test
 
-We do not test Canvas rendering pixel by pixel.
+We do not test Canvas rendering pixel by pixel, compare screenshots, or mock
+Canvas draw calls.
 
 Reasons:
 

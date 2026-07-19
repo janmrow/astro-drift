@@ -4,14 +4,18 @@ test("loads the initial game contract", async ({ page }) => {
   await page.goto("/");
 
   const canvas = page.getByTestId("game-canvas");
-  const controls = page.locator("#game-controls");
+  const controls = page.getByText("Enter starts or restarts. Arrow Up/Down or W/S steer.", {
+    exact: true,
+  });
 
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveAccessibleName("Astro Drift game canvas");
   await expect(canvas).toHaveAccessibleDescription(
-    "Press Enter to start or restart. Use the Up and Down Arrow keys to move.",
+    "Enter starts or restarts. Arrow Up/Down or W/S steer.",
   );
-  await expect(controls).toHaveClass("visually-hidden");
+  await expect(controls).toHaveCount(1);
+  await expect(controls).toHaveCSS("position", "absolute");
+  await expect(controls).toHaveCSS("clip-path", "inset(50%)");
   await expect(page.getByTestId("game-status")).toHaveText("idle");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
   await expect(page.getByTestId("game-time")).toHaveText("0:00");
@@ -23,7 +27,28 @@ test("loads the initial game contract", async ({ page }) => {
   await expect(page.getByText("CHART WINDOW · SECTOR 17", { exact: true })).toBeVisible();
   await expect(page.getByText("Astro Drift QA Lab", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Prototype", { exact: true })).toHaveCount(0);
-  await expect(page.locator(".controls-hint")).toHaveCount(0);
+});
+
+test("shows responsive gameplay guidance at narrow widths", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/");
+
+  const controls = page.getByText("Enter starts or restarts. Arrow Up/Down or W/S steer.", {
+    exact: true,
+  });
+  const statusPanel = page.getByTestId("game-status-panel");
+  const statsPanel = page.getByTestId("game-stats-panel");
+
+  await expect(controls).toBeVisible();
+  await expect(controls).toContainText("Enter starts or restarts.");
+  await expect(controls).toContainText("Arrow Up/Down or W/S steer.");
+  await expect(controls).not.toHaveAttribute("aria-live");
+  await expect(page.getByTestId("game-canvas")).toBeVisible();
+  await expect(page.getByText("CHART WINDOW · SECTOR 17", { exact: true })).toBeVisible();
+  await expect(statusPanel).toHaveClass("visually-hidden");
+  await expect(statusPanel).toHaveAttribute("aria-live", "polite");
+  await expect(statsPanel).toHaveClass("visually-hidden");
+  await expect(statsPanel).not.toHaveAttribute("aria-live");
 });
 
 test("starts the game with the Enter key", async ({ page }) => {

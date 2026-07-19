@@ -67,9 +67,13 @@ without defining separate runtime-frame-specific property coverage.
 E2E tests cover the main browser contract:
 
 - the initial page contract: the exact browser title, visible Canvas and its
-  accessible name and control description, visually hidden page heading and
-  control guidance, visible chart-window label, removed legacy visible chrome,
-  and initial DOM status/stat values;
+  accessible name and control description, visually hidden page heading,
+  desktop-hidden responsive gameplay guidance, visible chart-window label,
+  removed legacy visible chrome, and initial DOM status/stat values;
+- the compact page-shell contract at a 320 CSS-pixel viewport: the same DOM
+  gameplay guidance becomes visible with Enter start/restart and Arrow/W/S
+  steering instructions, while the Canvas and chart-window label remain visible
+  and the status/stat panels remain hidden;
 - starting with Enter while Space and R leave the game `idle`;
 - reaching `gameOver` through a deterministic browser scenario and restarting the
   round with Enter;
@@ -87,8 +91,11 @@ unit-level coverage. Best score is derived from score, not survival time.
 Canvas-only presentation and feel remain manual browser checks. This includes
 palette and visual hierarchy; player and asteroid appearance; asteroid surface
 clipping; engine-impulse appearance; HUD, state-screen, and pass-feedback
-readability; responsive balance; layered star parallax; reduced-motion appearance;
+readability; responsive Canvas readability and balance; layered star parallax;
+reduced-motion appearance;
 contrast, overlap, and gameplay-speed clarity; and any screenshot comparison.
+Playwright covers only the stable responsive DOM visibility contract described
+above; it does not validate Canvas text size or appearance.
 The underlying feedback, collision, movement, and scoring rules are covered below
 the browser layer, but that does not make those visual contracts E2E-covered.
 

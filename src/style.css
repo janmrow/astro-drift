@@ -92,4 +92,20 @@ body {
     left: 16px;
     bottom: 3px;
   }
+
+  .game-controls {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 12px 0 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    border: 0;
+    color: #d8cad5;
+    font-family: var(--font-monospace);
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
 }

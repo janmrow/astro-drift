@@ -3,14 +3,27 @@ import { expect, test, type Page } from "@playwright/test";
 test("loads the initial game contract", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByTestId("game-canvas")).toBeVisible();
+  const canvas = page.getByTestId("game-canvas");
+  const controls = page.locator("#game-controls");
+
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toHaveAccessibleName("Astro Drift game canvas");
+  await expect(canvas).toHaveAccessibleDescription(
+    "Press Enter to start or restart. Use the Up and Down Arrow keys to move.",
+  );
+  await expect(controls).toHaveClass("visually-hidden");
   await expect(page.getByTestId("game-status")).toHaveText("idle");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
   await expect(page.getByTestId("game-time")).toHaveText("0:00");
   await expect(page.getByTestId("asteroid-count")).toHaveText("0");
-  await expect(page.locator(".controls-hint")).toHaveText(
-    "Enter to start or restart. Move with ↑ / ↓.",
+  await expect(page).toHaveTitle("Astro Drift");
+  await expect(page.getByRole("heading", { level: 1, name: "Astro Drift" })).toHaveClass(
+    "visually-hidden",
   );
+  await expect(page.getByText("CHART WINDOW · SECTOR 17", { exact: true })).toBeVisible();
+  await expect(page.getByText("Astro Drift QA Lab", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Prototype", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".controls-hint")).toHaveCount(0);
 });
 
 test("starts the game with the Enter key", async ({ page }) => {

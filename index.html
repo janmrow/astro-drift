@@ -4,23 +4,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Astro Drift QA Lab</title>
+  <title>Astro Drift</title>
 </head>
 
 <body>
   <main id="app">
+    <h1 class="visually-hidden">Astro Drift</h1>
+
     <section class="game-shell" aria-label="Astro Drift game">
-      <div class="game-header">
-        <div>
-          <p class="eyebrow">Astro Drift QA Lab</p>
-          <h1>Astro Drift</h1>
-        </div>
-
-        <p class="status-pill">Prototype</p>
-      </div>
-
       <canvas id="game-canvas" width="960" height="540" aria-label="Astro Drift game canvas"
-        data-testid="game-canvas"></canvas>
+        aria-describedby="game-controls" data-testid="game-canvas"></canvas>
+
+      <p class="frame-label">CHART WINDOW · SECTOR 17</p>
+
+      <p id="game-controls" class="visually-hidden">
+        Press Enter to start or restart. Use the Up and Down Arrow keys to move.
+      </p>
 
       <div
         class="visually-hidden"
@@ -49,9 +48,6 @@
         </p>
       </div>
 
-      <p class="controls-hint">
-        Enter to start or restart. Move with ↑ / ↓.
-      </p>
     </section>
   </main>
 

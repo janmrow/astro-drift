@@ -13,6 +13,8 @@ import {
 } from "../../src/game/state";
 import { createAsteroid } from "./helpers";
 
+const MAX_RANDOM_SAMPLE = 1 - Number.EPSILON;
+
 describe("createInitialGameState", () => {
   it("returns a clean, freshly-created state", () => {
     const state = createInitialGameState();
@@ -122,7 +124,12 @@ describe("advanceRunningGame", () => {
     const gameState = createInitialGameState();
     const deltaTime = 0.1;
 
-    const result = advanceRunningGame(gameState, createInputState(), deltaTime, () => 1);
+    const result = advanceRunningGame(
+      gameState,
+      createInputState(),
+      deltaTime,
+      () => MAX_RANDOM_SAMPLE,
+    );
 
     expect(result.collided).toBe(false);
     expect(result.gameState.survivalTime).toBeCloseTo(deltaTime);
@@ -136,7 +143,12 @@ describe("advanceRunningGame", () => {
     const passedAsteroid = createAsteroid({ x: playerLeftEdge - 31, hasAwardedPassBonus: false });
     gameState.asteroids.push(passedAsteroid);
 
-    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1);
+    const result = advanceRunningGame(
+      gameState,
+      createInputState(),
+      0.1,
+      () => MAX_RANDOM_SAMPLE,
+    );
 
     expect(result.collided).toBe(false);
     expect(result.gameState.bonusFeedback).toEqual({
@@ -158,7 +170,12 @@ describe("advanceRunningGame", () => {
     });
     gameState.asteroids.push(collidingAsteroid);
 
-    const result = advanceRunningGame(gameState, createInputState(), 0.1, () => 1);
+    const result = advanceRunningGame(
+      gameState,
+      createInputState(),
+      0.1,
+      () => MAX_RANDOM_SAMPLE,
+    );
 
     expect(result.collided).toBe(true);
     expect(result.gameState.score).toBe(0);

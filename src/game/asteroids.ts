@@ -28,7 +28,6 @@ export type AsteroidSpawnState = {
 export const ASTEROID_REMOVE_PADDING = 80;
 
 export const ASTEROID_VERTICAL_SPAWN_PADDING = 16;
-const ASTEROID_POINT_COUNT = 9;
 const ASTEROID_MIN_POINT_RADIUS_RATIO = 0.8;
 const ASTEROID_MAX_POINT_RADIUS_RATIO = 1.2;
 
@@ -45,6 +44,10 @@ export function getAsteroidSpawnInterval(currentSurvivalTime: number): number {
     ASTEROID_MIN_SPAWN_INTERVAL,
     ASTEROID_BASE_SPAWN_INTERVAL,
   );
+}
+
+export function getAsteroidPointCount(randomValue: number): number {
+  return clamp(7 + Math.floor(randomValue * 5), 7, 11);
 }
 
 export function updateAsteroidSpawning(
@@ -110,7 +113,7 @@ function createAsteroid(currentSurvivalTime: number, id: number, rng: () => numb
     speed: getAsteroidSpeed(speed, variant),
     rotation: randomBetween(0, Math.PI * 2, rng),
     rotationSpeed,
-    points: createAsteroidPoints(ASTEROID_POINT_COUNT, rng),
+    points: createAsteroidPoints(getAsteroidPointCount(rng()), rng),
     hasAwardedPassBonus: false,
   };
 }

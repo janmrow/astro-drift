@@ -1,25 +1,25 @@
-// Shared by chrome and textMuted below — both are muted lilac by design, not
-// by coincidence, so they're tied to one literal to avoid drifting apart.
-const MUTED_LILAC = "#c9bfe8";
-
 export const PALETTE = {
-  playerAccent: "#ff4fa8",
-  playerAccentDark: "#a82e6d",
-  hazardStandard: "#7df9ff",
-  hazardEscalated: "#ff6b45",
-  reward: "#ffcc4d",
-  chrome: MUTED_LILAC,
-
-  textPrimary: "#f6f0ff",
-  textMuted: MUTED_LILAC,
-
-  backgroundTop: "#2a0f3d",
-  backgroundMid: "#33143f",
-  backgroundBottom: "#140620",
-
-  starWarm: "#fff1e6",
-  starCool: "#f2d9ff",
+  backgroundTop: "#100c24",
+  backgroundMid: "#21143b",
+  backgroundBottom: "#352047",
+  starFar: "#a99cac",
+  starNear: "#efe4d2",
+  textPrimary: "#efe4d2",
+  textMuted: "#b9afc3",
+  accentAmber: "#d6a35d",
+  playerHull: "#cfc7be",
+  playerShadow: "#84747a",
+  asteroidStandard: "#443740",
+  asteroidFacet: "#66515d",
+  asteroidFiery: "#2b2022",
+  asteroidHeat: "#c94f32",
+  vignette: "#000000",
 } as const;
+
+export type FontFamilies = {
+  sans: string;
+  monospace: string;
+};
 
 export const FONT_SCALE = {
   xs: 12,
@@ -32,7 +32,7 @@ export const FONT_SCALE = {
 export function fontStyle(
   size: keyof typeof FONT_SCALE,
   fontFamily: string,
-  weight: 400 | 700 = 400,
+  weight = 400,
 ): string {
   return `${weight} ${FONT_SCALE[size]}px ${fontFamily}`;
 }

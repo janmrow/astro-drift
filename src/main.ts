@@ -24,9 +24,13 @@ const timeElement = getRequiredElement("[data-testid='game-time']");
 const asteroidCountElement = getRequiredElement("[data-testid='asteroid-count']");
 
 const context = getRequiredContext(canvas);
-const fontFamily = window.getComputedStyle(canvas).fontFamily;
+const canvasStyles = window.getComputedStyle(canvas);
+const fontFamilies = {
+  sans: canvasStyles.getPropertyValue("--font-sans").trim(),
+  monospace: canvasStyles.getPropertyValue("--font-monospace").trim(),
+};
 
-const STAR_COUNT = 90;
+const STAR_COUNT = 50;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -82,7 +86,7 @@ function runGameLoop(currentFrameTime: number): void {
     survivalTime: gameState.survivalTime,
     bestScore,
     bonusFeedback: gameState.bonusFeedback,
-    fontFamily,
+    fontFamilies,
   });
   updateDomStatus();
 

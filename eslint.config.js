@@ -5,7 +5,8 @@ import tseslint from "typescript-eslint";
 export default [
   {
     ignores: [
-      "dist", 
+      "dist",
+      "_local", 
       "node_modules", 
       "playwright-report", 
       "test-results"

@@ -13,6 +13,7 @@ import {
   ASTEROID_SPEED_HARD_CAP,
   ASTEROID_SPEED_RAMP,
   ASTEROID_SPAWN_RAMP,
+  EARLY_RAMP_GRACE_SECONDS,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
   FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
@@ -22,6 +23,7 @@ import {
 import {
   ASTEROID_REMOVE_PADDING,
   createInitialAsteroidSpawnState,
+  getAsteroidDifficultyRampTime,
   getAsteroidPointCount,
   getAsteroidSpawnInterval,
   updateAsteroidSpawning,
@@ -59,6 +61,68 @@ describe("getAsteroidPointCount", () => {
   ])("maps the valid RNG sample %s to %s points", (randomValue, expectedCount) => {
     expect(getAsteroidPointCount(randomValue)).toBe(expectedCount);
   });
+});
+
+describe("asteroid difficulty ramp", () => {
+  it("uses the approved grace and ramp constants", () => {
+    expect(EARLY_RAMP_GRACE_SECONDS).toBe(3);
+    expect(ASTEROID_SPAWN_RAMP).toBe(0.009);
+    expect(ASTEROID_SPEED_RAMP).toBe(1.8);
+  });
+
+  it.each([
+    [-1, 0],
+    [0, 0],
+    [EARLY_RAMP_GRACE_SECONDS - 0.1, 0],
+    [EARLY_RAMP_GRACE_SECONDS, 0],
+    [EARLY_RAMP_GRACE_SECONDS + 0.001, 0.001],
+    [15, 12],
+  ])(
+    "maps %s seconds of survival time to %s seconds of ramp time",
+    (survivalTime, expectedRampTime) => {
+      expect(getAsteroidDifficultyRampTime(survivalTime)).toBeCloseTo(expectedRampTime);
+    },
+  );
+
+  it("keeps the spawn curve continuous immediately after the grace period", () => {
+    const elapsedAfterGrace = 0.001;
+    const survivalTime = EARLY_RAMP_GRACE_SECONDS + elapsedAfterGrace;
+
+    expect(getAsteroidSpawnInterval(survivalTime)).toBeCloseTo(
+      ASTEROID_BASE_SPAWN_INTERVAL - elapsedAfterGrace * ASTEROID_SPAWN_RAMP,
+    );
+  });
+
+  it.each([
+    [0, 1.3],
+    [2.9, 1.3],
+    [3, 1.3],
+    [15, 1.192],
+    [30, 1.057],
+    [45, 0.922],
+    [60, 0.8],
+  ])(
+    "uses the approved spawn interval at %s seconds",
+    (survivalTime, expectedInterval) => {
+      expect(getAsteroidSpawnInterval(survivalTime)).toBeCloseTo(expectedInterval);
+    },
+  );
+
+  it.each([
+    [0, 247.5, 357],
+    [2.9, 247.5, 357],
+    [3, 247.5, 357],
+    [15, 269.1, 393.72],
+    [30, 296.1, 439.62],
+    [45, 323.1, 485.52],
+    [60, 350.1, 520],
+  ])(
+    "uses the approved representative speeds at %s seconds",
+    (survivalTime, expectedStandardSpeed, expectedFierySpeed) => {
+      expect(spawnAsteroid(0.5, survivalTime).speed).toBeCloseTo(expectedStandardSpeed);
+      expect(spawnAsteroid(0, survivalTime).speed).toBeCloseTo(expectedFierySpeed);
+    },
+  );
 });
 
 describe("asteroid logic", () => {
@@ -208,11 +272,12 @@ describe("asteroid logic", () => {
 
   it("uses the approved base and minimum spawn intervals", () => {
     const minimumThreshold =
+      EARLY_RAMP_GRACE_SECONDS +
       (ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_MIN_SPAWN_INTERVAL) /
-      ASTEROID_SPAWN_RAMP;
+        ASTEROID_SPAWN_RAMP;
 
     expect(getAsteroidSpawnInterval(0)).toBe(1.30);
-    expect(minimumThreshold).toBeCloseTo(250);
+    expect(minimumThreshold).toBeCloseTo(58.56, 2);
     expect(getAsteroidSpawnInterval(minimumThreshold)).toBe(0.8);
     expect(getAsteroidSpawnInterval(minimumThreshold + 1_000)).toBe(0.8);
   });
@@ -220,7 +285,7 @@ describe("asteroid logic", () => {
   it("creates spawned asteroids inside the expected gameplay ranges", () => {
     const survivalTime = 20;
     const radius = (ASTEROID_MIN_RADIUS + ASTEROID_MAX_RADIUS) / 2;
-    const speedBonus = survivalTime * ASTEROID_SPEED_RAMP;
+    const speedBonus = getAsteroidDifficultyRampTime(survivalTime) * ASTEROID_SPEED_RAMP;
     const asteroid = spawnAsteroid(0.5, survivalTime);
 
     expect(asteroid).toMatchObject({
@@ -261,7 +326,9 @@ describe("asteroid logic", () => {
 
   it("applies the hard cap after the fiery speed multiplier", () => {
     const survivalTime = 120;
-    const uncappedBaseSpeed = ASTEROID_BASE_MIN_SPEED + survivalTime * ASTEROID_SPEED_RAMP;
+    const uncappedBaseSpeed =
+      ASTEROID_BASE_MIN_SPEED +
+      getAsteroidDifficultyRampTime(survivalTime) * ASTEROID_SPEED_RAMP;
     const asteroid = spawnAsteroid(0, survivalTime);
 
     expect(uncappedBaseSpeed).toBeLessThan(ASTEROID_SPEED_HARD_CAP);

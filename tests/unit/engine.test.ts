@@ -4,6 +4,7 @@ import {
   ASTEROID_BASE_SPAWN_INTERVAL,
   ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_SPAWN_RAMP,
+  EARLY_RAMP_GRACE_SECONDS,
   ASTEROID_PASS_BONUS,
   FIERY_ASTEROID_PASS_BONUS,
   PLAYER_SPEED,
@@ -212,6 +213,7 @@ describe("game engine", () => {
 
     it("clamps asteroid spawn interval exactly at the minimum threshold", () => {
       const minimumThreshold =
+        EARLY_RAMP_GRACE_SECONDS +
         (ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_MIN_SPAWN_INTERVAL) / ASTEROID_SPAWN_RAMP;
 
       expect(getAsteroidSpawnInterval(minimumThreshold - 0.1)).toBeGreaterThan(

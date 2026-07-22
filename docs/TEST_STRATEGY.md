@@ -35,10 +35,10 @@ Current focus:
   gameplay-speed multiplier combinations, pass-only scoring, exact standard (`25`)
   and fiery (`100`) rewards, one-time reward accounting, collision, and frame-delta
   capping;
-- asteroid spawning across continuous vertical ranges, standard/fiery variant
-  chance and identity, horizontal movement at a stable Y position, rotation,
-  cleanup, and bounded speed and spawn-interval difficulty ramps, including the
-  final speed cap for both variants;
+- asteroid spawning through a four-band shuffle bag with radius-dependent continuous
+  ranges, standard/fiery variant chance and identity, horizontal movement at a stable
+  Y position, rotation, cleanup, and bounded speed and spawn-interval difficulty
+  ramps, including the final speed cap for both variants;
 - running-state advancement, initial/reset state creation, scaled gameplay time and
   world movement, survival time remaining independent from score, and real-time
   individual `+25`/`+100` feedback timing;
@@ -58,11 +58,13 @@ These tests should stay fast and independent from the browser.
 hand-picked examples. These include preserving player X while keeping Y in bounds;
 keeping spawn intervals and final standard/fiery speeds within their limits as
 difficulty rises; moving and rotating asteroids without changing their Y position;
+bounding the gap between appearances of each vertical band to at most six other
+band draws; keeping seeded spawn heights inside their radius-dependent center ranges;
 and awarding only known pass values without duplicate rewards. Collision properties
-cover definite hits inside the player hitbox and definite misses beyond the
-asteroid hit radius. Delta-time properties use a shared broad arbitrary spanning
-0 to 10 seconds, exercising retained invariants beyond ordinary single-frame timing
-without defining separate runtime-frame-specific property coverage.
+cover definite hits inside the player hitbox and definite misses beyond the asteroid
+hit radius. Delta-time properties use a shared broad arbitrary spanning 0 to 10
+seconds, exercising retained invariants beyond ordinary single-frame timing without
+defining separate runtime-frame-specific property coverage.
 
 ### E2E tests
 
@@ -139,7 +141,7 @@ We also do not test every random asteroid shape.
 
 Instead, we test stable behavior:
 
-- spawn state;
+- shuffle-bag spawn state and order;
 - spawned asteroid ranges with controlled randomness;
 - horizontal movement with stable Y and retained rotation;
 - bounded speed and spawn-interval ramps;

@@ -31,7 +31,8 @@ Avoid incoming asteroids and pass them safely to increase your score.
 
 - Standard and fiery asteroids create distinct hazards to dodge.
 - Safely passed asteroids add to the score, while survival time is tracked separately.
-- Asteroids become faster and arrive more frequently as a run continues.
+- After a brief opening grace period, asteroids become faster and arrive more frequently.
+- Asteroid positions are randomized within shuffled vertical bands instead of independently across the full height on every spawn.
 - Clear HUD, pass, collision, and game-state feedback keep the loop easy to read.
 - The best score is saved locally in the browser.
 - Reduced-motion preferences quiet ambient star movement outside active play.

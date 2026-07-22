@@ -46,6 +46,8 @@ const rngSampleArbitrary = fc.double({
 const inputArbitrary: fc.Arbitrary<InputState> = fc.record({
   up: fc.boolean(),
   down: fc.boolean(),
+  boost: fc.boolean(),
+  brake: fc.boolean(),
 });
 
 const playerArbitrary: fc.Arbitrary<Player> = fc

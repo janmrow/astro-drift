@@ -535,7 +535,9 @@ function drawStartOverlay(ctx: CanvasRenderingContext2D, fontFamilies: FontFamil
 
   ctx.fillStyle = PALETTE.textMuted;
   ctx.font = fontStyle("controlHint", fontFamilies.monospace, 500);
-  ctx.fillText("↑ / ↓ to steer", 171, 380 + IDLE_LOWER_STACK_SHIFT_Y);
+  ctx.fillText("↑ / ↓ or W / S to steer", 171, 380 + IDLE_LOWER_STACK_SHIFT_Y);
+  ctx.fillText("← or A to brake", 171, 402 + IDLE_LOWER_STACK_SHIFT_Y);
+  ctx.fillText("→ or D to boost", 171, 424 + IDLE_LOWER_STACK_SHIFT_Y);
 
   ctx.strokeStyle = PALETTE.lineMuted;
   ctx.lineWidth = 1;

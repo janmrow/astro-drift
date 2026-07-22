@@ -2,59 +2,79 @@ import { createInputState } from "../game/engine";
 import type { InputState } from "../game/types";
 
 type GameActionHandler = () => void;
+type KeyboardResetHandler = () => void;
+
+const GAMEPLAY_KEYS: ReadonlySet<string> = new Set([
+  "arrowup",
+  "arrowdown",
+  "arrowleft",
+  "arrowright",
+  "w",
+  "s",
+  "a",
+  "d",
+]);
 
 export function setupKeyboardControls(
   currentInput: InputState,
   onGameActionRequested: GameActionHandler,
-): void {
+): KeyboardResetHandler {
+  const pressedKeys = new Set<string>();
+
+  const resetKeyboardControls = (): void => {
+    pressedKeys.clear();
+    Object.assign(currentInput, createInputState());
+  };
+
   window.addEventListener("keydown", (event) => {
-    if (isActionKey(event.key)) {
+    const key = event.key.toLowerCase();
+
+    if (isActionKey(key)) {
       event.preventDefault();
       onGameActionRequested();
       return;
     }
 
-    updateInputFromKey(event.key, true, currentInput);
-
-    if (isMovementKey(event.key)) {
-      event.preventDefault();
+    if (!isGameplayKey(key)) {
+      return;
     }
+
+    event.preventDefault();
+    pressedKeys.add(key);
+    updateInputFromPressedKeys(currentInput, pressedKeys);
   });
 
   window.addEventListener("keyup", (event) => {
-    updateInputFromKey(event.key, false, currentInput);
+    const key = event.key.toLowerCase();
 
-    if (isMovementKey(event.key)) {
-      event.preventDefault();
+    if (!isGameplayKey(key)) {
+      return;
     }
+
+    event.preventDefault();
+    pressedKeys.delete(key);
+    updateInputFromPressedKeys(currentInput, pressedKeys);
   });
 
-  window.addEventListener("blur", () => {
-    resetInputState(currentInput);
-  });
+  window.addEventListener("blur", resetKeyboardControls);
+
+  return resetKeyboardControls;
 }
 
-export function resetInputState(currentInput: InputState): void {
-  Object.assign(currentInput, createInputState());
+function updateInputFromPressedKeys(
+  currentInput: InputState,
+  pressedKeys: ReadonlySet<string>,
+): void {
+  currentInput.up = pressedKeys.has("arrowup") || pressedKeys.has("w");
+  currentInput.down = pressedKeys.has("arrowdown") || pressedKeys.has("s");
+  currentInput.brake = pressedKeys.has("arrowleft") || pressedKeys.has("a");
+  currentInput.boost = pressedKeys.has("arrowright") || pressedKeys.has("d");
 }
 
-function updateInputFromKey(key: string, isPressed: boolean, currentInput: InputState): void {
-  switch (key.toLowerCase()) {
-    case "arrowup":
-    case "w":
-      currentInput.up = isPressed;
-      break;
-    case "arrowdown":
-    case "s":
-      currentInput.down = isPressed;
-      break;
-  }
-}
-
-function isMovementKey(key: string): boolean {
-  return ["arrowup", "arrowdown", "w", "s"].includes(key.toLowerCase());
+function isGameplayKey(key: string): boolean {
+  return GAMEPLAY_KEYS.has(key);
 }
 
 function isActionKey(key: string): boolean {
-  return key.toLowerCase() === "enter";
+  return key === "enter";
 }

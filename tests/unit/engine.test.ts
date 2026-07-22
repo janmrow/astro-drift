@@ -18,6 +18,7 @@ import {
   capFrameDelta,
   createInputState,
   createInitialPlayer,
+  getGameplaySpeedMultiplier,
   getPlayerHitbox,
   hasAsteroidPassedPlayer,
   hasPlayerCollision,
@@ -31,10 +32,27 @@ function idleInput(): InputState {
   return {
     up: false,
     down: false,
+    boost: false,
+    brake: false,
   };
 }
 
 describe("game engine", () => {
+  describe("gameplay speed", () => {
+    it("returns the approved multiplier for every boost and brake combination", () => {
+      const cases = [
+        { boost: false, brake: false, expected: 1 },
+        { boost: true, brake: false, expected: 2 },
+        { boost: false, brake: true, expected: 0.5 },
+        { boost: true, brake: true, expected: 1 },
+      ];
+
+      for (const { boost, brake, expected } of cases) {
+        expect(getGameplaySpeedMultiplier({ ...idleInput(), boost, brake })).toBe(expected);
+      }
+    });
+  });
+
   describe("player movement", () => {
     it("creates the initial player at its fixed horizontal position", () => {
       const player = createInitialPlayer();

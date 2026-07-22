@@ -1,4 +1,10 @@
-import { collectPassBonuses, createInitialPlayer, hasPlayerCollision, updatePlayer } from "./engine";
+import {
+  collectPassBonuses,
+  createInitialPlayer,
+  getGameplaySpeedMultiplier,
+  hasPlayerCollision,
+  updatePlayer,
+} from "./engine";
 import { BONUS_FEEDBACK_DURATION } from "./balance";
 import {
   createInitialAsteroidSpawnState,
@@ -85,12 +91,14 @@ export function advanceRunningGame(
   deltaTime: number,
   rng: () => number,
 ): RunningGameResult {
-  const survivalTime = gameState.survivalTime + deltaTime;
-  const player = updatePlayer(gameState.player, input, deltaTime);
+  const gameplaySpeedMultiplier = getGameplaySpeedMultiplier(input);
+  const gameplayDeltaTime = deltaTime * gameplaySpeedMultiplier;
+  const survivalTime = gameState.survivalTime + gameplayDeltaTime;
+  const player = updatePlayer(gameState.player, input, gameplayDeltaTime);
   const spawningResult = updateAsteroidSpawning(
     gameState.asteroids,
     gameState.asteroidSpawnState,
-    deltaTime,
+    gameplayDeltaTime,
     survivalTime,
     rng,
   );
@@ -100,7 +108,7 @@ export function advanceRunningGame(
     spawningResult.asteroids,
     gameState.bonusFeedback,
   );
-  const asteroids = updateAsteroids(bonusResult.asteroids, deltaTime);
+  const asteroids = updateAsteroids(bonusResult.asteroids, gameplayDeltaTime);
   const nextGameState = {
     player,
     asteroids,

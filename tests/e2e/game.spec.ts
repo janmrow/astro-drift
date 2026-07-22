@@ -1,18 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const CONTROLS_DESCRIPTION =
+  "Enter starts or restarts. Arrow Up/Down or W/S steer. Arrow Left or A brakes gameplay speed. Arrow Right or D boosts gameplay speed.";
+
 test("loads the initial game contract", async ({ page }) => {
   await page.goto("/");
 
   const canvas = page.getByTestId("game-canvas");
-  const controls = page.getByText("Enter starts or restarts. Arrow Up/Down or W/S steer.", {
-    exact: true,
-  });
+  const controls = page.getByText(CONTROLS_DESCRIPTION, { exact: true });
 
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveAccessibleName("Astro Drift game canvas");
-  await expect(canvas).toHaveAccessibleDescription(
-    "Enter starts or restarts. Arrow Up/Down or W/S steer.",
-  );
+  await expect(canvas).toHaveAccessibleDescription(CONTROLS_DESCRIPTION);
   await expect(controls).toHaveCount(1);
   await expect(controls).toHaveCSS("position", "absolute");
   await expect(controls).toHaveCSS("clip-path", "inset(50%)");
@@ -33,15 +32,15 @@ test("shows responsive gameplay guidance at narrow widths", async ({ page }) => 
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/");
 
-  const controls = page.getByText("Enter starts or restarts. Arrow Up/Down or W/S steer.", {
-    exact: true,
-  });
+  const controls = page.getByText(CONTROLS_DESCRIPTION, { exact: true });
   const statusPanel = page.getByTestId("game-status-panel");
   const statsPanel = page.getByTestId("game-stats-panel");
 
   await expect(controls).toBeVisible();
   await expect(controls).toContainText("Enter starts or restarts.");
   await expect(controls).toContainText("Arrow Up/Down or W/S steer.");
+  await expect(controls).toContainText("Arrow Left or A brakes gameplay speed.");
+  await expect(controls).toContainText("Arrow Right or D boosts gameplay speed.");
   await expect(controls).not.toHaveAttribute("aria-live");
   await expect(page.getByTestId("game-canvas")).toBeVisible();
   await expect(page.getByText("CHART WINDOW · SECTOR 17", { exact: true })).toBeVisible();

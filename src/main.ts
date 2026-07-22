@@ -8,7 +8,7 @@ import {
   type GameState,
 } from "./game/state";
 import type { GameStatus } from "./game/types";
-import { resetInputState, setupKeyboardControls } from "./input/keyboard";
+import { setupKeyboardControls } from "./input/keyboard";
 import { createStars, renderFrame, updateStars } from "./rendering/canvasRenderer";
 import { readBestScore, saveBestScore } from "./storage/bestScoreStorage";
 
@@ -43,7 +43,7 @@ let bestScore = readBestScore();
 
 let gameState: GameState = createInitialGameState();
 
-setupKeyboardControls(input, handleGameAction);
+const resetKeyboardControls = setupKeyboardControls(input, handleGameAction);
 document.addEventListener("visibilitychange", handleVisibilityChange);
 requestAnimationFrame(runGameLoop);
 
@@ -112,7 +112,7 @@ function startGame(): void {
 function restartGame(): void {
   gameStatus = "running";
   gameState = createInitialGameState();
-  resetInputState(input);
+  resetKeyboardControls();
   previousFrameTime = performance.now();
 }
 

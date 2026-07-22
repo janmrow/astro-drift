@@ -11,6 +11,7 @@ import {
   ASTEROID_SPEED_HARD_CAP,
   ASTEROID_SPEED_RAMP,
   ASTEROID_SPAWN_RAMP,
+  EARLY_RAMP_GRACE_SECONDS,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
   FIERY_ASTEROID_MIN_RADIUS_MULTIPLIER,
@@ -38,9 +39,15 @@ export function createInitialAsteroidSpawnState(): AsteroidSpawnState {
   };
 }
 
+export function getAsteroidDifficultyRampTime(currentSurvivalTime: number): number {
+  return Math.max(0, currentSurvivalTime - EARLY_RAMP_GRACE_SECONDS);
+}
+
 export function getAsteroidSpawnInterval(currentSurvivalTime: number): number {
+  const rampTime = getAsteroidDifficultyRampTime(currentSurvivalTime);
+
   return clamp(
-    ASTEROID_BASE_SPAWN_INTERVAL - currentSurvivalTime * ASTEROID_SPAWN_RAMP,
+    ASTEROID_BASE_SPAWN_INTERVAL - rampTime * ASTEROID_SPAWN_RAMP,
     ASTEROID_MIN_SPAWN_INTERVAL,
     ASTEROID_BASE_SPAWN_INTERVAL,
   );
@@ -92,7 +99,8 @@ function createAsteroid(currentSurvivalTime: number, id: number, rng: () => numb
   const variant = createAsteroidVariant(rng);
   const baseRadius = randomBetween(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS, rng);
   const radius = getAsteroidRadius(baseRadius, variant);
-  const speedBonus = currentSurvivalTime * ASTEROID_SPEED_RAMP;
+  const rampTime = getAsteroidDifficultyRampTime(currentSurvivalTime);
+  const speedBonus = rampTime * ASTEROID_SPEED_RAMP;
   const speed = randomBetween(
     ASTEROID_BASE_MIN_SPEED + speedBonus,
     ASTEROID_BASE_MAX_SPEED + speedBonus,

@@ -1,241 +1,122 @@
-# Astro Drift QA Lab
+# Astro Drift
 
-Astro Drift is a small browser arcade game built with TypeScript, Vite, and Canvas.
-This repository presents it as a QA/SDET portfolio project, with game rules kept
-separate from rendering, unit tests for core logic, and Playwright smoke tests
-for the browser flow.
+A small browser arcade game built with TypeScript and Canvas 2D.
 
-## What You Can Play
+It is also a QA/SDET portfolio project focused on testable game rules, practical automation, and readable architecture.
 
-You guide a friendly survey craft around incoming asteroids. The shipped
-Twilight Cartography presentation places the game in a restrained chart-window
-frame, with a layered deep-space field, rocky standard and fiery hazards, and
-a clear running HUD and state-screen hierarchy.
+[Play Astro Drift](https://janmrow.github.io/astro-drift/)
 
-The current game flow is:
+<!-- TODO: replace with a screenshot captured during active gameplay -->
+![Astro Drift gameplay](docs/assets/astro-drift-gameplay.png)
 
-```text
-idle -> running -> gameOver
-```
+## About
 
-Current gameplay:
+Guide a survey craft vertically through a stream of incoming asteroids. Stay clear of collisions, let hazards pass safely, and keep the run going as the pace increases.
 
-- fixed horizontal ship position with vertical movement using Arrow Up / Arrow Down
-- Enter starts the game and restarts after game over
-- asteroids spawning at random vertical positions and travelling straight from right to left
-- rotating standard and fiery asteroids, with bounded speed and spawn-rate difficulty ramps
-- collision detection
-- pass-only scoring: standard asteroids award `25` and fiery asteroids award `100`
-- individual `+25` or `+100` pass feedback
-- survival time tracked separately from score
-- score-based local best stored in the browser
-- faster near stars that reinforce forward motion while preserving parallax and reduced-motion behavior
-- game over state
+Astro Drift is intentionally small, frontend-only, and focused on one clear arcade loop. Its technical design keeps the gameplay rules readable and directly testable without adding unnecessary infrastructure or abstraction.
+
+## How to Play
+
+| Action | Control |
+| --- | --- |
+| Start or restart | `Enter` |
+| Steer up | `Arrow Up` or `W` |
+| Steer down | `Arrow Down` or `S` |
+
+Avoid incoming asteroids and pass them safely to increase your score.
+
+## Gameplay Highlights
+
+- Standard and fiery asteroids create distinct hazards to dodge.
+- Safely passed asteroids add to the score, while survival time is tracked separately.
+- Asteroids become faster and arrive more frequently as a run continues.
+- Clear HUD, pass, collision, and game-state feedback keep the loop easy to read.
+- The best score is saved locally in the browser.
+- Reduced-motion preferences quiet ambient star movement outside active play.
 
 ## Tech Stack
 
-- TypeScript
-- Vite
-- Canvas
-- Vitest
-- Playwright
-- ESLint
-- GitHub Actions
+- **Game and build:** TypeScript, Canvas 2D, Vite
+- **Testing:** Vitest, `fast-check`, Playwright
+- **Quality and automation:** ESLint, GitHub Actions, GitHub Pages
 
 ## Getting Started
 
-Use Node.js 22. The CI pipeline runs on Node 22, so local development should match it.
-
-Install dependencies from the lockfile:
+Use Node.js 22 and npm.
 
 ```bash
+git clone https://github.com/janmrow/astro-drift.git
+cd astro-drift
 npm ci
-```
-
-Start the local dev server:
-
-```bash
 npm run dev
 ```
 
-Build the production bundle:
+To create and preview a production build:
 
 ```bash
 npm run build
-```
-
-Preview the production build locally:
-
-```bash
 npm run preview
 ```
 
 ## Quality Checks
 
-Run lint:
+| Command | Purpose |
+| --- | --- |
+| `npm run lint` | Lint the repository |
+| `npm run typecheck:tests` | Type-check the test suite |
+| `npm test` | Run unit and property-based tests |
+| `npm run test:e2e` | Build the app and run Playwright browser tests |
+| `npm run check` | Run the canonical full local quality gate |
 
-```bash
-npm run lint
-```
+The full gate covers ESLint, TypeScript checks for the tests and application, Vitest, a production build, and Playwright browser tests. The scripts in `package.json` are the executable source of truth.
 
-Run unit tests:
-
-```bash
-npm test
-```
-
-Run Playwright E2E tests:
-
-```bash
-npm run test:e2e
-```
-
-Playwright builds the app and starts a local preview server from `playwright.config.ts`.
-
-Run the full local quality gate:
-
-```bash
-npm run check
-```
-
-The scripts in `package.json` are the executable source of truth for the gate.
-Through that script graph, `npm run check` runs lint, TypeScript checking for the
-tests, unit tests, one production build, a preview server, and Playwright E2E.
-
-If Playwright browsers are missing on a fresh machine, install Chromium:
+On a fresh machine, install Playwright's Chromium browser before running browser tests:
 
 ```bash
 npx playwright install chromium
 ```
 
+## Architecture
+
+Browser-independent game rules and state updates live separately from Canvas rendering, keyboard input, storage, time, and other browser effects. `src/main.ts` connects that core to the browser shell and animation loop.
+
+This boundary keeps important gameplay behavior directly testable without Canvas pixel assertions. The decision and its trade-offs are recorded in [Architecture Decision: Separate Game Engine from Rendering](docs/ADR-001-separate-engine-from-rendering.md).
+
 ## Project Structure
 
 ```text
-src/
-  main.ts
-  game/
-    asteroids.ts
-    balance.ts
-    engine.ts
-    format.ts
-    rng.ts
-    state.ts
-    types.ts
-  input/
-    keyboard.ts
-  rendering/
-    canvasRenderer.ts
-    theme.ts
-  storage/
-    bestScoreStorage.ts
-  style.css
+src/game/        game rules and state updates
+src/rendering/   Canvas 2D presentation
+src/input/       keyboard input
+src/storage/     browser persistence
+src/main.ts      browser shell and animation loop
 
-tests/
-  unit/
-    engine.test.ts
-    engine.properties.test.ts
-    asteroids.test.ts
-    bestScoreStorage.test.ts
-    format.test.ts
-    helpers.ts
-    keyboard.test.ts
-    rng.test.ts
-    state.test.ts
-  e2e/
-    game.spec.ts
+tests/unit/      game rules and small boundary modules
+tests/e2e/       main browser flows and contracts
 
-docs/
-  ADR-001-separate-engine-from-rendering.md
-  PRINCIPLES.md
-  TEST_STRATEGY.md
-  VISUAL-STYLE-CONSTRAINTS.md
-
-.github/
-  workflows/
-    ci.yml
+docs/            architecture, testing, engineering, and visual decisions
 ```
-
-## How The Code Is Organized
-
-The main architectural rule is simple: keep game rules separate from Canvas rendering.
-
-The decision is documented in [ADR-001: Separate game engine from rendering](docs/ADR-001-separate-engine-from-rendering.md).
-
-Core gameplay rules live in `src/game/`:
-
-- player movement
-- movement boundaries
-- score calculation
-- difficulty ramping
-- asteroid spawning and movement
-- collision checks
-- score and time formatting
-- gameplay tuning constants (`balance.ts`)
-- per-frame game state orchestration (`state.ts`)
-- explicit randomness inputs and a deterministic RNG utility
-- shared game-domain types
-
-Game update functions return next values without mutating caller-owned game state
-or collections. `advanceRunningGame` returns the next game state together with
-collision information.
-
-Canvas drawing lives in `src/rendering/canvasRenderer.ts`; Canvas palette and
-typography helpers live in `src/rendering/theme.ts`. DOM styling, including the
-separate system sans and system monospace stacks, lives in `src/style.css`.
-`src/main.ts` reads both stacks at the browser boundary and passes them to Canvas
-rendering.
-
-Keyboard input lives in `src/input/keyboard.ts`.
-
-Local best score persistence lives in `src/storage/bestScoreStorage.ts`.
-
-`src/main.ts` connects these pieces and owns the imperative browser shell: input,
-time, runtime game-rule randomness, game state, rendering, storage, DOM status
-hooks, and the animation loop. The renderer owns separate visual randomness,
-currently used only for the star field.
-
-This structure keeps the important behavior testable without relying on Canvas pixel assertions.
 
 ## Testing Approach
 
-Unit tests cover game rules and small boundary modules, including movement,
-boundaries, scoring, asteroid behavior, collision, state advancement, formatting,
-deterministic RNG behavior, keyboard input, and best-score storage. The suite
-includes example-based tests and property-based tests with `fast-check` for core
-invariants such as fixed-X vertical movement, bounded difficulty, horizontal
-asteroid paths, and one-time pass rewards.
+- Unit tests cover gameplay rules and small boundary modules without requiring a browser.
+- Property-based tests use `fast-check` to exercise meaningful invariants across generated inputs.
+- Playwright verifies important browser-level flows and stable DOM contracts.
+- Manual browser checks cover Canvas presentation and gameplay feel where pixel-level automation would be brittle.
 
-Playwright tests cover the main browser smoke flow:
+Canvas pixels are not the primary automated contract. Rules are tested below the rendering layer, while browser tests observe stable page behavior. See the [Test Strategy](docs/TEST_STRATEGY.md) for the detailed coverage boundaries and trade-offs.
 
-- the initial page, Canvas accessibility, and DOM status/stat contract
-- Enter starting the game while Space and R leave the idle state unchanged
-- game-over rounds restarting cleanly with Enter
-- pass-based score progression remaining separate from survival time
-- `aria-live` being limited to status announcements
-- best-score persistence when a running tab is hidden
+## Documentation
 
-Canvas-only presentation and feel, including pass-feedback animation, collision
-readability, star parallax, and reduced-motion behavior, remain manual browser
-checks rather than pixel-tested E2E assertions.
+- [Architecture Decision: Separate Game Engine from Rendering](docs/ADR-001-separate-engine-from-rendering.md) — records the main responsibility boundary between gameplay rules and browser presentation.
+- [Engineering Principles](docs/PRINCIPLES.md) — describes the code-quality and design principles used to keep the project small and readable.
+- [Test Strategy](docs/TEST_STRATEGY.md) — documents test levels, coverage boundaries, quality gates, and deliberate trade-offs.
+- [Visual Style Constraints](docs/VISUAL-STYLE-CONSTRAINTS.md) — records the technical constraints that visual changes must respect.
 
-The project does not test Canvas pixels. Pixel-level tests are brittle and would make small visual changes look like gameplay regressions. Instead, game rules are tested directly and browser flow is checked through stable DOM hooks such as `data-testid`.
+## CI and Deployment
 
-More detail is documented in the [test strategy](docs/TEST_STRATEGY.md).
-
-## CI And Deployment
-
-GitHub Actions runs the canonical `npm run check` gate for pushes and pull
-requests targeting `main`, as well as manual workflow runs. A dependent job
-builds and deploys GitHub Pages after verification for eligible `main` pushes or
-manual runs. Workflow triggers, permissions, dependencies, and deployment steps
-are defined in `.github/workflows/ci.yml`.
-
-For Pages builds, `vite.config.ts` adjusts the Vite `base` path through the `GITHUB_PAGES=true` environment variable.
-
-## Project Scope
-
-This repository is frontend-only. The codebase currently covers the arcade game, its tests, CI, and GitHub Pages deployment.
+GitHub Actions runs the canonical `npm run check` gate for pull requests targeting `main`, pushes to `main`, and manual workflow runs. Deployment depends on that verification succeeding: verified `main` pushes and verified manual runs are built and deployed to GitHub Pages.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+Astro Drift is available under the [MIT License](LICENSE).

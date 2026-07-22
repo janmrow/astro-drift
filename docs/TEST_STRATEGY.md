@@ -32,19 +32,21 @@ next values and, where valuable, verify that caller-owned inputs are unchanged.
 Current focus:
 
 - engine rules: fixed horizontal player position, vertical movement and bounds,
-  pass-only scoring, exact standard (`25`) and fiery (`100`) rewards, one-time
-  reward accounting, collision, and frame-delta capping;
+  gameplay-speed multiplier combinations, pass-only scoring, exact standard (`25`)
+  and fiery (`100`) rewards, one-time reward accounting, collision, and frame-delta
+  capping;
 - asteroid spawning across continuous vertical ranges, standard/fiery variant
   chance and identity, horizontal movement at a stable Y position, rotation,
   cleanup, and bounded speed and spawn-interval difficulty ramps, including the
   final speed cap for both variants;
-- running-state advancement, initial/reset state creation, survival time remaining
-  independent from score, and individual `+25`/`+100` feedback timing;
+- running-state advancement, initial/reset state creation, scaled gameplay time and
+  world movement, survival time remaining independent from score, and real-time
+  individual `+25`/`+100` feedback timing;
 - deterministic RNG repeatability and output range;
 - score and time formatting;
-- keyboard mapping for Arrow Up/Down and W/S vertical movement, Enter-only game
-  actions, ignored horizontal arrows/Space/R, default prevention, blur reset, and
-  explicit input reset; and
+- keyboard mapping for Arrow Up/Down and W/S vertical movement, Arrow Left/A braking,
+  Arrow Right/D boosting, overlapping held aliases, Enter-only game actions, ignored
+  Space/R, default prevention, blur reset, and explicit input reset; and
 - local best-score storage, normalization, and storage-failure behavior.
 
 These tests should stay fast and independent from the browser.
@@ -71,9 +73,9 @@ E2E tests cover the main browser contract:
   desktop-hidden responsive gameplay guidance, visible chart-window label,
   removed legacy visible chrome, and initial DOM status/stat values;
 - the compact page-shell contract at a 320 CSS-pixel viewport: the same DOM
-  gameplay guidance becomes visible with Enter start/restart and Arrow/W/S
-  steering instructions, while the Canvas and chart-window label remain visible
-  and the status/stat panels remain hidden;
+  gameplay guidance becomes visible with Enter start/restart, Arrow/W/S steering,
+  Left/A braking, and Right/D boosting instructions, while the Canvas and
+  chart-window label remain visible and the status/stat panels remain hidden;
 - starting with Enter while Space and R leave the game `idle`;
 - reaching `gameOver` through a deterministic browser scenario and restarting the
   round with Enter;

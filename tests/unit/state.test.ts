@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASTEROID_INITIAL_SPAWN_TIMER,
   BONUS_FEEDBACK_DURATION,
+  PLAYER_SPEED,
 } from "../../src/game/balance";
 import { createInitialPlayer, createInputState } from "../../src/game/engine";
 import {
@@ -135,6 +136,43 @@ describe("advanceRunningGame", () => {
     expect(result.gameState.survivalTime).toBeCloseTo(deltaTime);
     expect(result.gameState.score).toBe(0);
     expect(gameState).toEqual(createInitialGameState());
+  });
+
+  it("scales gameplay time and world movement with boost without mutating the input", () => {
+    const gameState = createInitialGameState();
+    const asteroid = createAsteroid({ x: 900, y: 100, speed: 240 });
+    gameState.asteroids.push(asteroid);
+    const input = { ...createInputState(), up: true, boost: true };
+    const originalInput = { ...input };
+    const deltaTime = 0.1;
+    const scaledDeltaTime = deltaTime * 2;
+
+    const result = advanceRunningGame(gameState, input, deltaTime, () => MAX_RANDOM_SAMPLE);
+
+    expect(result.collided).toBe(false);
+    expect(result.gameState.survivalTime).toBeCloseTo(scaledDeltaTime);
+    expect(result.gameState.asteroidSpawnState.timer).toBeCloseTo(
+      ASTEROID_INITIAL_SPAWN_TIMER + scaledDeltaTime,
+    );
+    expect(result.gameState.player.y).toBeCloseTo(gameState.player.y - PLAYER_SPEED * scaledDeltaTime);
+    expect(result.gameState.asteroids[0].x).toBeCloseTo(
+      asteroid.x - asteroid.speed * scaledDeltaTime,
+    );
+    expect(input).toEqual(originalInput);
+    expect(gameState.asteroids[0]).toEqual(asteroid);
+  });
+
+  it("keeps bonus feedback timing on real time while gameplay is boosted", () => {
+    const gameState = createInitialGameState();
+    gameState.bonusFeedback = { text: "+25", timeLeft: 0.5 };
+    const input = { ...createInputState(), boost: true };
+
+    const result = advanceRunningGame(gameState, input, 0.1, () => MAX_RANDOM_SAMPLE);
+
+    expect(result.collided).toBe(false);
+    expect(result.gameState.survivalTime).toBeCloseTo(0.2);
+    expect(result.gameState.bonusFeedback).toEqual({ text: "+25", timeLeft: 0.4 });
+    expect(gameState.bonusFeedback).toEqual({ text: "+25", timeLeft: 0.5 });
   });
 
   it("awards a pass bonus and reflects it in the bonus feedback text", () => {

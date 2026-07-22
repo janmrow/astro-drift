@@ -33,7 +33,17 @@ export function createInputState(): InputState {
   return {
     up: false,
     down: false,
+    boost: false,
+    brake: false,
   };
+}
+
+export function getGameplaySpeedMultiplier(currentInput: InputState): number {
+  if (currentInput.boost === currentInput.brake) {
+    return 1;
+  }
+
+  return currentInput.boost ? 2 : 0.5;
 }
 
 export function updatePlayer(

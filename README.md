@@ -22,6 +22,8 @@ Astro Drift is intentionally small, frontend-only, and focused on one clear arca
 | Start or restart | `Enter` |
 | Steer up | `Arrow Up` or `W` |
 | Steer down | `Arrow Down` or `S` |
+| Brake gameplay speed | `Arrow Left` or `A` |
+| Boost gameplay speed | `Arrow Right` or `D` |
 
 Avoid incoming asteroids and pass them safely to increase your score.
 

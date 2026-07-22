@@ -41,4 +41,6 @@ export type Asteroid = {
 export type InputState = {
   up: boolean;
   down: boolean;
+  boost: boolean;
+  brake: boolean;
 };

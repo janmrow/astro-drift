@@ -6,6 +6,7 @@ import {
   ASTEROID_MIN_SPAWN_INTERVAL,
   ASTEROID_PASS_BONUS,
   ASTEROID_SPEED_HARD_CAP,
+  ASTEROID_VERTICAL_SPAWN_BAND_COUNT,
   FIERY_ASTEROID_PASS_BONUS,
 } from "../../src/game/balance";
 import {
@@ -20,11 +21,14 @@ import {
 } from "../../src/game/engine";
 import {
   ASTEROID_REMOVE_PADDING,
+  ASTEROID_VERTICAL_SPAWN_PADDING,
   createInitialAsteroidSpawnState,
+  drawAsteroidSpawnBand,
   getAsteroidSpawnInterval,
   updateAsteroidSpawning,
   updateAsteroids,
 } from "../../src/game/asteroids";
+import { createSeededRng } from "../../src/game/rng";
 import { createAsteroid } from "./helpers";
 import type { Asteroid, InputState, Player } from "../../src/game/types";
 
@@ -172,6 +176,61 @@ describe("game engine properties", () => {
           );
           expect(point.distanceMultiplier).toBeGreaterThanOrEqual(0.8);
           expect(point.distanceMultiplier).toBeLessThanOrEqual(1.2);
+        }
+      }),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it("keeps at most six other band draws between appearances across shuffled bags", () => {
+    const maximumInterveningDraws = 2 * ASTEROID_VERTICAL_SPAWN_BAND_COUNT - 2;
+
+    expect(maximumInterveningDraws).toBe(6);
+
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 0xffffffff }), (seed) => {
+        const rng = createSeededRng(seed);
+        const lastDrawByBand = new Map<number, number>();
+        let remainingBands: number[] = [];
+
+        for (let drawIndex = 0; drawIndex < 40; drawIndex += 1) {
+          const draw = drawAsteroidSpawnBand(remainingBands, rng);
+          const previousDrawIndex = lastDrawByBand.get(draw.bandIndex);
+
+          if (previousDrawIndex !== undefined) {
+            expect(drawIndex - previousDrawIndex - 1).toBeLessThanOrEqual(
+              maximumInterveningDraws,
+            );
+          }
+
+          lastDrawByBand.set(draw.bandIndex, drawIndex);
+          remainingBands = draw.remainingBands;
+        }
+      }),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it("keeps seeded asteroid spawns within each radius-dependent center range", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 0xffffffff }), (seed) => {
+        const result = updateAsteroidSpawning(
+          [],
+          createInitialAsteroidSpawnState(),
+          ASTEROID_BASE_SPAWN_INTERVAL * 12,
+          0,
+          createSeededRng(seed),
+        );
+
+        expect(result.asteroids).toHaveLength(12);
+
+        for (const asteroid of result.asteroids) {
+          expect(asteroid.y).toBeGreaterThanOrEqual(
+            asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING,
+          );
+          expect(asteroid.y).toBeLessThanOrEqual(
+            GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING,
+          );
         }
       }),
       { numRuns: PROPERTY_RUNS },

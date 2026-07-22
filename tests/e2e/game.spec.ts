@@ -1,7 +1,50 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { MAX_FRAME_DELTA_SECONDS } from "../../src/game/engine";
+
 const CONTROLS_DESCRIPTION =
   "Enter starts or restarts. Arrow Up/Down or W/S steer. Arrow Left or A brakes gameplay speed. Arrow Right or D boosts gameplay speed.";
+
+async function holdKeyForGameplayTime(
+  page: Page,
+  key: string,
+  targetGameplayTime: number,
+): Promise<void> {
+  await page.keyboard.down(key);
+
+  try {
+    await page.evaluate(
+      ({ maximumFrameDelta, targetTime }) =>
+        new Promise<void>((resolve) => {
+          let accumulatedGameplayTime = 0;
+          let previousFrameTime = performance.now();
+
+          const waitForGameplayTime = (currentFrameTime: number): void => {
+            accumulatedGameplayTime += Math.min(
+              (currentFrameTime - previousFrameTime) / 1_000,
+              maximumFrameDelta,
+            );
+            previousFrameTime = currentFrameTime;
+
+            if (accumulatedGameplayTime >= targetTime) {
+              resolve();
+              return;
+            }
+
+            requestAnimationFrame(waitForGameplayTime);
+          };
+
+          requestAnimationFrame(waitForGameplayTime);
+        }),
+      {
+        maximumFrameDelta: MAX_FRAME_DELTA_SECONDS,
+        targetTime: targetGameplayTime,
+      },
+    );
+  } finally {
+    await page.keyboard.up(key);
+  }
+}
 
 test("loads the initial game contract", async ({ page }) => {
   await page.goto("/");
@@ -78,7 +121,16 @@ test("restarts a game over round with Enter", async ({ page }) => {
   await page.goto("/");
 
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("game-status")).toHaveText("gameOver", { timeout: 8_000 });
+  // Constant RNG puts the first asteroid below center; move into its band using gameplay time.
+  await holdKeyForGameplayTime(page, "ArrowDown", 0.12);
+  await page.keyboard.down("ArrowRight");
+
+  try {
+    await expect(page.getByTestId("game-status")).toHaveText("gameOver", { timeout: 8_000 });
+  } finally {
+    await page.keyboard.up("ArrowRight");
+  }
+
   await expect(page.getByTestId("game-score")).toHaveText("00000");
   const completedRoundTime = parseFormattedTime(await page.getByTestId("game-time").textContent());
 

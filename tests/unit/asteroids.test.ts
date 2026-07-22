@@ -13,6 +13,7 @@ import {
   ASTEROID_SPEED_HARD_CAP,
   ASTEROID_SPEED_RAMP,
   ASTEROID_SPAWN_RAMP,
+  ASTEROID_VERTICAL_SPAWN_BAND_COUNT,
   EARLY_RAMP_GRACE_SECONDS,
   FIERY_ASTEROID_CHANCE,
   FIERY_ASTEROID_MAX_RADIUS_MULTIPLIER,
@@ -22,7 +23,9 @@ import {
 } from "../../src/game/balance";
 import {
   ASTEROID_REMOVE_PADDING,
+  ASTEROID_VERTICAL_SPAWN_PADDING,
   createInitialAsteroidSpawnState,
+  drawAsteroidSpawnBand,
   getAsteroidDifficultyRampTime,
   getAsteroidPointCount,
   getAsteroidSpawnInterval,
@@ -30,6 +33,7 @@ import {
   updateAsteroids,
 } from "../../src/game/asteroids";
 import { GAME_HEIGHT, GAME_WIDTH } from "../../src/game/engine";
+import { createSeededRng } from "../../src/game/rng";
 import type { Asteroid } from "../../src/game/types";
 import { createAsteroid } from "./helpers";
 
@@ -53,6 +57,31 @@ function spawnAsteroid(rngValue: number, survivalTime = 0): Asteroid {
   return result.asteroids[0];
 }
 
+function drawSpawnBands(drawCount: number, rng: () => number): number[] {
+  const drawnBands: number[] = [];
+  let remainingBands: number[] = [];
+
+  for (let drawIndex = 0; drawIndex < drawCount; drawIndex += 1) {
+    const draw = drawAsteroidSpawnBand(remainingBands, rng);
+    drawnBands.push(draw.bandIndex);
+    remainingBands = draw.remainingBands;
+  }
+
+  return drawnBands;
+}
+
+function getAsteroidSpawnBandIndex(asteroid: Asteroid): number {
+  const minimumCenterY = asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING;
+  const maximumCenterY = GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING;
+  const bandHeight =
+    (maximumCenterY - minimumCenterY) / ASTEROID_VERTICAL_SPAWN_BAND_COUNT;
+
+  return Math.min(
+    Math.floor((asteroid.y - minimumCenterY) / bandHeight),
+    ASTEROID_VERTICAL_SPAWN_BAND_COUNT - 1,
+  );
+}
+
 describe("getAsteroidPointCount", () => {
   it.each([
     [0, 7],
@@ -60,6 +89,50 @@ describe("getAsteroidPointCount", () => {
     [slightlyBelow(1), 11],
   ])("maps the valid RNG sample %s to %s points", (randomValue, expectedCount) => {
     expect(getAsteroidPointCount(randomValue)).toBe(expectedCount);
+  });
+});
+
+describe("asteroid spawn band bag", () => {
+  it("draws every vertical band once per completed bag", () => {
+    const drawnBands = drawSpawnBands(
+      ASTEROID_VERTICAL_SPAWN_BAND_COUNT * 3,
+      createSeededRng(42),
+    );
+    const expectedBands = Array.from(
+      { length: ASTEROID_VERTICAL_SPAWN_BAND_COUNT },
+      (_, bandIndex) => bandIndex,
+    );
+
+    for (
+      let bagStart = 0;
+      bagStart < drawnBands.length;
+      bagStart += ASTEROID_VERTICAL_SPAWN_BAND_COUNT
+    ) {
+      expect(
+        drawnBands
+          .slice(bagStart, bagStart + ASTEROID_VERTICAL_SPAWN_BAND_COUNT)
+          .sort((first, second) => first - second),
+      ).toEqual(expectedBands);
+    }
+  });
+
+  it("draws without mutating the supplied remaining bag", () => {
+    const remainingBands = [3, 1, 2];
+    const originalRemainingBands = [...remainingBands];
+
+    const draw = drawAsteroidSpawnBand(remainingBands, constantRng(0.5));
+
+    expect(draw).toEqual({ bandIndex: 2, remainingBands: [3, 1] });
+    expect(remainingBands).toEqual(originalRemainingBands);
+    expect(draw.remainingBands).not.toBe(remainingBands);
+  });
+
+  it("allows the same band on consecutive draws across a refill boundary", () => {
+    const finalDraw = drawAsteroidSpawnBand([0], constantRng(0));
+    const firstRefillDraw = drawAsteroidSpawnBand(finalDraw.remainingBands, constantRng(0));
+
+    expect(finalDraw.bandIndex).toBe(0);
+    expect(firstRefillDraw.bandIndex).toBe(0);
   });
 });
 
@@ -132,6 +205,7 @@ describe("asteroid logic", () => {
     expect(spawnState).toEqual({
       timer: ASTEROID_INITIAL_SPAWN_TIMER,
       nextId: 1,
+      remainingBands: [],
     });
     expect(ASTEROID_INITIAL_SPAWN_TIMER).toBe(0.85);
   });
@@ -144,6 +218,7 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       timeUntilFirstSpawn - 0.01,
       0,
+      constantRng(0.5),
     );
     const atThreshold = updateAsteroidSpawning(
       beforeThreshold.asteroids,
@@ -172,6 +247,7 @@ describe("asteroid logic", () => {
       spawnState,
       ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_INITIAL_SPAWN_TIMER + 0.1,
       0,
+      constantRng(0.5),
     );
 
     expect(asteroids).toHaveLength(0);
@@ -180,6 +256,9 @@ describe("asteroid logic", () => {
     expect(result.asteroids[0].hasAwardedPassBonus).toBe(false);
     expect(result.spawnState.nextId).toBe(2);
     expect(result.spawnState.timer).toBeCloseTo(0.1);
+    expect(result.spawnState.remainingBands).toHaveLength(
+      ASTEROID_VERTICAL_SPAWN_BAND_COUNT - 1,
+    );
   });
 
   it("spawns multiple asteroids when more than one interval passes", () => {
@@ -191,6 +270,7 @@ describe("asteroid logic", () => {
       spawnState,
       ASTEROID_BASE_SPAWN_INTERVAL * 2 - ASTEROID_INITIAL_SPAWN_TIMER + 0.2,
       0,
+      constantRng(0.5),
     );
 
     expect(asteroids).toHaveLength(0);
@@ -200,6 +280,12 @@ describe("asteroid logic", () => {
     ]);
     expect(result.spawnState.nextId).toBe(3);
     expect(result.spawnState.timer).toBeCloseTo(0.2);
+    expect(result.spawnState.remainingBands).toHaveLength(
+      ASTEROID_VERTICAL_SPAWN_BAND_COUNT - 2,
+    );
+    expect(
+      new Set(result.asteroids.map((asteroid) => getAsteroidSpawnBandIndex(asteroid))).size,
+    ).toBe(2);
   });
 
   it("does not spawn or advance the timer when elapsed time is zero", () => {
@@ -207,13 +293,17 @@ describe("asteroid logic", () => {
     const spawnState = {
       timer: 0.5,
       nextId: 3,
+      remainingBands: [0, 2],
     };
+    const originalRemainingBands = [...spawnState.remainingBands];
 
-    const result = updateAsteroidSpawning(asteroids, spawnState, 0, 0);
+    const result = updateAsteroidSpawning(asteroids, spawnState, 0, 0, constantRng(0.5));
 
     expect(asteroids).toHaveLength(0);
     expect(result.asteroids).toEqual(asteroids);
     expect(result.spawnState).toEqual(spawnState);
+    expect(spawnState.remainingBands).toEqual(originalRemainingBands);
+    expect(result.spawnState.remainingBands).not.toBe(spawnState.remainingBands);
   });
 
   it("spawns the full interval multiple after a large elapsed time jump", () => {
@@ -224,6 +314,7 @@ describe("asteroid logic", () => {
       createInitialAsteroidSpawnState(),
       5,
       0,
+      constantRng(0.5),
     );
 
     expect(asteroids).toHaveLength(0);
@@ -242,15 +333,25 @@ describe("asteroid logic", () => {
     const spawnState = {
       timer: ASTEROID_BASE_SPAWN_INTERVAL - 0.1,
       nextId: 7,
+      remainingBands: [3, 2],
     };
 
-    const result = updateAsteroidSpawning(asteroids, spawnState, 0.2, 0);
+    const result = updateAsteroidSpawning(
+      asteroids,
+      spawnState,
+      0.2,
+      0,
+      constantRng(0.5),
+    );
 
     expect(asteroids).toHaveLength(0);
     expect(result.asteroids).toHaveLength(1);
     expect(result.asteroids[0].id).toBe("asteroid-7");
     expect(result.spawnState.nextId).toBe(8);
     expect(result.spawnState.timer).toBeCloseTo(0.1);
+    expect(result.spawnState.remainingBands).toEqual([3]);
+    expect(getAsteroidSpawnBandIndex(result.asteroids[0])).toBe(2);
+    expect(spawnState.remainingBands).toEqual([3, 2]);
   });
 
   it("does not spawn an asteroid before the spawn interval passes", () => {
@@ -262,6 +363,7 @@ describe("asteroid logic", () => {
       spawnState,
       ASTEROID_BASE_SPAWN_INTERVAL - ASTEROID_INITIAL_SPAWN_TIMER - 0.1,
       0,
+      constantRng(0.5),
     );
 
     expect(asteroids).toHaveLength(0);
@@ -293,7 +395,6 @@ describe("asteroid logic", () => {
       variant: "standard",
       radius,
       x: GAME_WIDTH + radius,
-      y: GAME_HEIGHT / 2,
       speed: (ASTEROID_BASE_MIN_SPEED + ASTEROID_BASE_MAX_SPEED) / 2 + speedBonus,
       rotation: Math.PI,
       rotationSpeed: (ASTEROID_MIN_ROTATION_SPEED + ASTEROID_MAX_ROTATION_SPEED) / 2,
@@ -305,6 +406,29 @@ describe("asteroid logic", () => {
       expect(point.angle).toBeCloseTo((index * Math.PI * 2) / asteroid.points.length);
       expect(point.distanceMultiplier).toBe(1);
     }
+  });
+
+  it("keeps vertical spawn samples within the valid center range", () => {
+    for (const rngValue of [0, 0.25, 0.5, 0.75, slightlyBelow(1)]) {
+      const asteroid = spawnAsteroid(rngValue);
+      const minimumCenterY = asteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING;
+      const maximumCenterY = GAME_HEIGHT - asteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING;
+
+      expect(asteroid.y).toBeGreaterThanOrEqual(minimumCenterY);
+      expect(asteroid.y).toBeLessThanOrEqual(maximumCenterY);
+    }
+  });
+
+  it("keeps the low and high edges of the full valid center range reachable", () => {
+    const lowestAsteroid = spawnAsteroid(0);
+    const highestAsteroid = spawnAsteroid(slightlyBelow(1));
+
+    expect(lowestAsteroid.y).toBeCloseTo(
+      lowestAsteroid.radius + ASTEROID_VERTICAL_SPAWN_PADDING,
+    );
+    expect(highestAsteroid.y).toBeCloseTo(
+      GAME_HEIGHT - highestAsteroid.radius - ASTEROID_VERTICAL_SPAWN_PADDING,
+    );
   });
 
   it("uses the approved initial standard speed for a stable midpoint sample", () => {

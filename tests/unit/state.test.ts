@@ -23,7 +23,11 @@ describe("createInitialGameState", () => {
     expect(state).toEqual({
       player: createInitialPlayer(),
       asteroids: [],
-      asteroidSpawnState: { timer: ASTEROID_INITIAL_SPAWN_TIMER, nextId: 1 },
+      asteroidSpawnState: {
+        timer: ASTEROID_INITIAL_SPAWN_TIMER,
+        nextId: 1,
+        remainingBands: [],
+      },
       score: 0,
       survivalTime: 0,
       bonusFeedback: null,
@@ -37,6 +41,15 @@ describe("createInitialGameState", () => {
     first.asteroids.push(createAsteroid());
 
     expect(second.asteroids).toHaveLength(0);
+  });
+
+  it("returns independent asteroid spawn bags across calls", () => {
+    const first = createInitialGameState();
+    const second = createInitialGameState();
+
+    first.asteroidSpawnState.remainingBands.push(0);
+
+    expect(second.asteroidSpawnState.remainingBands).toHaveLength(0);
   });
 });
 

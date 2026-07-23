@@ -6,7 +6,6 @@ It is also a QA/SDET portfolio project focused on testable game rules, practical
 
 [Play Astro Drift](https://janmrow.github.io/astro-drift/)
 
-<!-- TODO: replace with a screenshot captured during active gameplay -->
 ![Astro Drift gameplay](docs/assets/astro-drift-gameplay.png)
 
 ## About
@@ -32,7 +31,7 @@ Avoid incoming asteroids and pass them safely to increase your score.
 - Standard and fiery asteroids create distinct hazards to dodge.
 - Safely passed asteroids add to the score, while survival time is tracked separately.
 - After a brief opening grace period, asteroids become faster and arrive more frequently.
-- Asteroid positions are randomized within shuffled vertical bands instead of independently across the full height on every spawn.
+- Asteroid positions are distributed more evenly across the play field to avoid repetitive patterns.
 - Clear HUD, pass, collision, and game-state feedback keep the loop easy to read.
 - The best score is saved locally in the browser.
 - Reduced-motion preferences quiet ambient star movement outside active play.

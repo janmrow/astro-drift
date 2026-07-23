@@ -4,15 +4,14 @@ This document exists for three reasons: it keeps the project honest with itself 
 
 These principles are defaults, not universal laws. A concrete project need may justify departing from one of them, but the trade-off should be explicit in the change, issue, or ADR rather than introduced by accident.
 
-None of this is currently enforced by tooling. It is a reference, not a gate. See the note on enforcement at the end.
+None of this is currently enforced by tooling. It is a reference, not a gate.
 
 ## 1. Functional core, imperative shell
 
-The idea, in short: split the codebase into two zones with fundamentally different natures. One zone contains pure functions — they take data in, return data out, and never touch the outside world. The other zone is a thin shell around it, and only the shell is allowed to perform effects such as drawing, reading input, accessing storage, reading the system clock, or producing randomness that was not explicitly passed in.
-
-This fits a small arcade game unusually well, because the two things that actually change independently in this project *are* game rules and presentation. A visual redesign — new palette, new HUD layout, motion trails — should not require touching how asteroids move or collide. Conversely, a change to the movement model should not care what color anything is drawn in. The architecture mirrors the two kinds of change this project actually goes through.
-
-What it is worth in practice: game logic can be unit-tested without a browser, without mocks, and without a test harness pretending to be a DOM. Presentation-layer experiments — a new renderer or an audio layer — can be developed or replaced with limited impact on the correctness of the game rules underneath. The architectural decision is documented in [ADR-001](ADR-001-separate-engine-from-rendering.md). The credit for naming this pattern goes to Gary Bernhardt.
+Astro Drift has game rules that should change independently from browser and
+presentation effects. Keeping those concerns separate makes game behavior
+directly testable. The detailed architectural decision is documented in
+[ADR-001](ADR-001-separate-engine-from-rendering.md).
 
 **Default:** Put game rules and state transitions in `src/game/`. Pass external inputs such as elapsed time and randomness into the core explicitly.
 
@@ -25,19 +24,16 @@ modules; the reverse dependency is the one to prevent.
 
 ## 2. YAGNI
 
-You Aren't Gonna Need It: do not build an abstraction, a configuration option, or a generalized code path for a need that does not exist yet — even a need that feels inevitable. Build it when the need is concrete, not when it is merely plausible.
-
-This project's specific risk is that its codebase has, at points, grown more complicated without a proportional amount of new functionality showing up. That is the textbook symptom of YAGNI being violated — usually with good intentions (a human or an LLM anticipating a future need) but at a real cost: more code to read and more paths to reason about, for a future that may arrive differently than predicted, or not at all. Concrete, decided-upon future work (a new movement model, audio) earns its complexity when it is actually being built — not before.
-
-The payoff is a codebase that stays legible relative to what it currently does, which matters especially here because this project is a sandbox for trying things — new tools, new workflows, new design decisions. Speculative flexibility does not just cost reading time; it actively works against the project's own reason for existing.
+Astro Drift is intentionally a small game. Speculative flexibility adds code and
+reading cost before a concrete requirement exists. Introduce abstractions when an
+actual variation, repeated pattern, or architectural boundary makes their value
+visible.
 
 **Default:** Implement the current requirement directly and locally. Introduce an abstraction when a real variation, repeated pattern, or architectural boundary makes its benefit concrete.
 
 **Avoid:** Options with no current caller, interfaces with one hypothetical implementation, and generalized paths added only because a future feature seems likely.
 
 **Exception:** Small seams that preserve the functional-core boundary or make nondeterministic behavior explicit may be justified even before multiple implementations exist.
-
-Canonical reference: Extreme Programming, usually credited to Kent Beck and Ron Jeffries.
 
 ## 3. Boring code over clever code
 
@@ -53,29 +49,21 @@ This is not a ban on advanced language features. A more sophisticated construct 
 
 **Exception:** Use the more advanced option when its safety or maintainability benefit is visible and outweighs its reading cost.
 
-The name is a nod to Brian Kernighan's observation that code should be optimized for reading, not writing. Restated for this project: boring code is the default whenever the clever alternative does not provide a clear benefit.
-
 ## 4. Test invariants, not only examples
 
 Do not ask only "what example inputs should I test?" Also ask "what must remain true across a wide range of valid inputs?" For example, a player's position should never leave the screen bounds, and while the game remains in the `running` state, its score should not decrease between consecutive updates.
 
 Property-based tests generate varied inputs and check that these invariants hold, rather than relying only on a curated handful of examples. They complement example-based tests: examples are often better at documenting specific cases, while properties are better at exploring a broad input space and exposing edge cases a human may not write by hand.
 
-This follows naturally from having a functional core. Value-returning game rules
-do not need a browser or DOM harness to test; they need inputs. Randomized rules
-accept an RNG function, and the retained `createSeededRng` utility can provide
-repeatable unit-test sequences. Browser gameplay supplies randomness at the shell
-and does not expose a seed query contract. Separately, `fast-check` provides its
-own seed and replay information for reproducing a failing generated case. These
-mechanisms serve the same goal: failures should be diagnosable and repeatable.
+The functional core accepts important external inputs explicitly, making broad
+and reproducible rule testing practical. [Test Strategy](TEST_STRATEGY.md) owns
+the current test-layer boundaries and RNG and reproducibility details.
 
 **Default:** Use focused example-based tests for concrete behavior and property-based tests for stable domain invariants.
 
 **Avoid:** Properties that are too broad to be true across state transitions, or that merely restate the implementation instead of a domain rule.
 
 **Exception:** Do not force property-based testing onto behavior that is better explained by a few clear examples or verified at another test layer.
-
-The lineage here is QuickCheck, originally from Haskell; `fast-check` is the JavaScript/TypeScript implementation this project uses. The broader test-layer decisions are documented in [TEST_STRATEGY.md](TEST_STRATEGY.md).
 
 ## 5. Composition over inheritance
 
@@ -90,20 +78,3 @@ This does not make classes, interfaces, or named design patterns forbidden. A sm
 **Avoid:** Inheritance hierarchies, factories, strategies, or observers introduced for hypothetical variants at the project's current scale.
 
 **Exception:** Use a class, interface, or established pattern when it makes an existing boundary or behavior substantially clearer than the simpler alternatives.
-
-Peter Norvig's well-known observation is relevant here: in languages with first-class functions, many classic design patterns become either unnecessary or straightforward to express without a large supporting structure.
-
-## On enforcement
-
-Nothing above is self-enforcing. Writing it down does not stop a future change — human- or agent-written — from drifting away from it. Mechanical checks should protect narrow, high-value boundaries rather than attempt to encode every stylistic preference in this document.
-
-If enforcement is wanted later, the most promising candidate is an import-boundary check (a lint rule or a small architecture test) that protects this dependency direction:
-
-```text
-main / rendering / input / storage -> game
-game -X-> main / rendering / input / storage
-```
-
-A related check could prevent modules under `src/game/` from directly using browser APIs, the system clock, or unseeded randomness. These checks would directly guard principle 1, whose violation is both consequential and easy to miss in review.
-
-This is worth considering as a future, separate, deliberate decision — not something to bolt on merely because the principle has been written down.

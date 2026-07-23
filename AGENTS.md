@@ -66,7 +66,15 @@ While the game is running, `advanceRunningGame` from `src/game/state.ts` returns
 the next game state and collision information. Prefer value-returning functions
 for new gameplay behavior and keep effects at the established boundaries.
 
-Stable DOM hooks used by Playwright:
+Stable `data-testid` DOM hooks relied on by Playwright:
+
+**Game shell and regions**
+
+- `[data-testid="game-canvas"]`
+- `[data-testid="game-status-panel"]`
+- `[data-testid="game-stats-panel"]`
+
+**State values**
 
 - `[data-testid="game-status"]`
 - `[data-testid="game-score"]`

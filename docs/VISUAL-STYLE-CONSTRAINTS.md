@@ -59,9 +59,9 @@ silently reversed by a style change:
 - **No Canvas presentation automation.** Visual correctness is not asserted through
   pixel comparisons, screenshot assertions, or Canvas draw-call mocks. Stable DOM
   hooks remain the browser-test contract; Canvas appearance and feel remain manual.
-- **Property-based tests stay focused on game rules**, not rendering. A richer visual
-  layer does not imply testing draw calls; it implies, at most, unit-testing any new
-  *pure* helper functions the rendering layer happens to introduce.
+- **Property-based tests stay focused on game rules**, not rendering. A new *pure*
+  rendering helper may receive a focused unit test when it contains meaningful
+  logic; do not test Canvas draw calls.
 - **Logical Canvas sizing remains stable.** The Canvas uses `960 × 540` logical
   coordinates, displays at no more than 960 CSS pixels wide, and downscales
   proportionally. HiDPI backing-store and `devicePixelRatio` handling remain
@@ -79,7 +79,8 @@ silently reversed by a style change:
   retain circular shapes, separate size/speed roles, horizontal parallax, and the
   existing creation-and-wrap lifecycle.
 - Reduced motion suppresses ambient star movement in idle and game-over states;
-  running gameplay motion remains active.
+  running gameplay motion remains active. New motion should use this existing
+  reduced-motion path rather than introduce a parallel preference check.
 
 ### Player and hazards
 
@@ -106,20 +107,19 @@ silently reversed by a style change:
 
 ## Rendering cost model
 
-Canvas 2D is immediate-mode: every frame repaints from scratch, and cost is driven
-by what you ask it to compute, not by scene complexity in the abstract. Use this as
-a budget when evaluating any style proposal:
+Canvas cost depends on how often work runs, how many objects it affects, and the
+browser and hardware running the game. Avoid adding expensive work per object per
+frame without a concrete need. Keep full-frame effects and pixel-readback
+techniques outside normal visual tuning unless they are explicitly justified.
 
-| Cost tier | Operations | Notes |
-|---|---|---|
-| Cheap (use freely) | flat `fill`/`stroke`, alpha blending, `translate`/`rotate`/`scale`, bounded path geometry | This is the safe default for most drawing |
-| Moderate (cache or bound it) | gradients, `roundRect`, text rendering | Fine in small numbers or when created once and reused; expensive if rebuilt every frame per object |
-| Expensive (use sparingly, budget explicitly) | `shadowBlur`/glow, `ctx.filter` (blur, etc.) | Cost scales with object count and blur radius; a handful of instances is fine, applying it per-asteroid at scale is not |
-| Avoid at current scale | full-frame software filters, per-frame `getImageData`/pixel manipulation | Disproportionate cost for a 2D arcade game of this scope |
+Reuse or cache stable resources when profiling or clear repeated construction
+shows that it is useful. Measure meaningful rendering changes in the actual game
+rather than treating generic operation labels as benchmarks.
 
 Gradients in `src/rendering/canvasRenderer.ts` (`backgroundGradient` and
 `vignetteGradient`) are cached as module-level variables built once behind `if (!x)`
-guards, not recreated per frame. Keep new gradient work to that same pattern.
+guards, not recreated per frame. New stable gradients should follow the same
+pattern when appropriate.
 
 ## Change control
 
@@ -157,28 +157,6 @@ not a side effect of a palette change:
 - Any technique that would require reading pixels back (`getImageData`) or
   persisting off-screen canvases should be treated as a bigger architectural
   conversation, not a style choice.
-
-## Testability implications of a richer rendering layer
-
-- Canvas style tokens (palette and typography scale) should stay as plain data in
-  `src/rendering/theme.ts`, not computed inline — this doesn't make them unit-tested
-  by itself, but it keeps them easy to reason about and swap without touching
-  drawing logic. DOM tokens stay in `src/style.css`.
-- `prefers-reduced-motion` is already read via `window.matchMedia` in `src/main.ts`
-  and gates star motion through `ambientMotionSuppressed`. Any new motion-based
-  style work should route through the same flag rather than adding a parallel
-  check.
-- `src/main.ts` reads the computed sans and monospace stacks from the styled Canvas
-  and passes them to rendering; `src/style.css` remains their ownership boundary.
-- Renderer-owned asteroid surface selection stays deterministic and local, while
-  its Canvas clipping and appearance remain part of manual visual verification.
-
-## Deferred work
-
-- HiDPI backing-store support remains a separate focused follow-up. Do not introduce
-  it as incidental visual work.
-- Motion trails remain unapproved and require the full rendering-assumption audit
-  described above before another experiment.
 
 ## References
 

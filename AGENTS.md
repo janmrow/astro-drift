@@ -46,7 +46,8 @@ The core rule is: **game logic never touches Canvas**.
 `src/game/` owns game rules and state transitions. Its update functions return
 next values without mutating caller-owned inputs. Browser, Canvas, input,
 storage, time, and randomness effects stay at explicit shell boundaries:
-`src/main.ts`, `src/rendering/`, `src/input/`, and `src/storage/`.
+`src/main.ts`, `src/rendering/`, `src/audio/`, `src/input/`, and
+`src/storage/`.
 
 See [ADR-001](docs/ADR-001-separate-engine-from-rendering.md) for the durable
 responsibility boundary and [Engineering Principles](docs/PRINCIPLES.md) for the
@@ -81,18 +82,25 @@ Stable `data-testid` DOM hooks relied on by Playwright:
 - `[data-testid="game-time"]`
 - `[data-testid="asteroid-count"]`
 
+**Presentation state**
+
+- `[data-testid="radio-status"]`
+
 ## Engineering Guardrails
 
 - Keep the game lightweight, playable, and performant.
 - Improve the existing arcade loop, small visual polish, architecture, tests, CI, and documentation.
 - Do not grow the project into a large game unless explicitly requested.
 - Do not add React, a backend, accounts, a database, multiplayer, complex levels, shooting mechanics, power-ups, large redesigns, or broad rewrites unless explicitly requested.
-- Keep the existing stack: TypeScript, Vite, Canvas, Vitest, Playwright, ESLint, and GitHub Actions.
+- Keep the existing stack: TypeScript, Vite, Canvas, Tone.js, Vitest, Playwright, ESLint, and GitHub Actions.
 - Do not switch package managers or add dependencies unless the task requires it or the trade-off is clearly justified.
 - Keep game rules in `src/game/`, Canvas rendering and tokens in
-  `src/rendering/`, DOM styling in `src/style.css`, keyboard input in
-  `src/input/keyboard.ts`, and browser persistence in
-  `src/storage/bestScoreStorage.ts`.
+  `src/rendering/`, procedural music and Tone.js lifecycle in `src/audio/`, DOM
+  styling in `src/style.css`, keyboard input in `src/input/keyboard.ts`, and
+  browser persistence in `src/storage/bestScoreStorage.ts`.
+- `src/game/` must not depend on Tone.js, audio controllers, or browser-audio
+  state. `src/main.ts` translates broad application transitions into audio
+  controller operations.
 - Keep `src/main.ts` mostly as glue.
 - Prefer value-returning functions for new gameplay behavior.
 - Write clear, engineering-oriented TypeScript with explicit names, small functions, straightforward control flow, and readable conditionals.

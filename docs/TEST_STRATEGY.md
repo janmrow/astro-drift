@@ -20,6 +20,8 @@ The most important risks are:
 - collision detection feels too strict or too loose;
 - difficulty ramps too quickly or too slowly;
 - restart does not reset the game cleanly;
+- background music starts without a gesture, duplicates across restarts, or
+  interferes with gameplay when audio is unavailable;
 - E2E tests can become flaky if they depend on Canvas pixels.
 
 ## Test levels
@@ -35,10 +37,17 @@ Representative coverage areas include:
 - movement, scoring, difficulty, collision, and frame rules;
 - asteroid spawning, movement, variants, and cleanup;
 - state creation, reset, and running-state advancement;
-- formatting and deterministic randomness utilities; and
-- keyboard input and local storage boundaries.
+- formatting and deterministic randomness utilities;
+- deterministic Late Library composition invariants;
+- keyboard input boundaries; and
+- local storage boundaries.
 
 These tests should stay fast and independent from the browser.
+
+Composition tests cover stable data contracts such as tempo, swing, loop
+boundary, event positions and counts, valid velocities and gains, determinism,
+and the final bass turnaround. They do not assert whether music sounds good or
+recreate the Tone.js node graph in mocks.
 
 ### Property-based tests
 
@@ -58,7 +67,9 @@ E2E tests cover durable browser-level responsibilities:
 - the initial game shell and accessible DOM contract;
 - starting and restarting through supported player actions;
 - visible state-transition boundaries from `idle` through `running` to `gameOver`;
-- running-state progression observed through stable DOM hooks; and
+- running-state progression observed through stable DOM hooks;
+- Enter-only game actions, R radio toggling, and the session-local radio-status
+  contract; and
 - responsive visibility and persistence behavior that genuinely requires a browser.
 
 Playwright observes page behavior through stable DOM hooks and does not assert
@@ -75,13 +86,25 @@ insufficient:
 - visual composition and readability;
 - responsive presentation;
 - motion and reduced-motion experience;
-- perceived performance; and
-- gameplay feel.
+- perceived performance;
+- gameplay feel;
+- silence before the first start gesture;
+- game-over ducking without a position reset and running-level restoration;
+- complete silence while idle or the radio is disabled;
+- radio toggling, continuity across restarts, visibility, and failure behavior;
+- Canvas speaker-icon readability and placement across gameplay and overlays;
+- seamless looping, clipping, clicks, balance, and listening fatigue; and
+- perceptual comparison on headphones and laptop speakers.
 
 Canvas pixel and screenshot assertions are deliberately excluded because small
 presentation changes would make them brittle without improving confidence in the
 underlying rules. Detailed rendering assumptions and visual invariants are owned by
 [Visual Style Constraints](VISUAL-STYLE-CONSTRAINTS.md).
+
+Audio waveform, DSP-output, Web Audio timing, Tone Transport position, and
+audibility assertions are also excluded. Browser tests observe the radio-status
+hook and gameplay status; the Canvas icon is not pixel-tested, and perceptual
+audio quality remains a manual responsibility.
 
 ## What is automated now
 

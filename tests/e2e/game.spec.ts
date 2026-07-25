@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { MAX_FRAME_DELTA_SECONDS } from "../../src/game/engine";
 
 const CONTROLS_DESCRIPTION =
-  "Enter starts or restarts. Arrow Up/Down or W/S steer. Arrow Left or A brakes gameplay speed. Arrow Right or D boosts gameplay speed.";
+  "Enter starts or restarts. R toggles the radio. Arrow Up/Down or W/S steer. Arrow Left or A brakes gameplay speed. Arrow Right or D boosts gameplay speed.";
 
 async function holdKeyForGameplayTime(
   page: Page,
@@ -62,6 +62,7 @@ test("loads the initial game contract", async ({ page }) => {
   await expect(page.getByTestId("game-score")).toHaveText("00000");
   await expect(page.getByTestId("game-time")).toHaveText("0:00");
   await expect(page.getByTestId("asteroid-count")).toHaveText("0");
+  await expect(page.getByTestId("radio-status")).toHaveText("Radio on");
   await expect(page).toHaveTitle("Astro Drift");
   await expect(page.getByRole("heading", { level: 1, name: "Astro Drift" })).toHaveClass(
     "visually-hidden",
@@ -81,6 +82,7 @@ test("shows responsive gameplay guidance at narrow widths", async ({ page }) => 
 
   await expect(controls).toBeVisible();
   await expect(controls).toContainText("Enter starts or restarts.");
+  await expect(controls).toContainText("R toggles the radio.");
   await expect(controls).toContainText("Arrow Up/Down or W/S steer.");
   await expect(controls).toContainText("Arrow Left or A brakes gameplay speed.");
   await expect(controls).toContainText("Arrow Right or D boosts gameplay speed.");
@@ -93,7 +95,7 @@ test("shows responsive gameplay guidance at narrow widths", async ({ page }) => 
   await expect(statsPanel).not.toHaveAttribute("aria-live");
 });
 
-test("starts the game with the Enter key", async ({ page }) => {
+test("starts the game with Enter", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByTestId("game-status")).toHaveText("idle");
@@ -103,13 +105,12 @@ test("starts the game with the Enter key", async ({ page }) => {
   await expect(page.getByTestId("game-status")).toHaveText("running");
 });
 
-test("does not start the game with Space or R", async ({ page }) => {
+test("does not start the game with Space", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByTestId("game-status")).toHaveText("idle");
 
   await page.keyboard.press("Space");
-  await page.keyboard.press("r");
 
   await expect(page.getByTestId("game-status")).toHaveText("idle");
 });
@@ -132,15 +133,50 @@ test("restarts a game over round with Enter", async ({ page }) => {
   }
 
   await expect(page.getByTestId("game-score")).toHaveText("00000");
-  const completedRoundTime = parseFormattedTime(await page.getByTestId("game-time").textContent());
+  const completedRoundTime = parseFormattedTime(
+    await page.getByTestId("game-time").textContent(),
+  );
 
   await page.keyboard.press("Enter");
 
   await expect(page.getByTestId("game-status")).toHaveText("running");
   await expect(page.getByTestId("game-score")).toHaveText("00000");
-  const restartedRoundTime = parseFormattedTime(await page.getByTestId("game-time").textContent());
+  const restartedRoundTime = parseFormattedTime(
+    await page.getByTestId("game-time").textContent(),
+  );
 
   expect(restartedRoundTime).toBeLessThan(completedRoundTime);
+});
+
+test("toggles the radio status with R", async ({ page }) => {
+  await page.goto("/");
+
+  const radioStatus = page.getByTestId("radio-status");
+
+  await expect(radioStatus).toHaveText("Radio on");
+
+  for (const expectedStatus of ["Radio off", "Radio on", "Radio off"]) {
+    await page.keyboard.press("R");
+    await expect(radioStatus).toHaveText(expectedStatus);
+    await expect(page.getByTestId("game-status")).toHaveText("idle");
+  }
+
+  await expect(radioStatus).not.toHaveAttribute("aria-live");
+});
+
+test("keeps gameplay running while the radio is disabled and enabled", async ({ page }) => {
+  await page.goto("/");
+
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("game-status")).toHaveText("running");
+
+  const radioStatus = page.getByTestId("radio-status");
+  await page.keyboard.press("R");
+  await expect(radioStatus).toHaveText("Radio off");
+
+  await page.keyboard.press("R");
+  await expect(radioStatus).toHaveText("Radio on");
+  await expect(page.getByTestId("game-status")).toHaveText("running");
 });
 
 test("keeps score pass-based while survival time advances", async ({ page }) => {

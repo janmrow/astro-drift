@@ -33,6 +33,7 @@ export type RenderFrameInput = {
   bestScore: number;
   bonusFeedback: BonusFeedback;
   fontFamilies: FontFamilies;
+  radioEnabled: boolean;
 };
 
 const STAR_WRAP_PADDING = 4;
@@ -83,6 +84,22 @@ const HUD_PANEL = {
 };
 
 const IDLE_LOWER_STACK_SHIFT_Y = 48;
+
+const RADIO_INDICATOR = {
+  speakerX: GAME_WIDTH - 43,
+  centerY: GAME_HEIGHT - 28,
+  hintX: GAME_WIDTH - 52,
+};
+
+const RADIO_ICON = {
+  bodyWidth: 5,
+  bodyHalfHeight: 4,
+  coneWidth: 8,
+  coneHalfHeight: 9,
+  muteGap: 4,
+  muteSize: 8,
+  muteStrokeWidth: 1.75,
+};
 
 const PLAYER_SHIP = {
   impulseLength: 10,
@@ -145,6 +162,7 @@ export function renderFrame({
   bestScore: currentBestScore,
   bonusFeedback,
   fontFamilies,
+  radioEnabled,
 }: RenderFrameInput): void {
   drawBackground(ctx);
   drawStars(ctx, starField);
@@ -182,6 +200,8 @@ export function renderFrame({
     default:
       assertNever(currentStatus);
   }
+
+  drawRadioIndicator(ctx, radioEnabled, fontFamilies.monospace);
 }
 
 // Static geometry and colors, so this is built once on first use and reused
@@ -589,6 +609,51 @@ function drawGameOverOverlay(
   ctx.fillStyle = PALETTE.accentAmber;
   ctx.font = fontStyle("stateAction", fontFamilies.sans, 650);
   ctx.fillText("Press Enter to restart", 170, 414);
+
+  ctx.restore();
+}
+
+function drawRadioIndicator(
+  ctx: CanvasRenderingContext2D,
+  radioEnabled: boolean,
+  fontFamily: string,
+): void {
+  const { speakerX, centerY, hintX } = RADIO_INDICATOR;
+  const speakerNeckX = speakerX + RADIO_ICON.bodyWidth;
+  const speakerRightX = speakerNeckX + RADIO_ICON.coneWidth;
+
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.textAlign = "right";
+
+  ctx.fillStyle = PALETTE.textMuted;
+  ctx.font = fontStyle("controlHint", fontFamily, 600);
+  ctx.fillText("R", hintX, centerY + 5);
+
+  ctx.beginPath();
+  ctx.moveTo(speakerX, centerY - RADIO_ICON.bodyHalfHeight);
+  ctx.lineTo(speakerNeckX, centerY - RADIO_ICON.bodyHalfHeight);
+  ctx.lineTo(speakerRightX, centerY - RADIO_ICON.coneHalfHeight);
+  ctx.lineTo(speakerRightX, centerY + RADIO_ICON.coneHalfHeight);
+  ctx.lineTo(speakerNeckX, centerY + RADIO_ICON.bodyHalfHeight);
+  ctx.lineTo(speakerX, centerY + RADIO_ICON.bodyHalfHeight);
+  ctx.closePath();
+  ctx.fill();
+
+  if (!radioEnabled) {
+    const muteLeftX = speakerRightX + RADIO_ICON.muteGap;
+    const muteRightX = muteLeftX + RADIO_ICON.muteSize;
+    const muteHalfHeight = RADIO_ICON.muteSize / 2;
+
+    ctx.strokeStyle = PALETTE.accentAmber;
+    ctx.lineWidth = RADIO_ICON.muteStrokeWidth;
+    ctx.beginPath();
+    ctx.moveTo(muteLeftX, centerY - muteHalfHeight);
+    ctx.lineTo(muteRightX, centerY + muteHalfHeight);
+    ctx.moveTo(muteRightX, centerY - muteHalfHeight);
+    ctx.lineTo(muteLeftX, centerY + muteHalfHeight);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }

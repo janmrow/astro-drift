@@ -3,15 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createInputState } from "../../src/game/engine";
 import { setupKeyboardControls } from "../../src/input/keyboard";
 
-function createKeyboardEvent(type: "keydown" | "keyup", key: string): KeyboardEvent {
+function createKeyboardEvent(
+  type: "keydown" | "keyup",
+  key: string,
+  repeat = false,
+): KeyboardEvent {
   const event = new Event(type, { cancelable: true });
   Object.defineProperty(event, "key", { value: key });
+  Object.defineProperty(event, "repeat", { value: repeat });
   return event as KeyboardEvent;
 }
 
 describe("keyboard controls", () => {
   let input: ReturnType<typeof createInputState>;
   let onGameActionRequested: ReturnType<typeof vi.fn<() => void>>;
+  let onRadioToggleRequested: ReturnType<typeof vi.fn<() => void>>;
   let resetKeyboardControls: () => void;
 
   beforeEach(() => {
@@ -19,7 +25,11 @@ describe("keyboard controls", () => {
 
     input = createInputState();
     onGameActionRequested = vi.fn();
-    resetKeyboardControls = setupKeyboardControls(input, onGameActionRequested);
+    onRadioToggleRequested = vi.fn();
+    resetKeyboardControls = setupKeyboardControls(input, {
+      onGameAction: onGameActionRequested,
+      onRadioToggle: onRadioToggleRequested,
+    });
   });
 
   afterEach(() => {
@@ -112,26 +122,64 @@ describe("keyboard controls", () => {
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(false);
     expect(input).toEqual(createInputState());
+    expect(onGameActionRequested).not.toHaveBeenCalled();
+    expect(onRadioToggleRequested).not.toHaveBeenCalled();
   });
 
-  it("prevents default and requests a game action for Enter", () => {
+  it("uses Enter only for the game action", () => {
     const event = createKeyboardEvent("keydown", "Enter");
 
     window.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);
     expect(onGameActionRequested).toHaveBeenCalledOnce();
+    expect(onRadioToggleRequested).not.toHaveBeenCalled();
   });
 
-  it("does not request a game action or prevent default for Space or R", () => {
-    for (const key of [" ", "r", "R"]) {
-      const event = createKeyboardEvent("keydown", key);
-      window.dispatchEvent(event);
+  it("leaves Space unrelated to game and radio actions", () => {
+    const event = createKeyboardEvent("keydown", " ");
 
-      expect(event.defaultPrevented).toBe(false);
-    }
+    window.dispatchEvent(event);
 
+    expect(event.defaultPrevented).toBe(false);
     expect(onGameActionRequested).not.toHaveBeenCalled();
+    expect(onRadioToggleRequested).not.toHaveBeenCalled();
+  });
+
+  it("uses R only for the radio toggle", () => {
+    const event = createKeyboardEvent("keydown", "R");
+
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(onGameActionRequested).not.toHaveBeenCalled();
+    expect(onRadioToggleRequested).toHaveBeenCalledOnce();
+  });
+
+  it("does not repeat a held Enter game action", () => {
+    window.dispatchEvent(createKeyboardEvent("keydown", "Enter"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "Enter", true));
+    window.dispatchEvent(createKeyboardEvent("keydown", "Enter"));
+
+    expect(onGameActionRequested).toHaveBeenCalledOnce();
+
+    window.dispatchEvent(createKeyboardEvent("keyup", "Enter"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "Enter"));
+
+    expect(onGameActionRequested).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not repeat a held R radio toggle", () => {
+    window.dispatchEvent(createKeyboardEvent("keydown", "r"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "r", true));
+    window.dispatchEvent(createKeyboardEvent("keydown", "R"));
+
+    expect(onRadioToggleRequested).toHaveBeenCalledOnce();
+
+    window.dispatchEvent(createKeyboardEvent("keyup", "r"));
+    window.dispatchEvent(createKeyboardEvent("keydown", "R"));
+
+    expect(onRadioToggleRequested).toHaveBeenCalledTimes(2);
   });
 
   it("resets gameplay input on window blur", () => {

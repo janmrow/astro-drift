@@ -1,8 +1,12 @@
 import { createInputState } from "../game/engine";
 import type { InputState } from "../game/types";
 
-type GameActionHandler = () => void;
 type KeyboardResetHandler = () => void;
+
+type KeyboardActionHandlers = {
+  onGameAction: () => void;
+  onRadioToggle: () => void;
+};
 
 const GAMEPLAY_KEYS: ReadonlySet<string> = new Set([
   "arrowup",
@@ -17,21 +21,35 @@ const GAMEPLAY_KEYS: ReadonlySet<string> = new Set([
 
 export function setupKeyboardControls(
   currentInput: InputState,
-  onGameActionRequested: GameActionHandler,
+  { onGameAction, onRadioToggle }: KeyboardActionHandlers,
 ): KeyboardResetHandler {
   const pressedKeys = new Set<string>();
+  const pressedActionKeys = new Set<string>();
 
   const resetKeyboardControls = (): void => {
     pressedKeys.clear();
+    pressedActionKeys.clear();
     Object.assign(currentInput, createInputState());
   };
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
 
-    if (isActionKey(key)) {
+    if (isGameActionKey(key) || isRadioToggleKey(key)) {
       event.preventDefault();
-      onGameActionRequested();
+
+      if (event.repeat || pressedActionKeys.has(key)) {
+        return;
+      }
+
+      pressedActionKeys.add(key);
+
+      if (isGameActionKey(key)) {
+        onGameAction();
+      } else {
+        onRadioToggle();
+      }
+
       return;
     }
 
@@ -46,6 +64,12 @@ export function setupKeyboardControls(
 
   window.addEventListener("keyup", (event) => {
     const key = event.key.toLowerCase();
+
+    if (isGameActionKey(key) || isRadioToggleKey(key)) {
+      event.preventDefault();
+      pressedActionKeys.delete(key);
+      return;
+    }
 
     if (!isGameplayKey(key)) {
       return;
@@ -75,6 +99,10 @@ function isGameplayKey(key: string): boolean {
   return GAMEPLAY_KEYS.has(key);
 }
 
-function isActionKey(key: string): boolean {
+function isGameActionKey(key: string): boolean {
   return key === "enter";
+}
+
+function isRadioToggleKey(key: string): boolean {
+  return key === "r";
 }

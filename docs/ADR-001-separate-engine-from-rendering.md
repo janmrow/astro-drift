@@ -51,7 +51,9 @@ loop, time, DOM wiring, and the runtime randomness passed into game rules;
 game-rule updates receive that RNG explicitly rather than selecting a global
 randomness source. Rendering owns separate visual randomness, currently used only
 for the star field in `src/rendering/canvasRenderer.ts`. `src/input/keyboard.ts`
-owns keyboard events, and `src/storage/bestScoreStorage.ts` owns browser persistence.
+owns keyboard events, `src/storage/bestScoreStorage.ts` owns browser
+persistence, and `src/audio/` owns the deterministic music definition and
+Tone.js/Web Audio lifecycle.
 
 ## Consequences
 
@@ -94,4 +96,29 @@ state resets to grow in `main.ts` without unit coverage. To close that gap:
   stay covered directly at unit/property level.
 
 This does not change the trade-off described above: rendering stays out of `src/game/`, and
-`main.ts` stays thin glue that wires input, state, rendering, and storage together.
+`main.ts` stays thin glue that wires input, state, rendering, audio, and storage together.
+
+## Addendum: audio is an imperative presentation boundary
+
+Procedural background music is another browser-facing presentation effect, not
+a game rule. `src/audio/lateLibrary.ts` owns the deterministic Late Library
+composition data. `src/audio/backgroundMusic.ts` owns Tone.js, lazy browser
+audio startup, synthesis and scheduling, state-level gain, visibility, and
+disposal.
+
+`src/main.ts` translates only broad application transitions—start/restart,
+game over, visibility, the session-local radio preference, and page
+teardown—into controller operations. After a user gesture starts the audio
+session, the outer state gain provides the running level, a ducked game-over
+level, and silence while idle, muted, or hidden. These transitions do not
+rebuild the track or schedule.
+
+The Canvas renderer receives the radio preference as presentation-only input
+for its speaker icon, while a non-interactive DOM status exposes the same state
+to accessibility tools and browser tests. Scoring, collision, movement, and
+difficulty do not know about music. In particular, `src/game/` does not depend
+on Tone.js or the audio controller.
+
+This boundary keeps the selected composition directly testable as data while
+leaving Web Audio effects in the imperative shell. It does not introduce a
+general soundtrack service, playlist, audio backend, or adaptive-music system.

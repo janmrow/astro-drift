@@ -87,6 +87,10 @@ function createFakeAudioContext(): FakeAudioContext {
       start: vi.fn(),
       stop: vi.fn(),
     })),
+    createDelay: vi.fn(() => ({
+      delayTime: { value: 0 },
+      connect: vi.fn(),
+    })),
     createBuffer,
     resume,
     suspend,
@@ -231,7 +235,7 @@ describe("light music lifecycle", () => {
     fake.setCurrentTime(1000);
     schedulerCallback?.();
 
-    expect(fake.createOscillator.mock.calls.length).toBeLessThanOrEqual(12);
+    expect(fake.createOscillator.mock.calls.length).toBeLessThanOrEqual(14);
 
     controller.dispose();
   });

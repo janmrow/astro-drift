@@ -116,9 +116,25 @@ rebuild the track or schedule.
 The Canvas renderer receives the radio preference as presentation-only input
 for its speaker icon, while a non-interactive DOM status exposes the same state
 to accessibility tools and browser tests. Scoring, collision, movement, and
-difficulty do not know about music. In particular, `src/game/` does not depend
-on Tone.js or the audio controller.
+ difficulty do not know about music. In particular, `src/game/` does not depend
+ on Web Audio or the audio controller.
 
-This boundary keeps the selected composition directly testable as data while
-leaving Web Audio effects in the imperative shell. It does not introduce a
-general soundtrack service, playlist, audio backend, or adaptive-music system.
+ This boundary keeps the selected composition directly testable as data while
+ leaving Web Audio effects in the imperative shell. It does not introduce a
+ general soundtrack service, playlist, audio backend, or adaptive-music system.
+
+ ## Addendum (prototype): lightweight Web Audio loop replaces Tone.js
+
+ On `feature/lightweight-lofi-prototype` the Tone.js graph
+ (`src/audio/backgroundMusic.ts`) and the Late Library data
+ (`src/audio/lateLibrary.ts`) are replaced by a smaller Web Audio shell with
+ the same boundary: `src/audio/simpleComposition.ts` owns the deterministic
+ 4-chord loop data, `src/audio/lightMusicController.ts` owns lazy
+ `AudioContext` startup, synthesis and scheduling, state-level gain,
+ visibility, and disposal.
+
+ `src/main.ts` keeps translating only broad application transitions into the
+ same controller operations, and `src/game/` still has no audio dependency.
+ The startup path is atomic (a failed graph build resets to pre-start so a
+ later gesture can retry) and the lookahead scheduler clamps catch-up after
+ long pauses instead of burst-scheduling missed bars.

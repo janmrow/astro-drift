@@ -1,6 +1,6 @@
 import "./style.css";
 
-import { createLightMusicController as createBackgroundMusicController } from "./audio/lightMusicController";
+import { createLightMusicController } from "./audio/lightMusicController";
 import { capFrameDelta, createInputState } from "./game/engine";
 import { formatScore, formatTime } from "./game/format";
 import {
@@ -38,7 +38,7 @@ const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 
 const stars = createStars(STAR_COUNT);
 const input = createInputState();
-const backgroundMusic = createBackgroundMusicController();
+const lightMusic = createLightMusicController();
 
 let gameStatus: GameStatus = "idle";
 let radioEnabled = true;
@@ -66,11 +66,11 @@ function handleVisibilityChange(): void {
 
 function handlePageHide(event: PageTransitionEvent): void {
   if (event.persisted) {
-    void backgroundMusic.setPageVisible(false).catch(reportAudioFailure);
+    void lightMusic.setPageVisible(false).catch(reportAudioFailure);
     return;
   }
 
-  backgroundMusic.dispose();
+  lightMusic.dispose();
 }
 
 function handlePageShow(event: PageTransitionEvent): void {
@@ -80,7 +80,7 @@ function handlePageShow(event: PageTransitionEvent): void {
 }
 
 function syncAudioVisibility(): void {
-  void backgroundMusic
+  void lightMusic
     .setPageVisible(document.visibilityState !== "hidden")
     .catch(reportAudioFailure);
 }
@@ -104,7 +104,7 @@ function runGameLoop(currentFrameTime: number): void {
 
     if (result.collided) {
       gameStatus = "gameOver";
-      backgroundMusic.setGameOverLevel();
+      lightMusic.setGameOverLevel();
       persistBestScore();
     }
   }
@@ -142,33 +142,33 @@ function handleGameAction(): void {
 
 function handleRadioToggle(): void {
   radioEnabled = !radioEnabled;
-  backgroundMusic.setRadioEnabled(radioEnabled);
+  lightMusic.setRadioEnabled(radioEnabled);
   radioStatusElement.textContent = radioEnabled ? "Radio on" : "Radio off";
 
   if (radioEnabled && gameStatus === "running") {
-    void backgroundMusic.startFromUserGesture().catch(reportAudioFailure);
+    void lightMusic.startFromUserGesture().catch(reportAudioFailure);
   }
 }
 
 function startMusicFromUserGestureIfEnabled(): void {
   if (radioEnabled) {
-    void backgroundMusic.startFromUserGesture().catch(reportAudioFailure);
+    void lightMusic.startFromUserGesture().catch(reportAudioFailure);
   }
 }
 
 function reportAudioFailure(error: unknown): void {
-  console.warn("Background music is unavailable; gameplay will continue silently.", error);
+  console.warn("Light music is unavailable; gameplay will continue silently.", error);
 }
 
 function startGame(): void {
   gameStatus = "running";
-  backgroundMusic.setRunningLevel();
+  lightMusic.setRunningLevel();
   previousFrameTime = performance.now();
 }
 
 function restartGame(): void {
   gameStatus = "running";
-  backgroundMusic.setRunningLevel();
+  lightMusic.setRunningLevel();
   gameState = createInitialGameState();
   resetKeyboardControls();
   previousFrameTime = performance.now();

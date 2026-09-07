@@ -28,9 +28,16 @@ const START_DELAY_SECONDS = 0.05;
 const RAMP_TIME_CONSTANT = 0.05;
 const GAME_OVER_DUCK_DB = -6;
 const MASTER_GAIN_VALUE = 0.9;
-const PAD_NOTE_GAIN = 0.06;
-const BASS_NOTE_GAIN = 0.14;
-const HAT_GAIN = 0.04;
+const RHODES_GAIN = 0.05;
+const RHODES_HARMONIC_GAIN = 0.012;
+const RHODES_DECAY_SECONDS = 1.4;
+const RHODES_LOW_PASS_HZ = 2200;
+const TREMOLO_HZ = 4.5;
+const TREMOLO_DEPTH = 0.18;
+const CRACKLE_GAIN = 0.006;
+const CRACKLE_BAND_HZ = 3200;
+const BASS_NOTE_GAIN = 0.08;
+const HAT_GAIN = 0.018;
 const HAT_HIGH_PASS_HZ = 6000;
 
 export function getLightMusicTargetGain(
@@ -71,6 +78,7 @@ export function createLightMusicController(deps: LightMusicDeps = {}): LightMusi
 
   let audioContext: AudioContext | null = null;
   let stateGain: GainNode | null = null;
+  let keysBus: GainNode | null = null;
   let noiseBuffer: AudioBuffer | null = null;
   let schedulerId: ReturnType<typeof setInterval> | null = null;
   let nextBarTime = 0;
@@ -109,27 +117,77 @@ export function createLightMusicController(deps: LightMusicDeps = {}): LightMusi
     for (let i = 0; i < channel.length; i += 1) {
       channel[i] = Math.random() * 2 - 1;
     }
+
+    keysBus = context.createGain();
+    keysBus.gain.value = 1;
+
+    const keysFilter = context.createBiquadFilter();
+    keysFilter.type = "lowpass";
+    keysFilter.frequency.value = RHODES_LOW_PASS_HZ;
+
+    keysBus.connect(keysFilter);
+    keysFilter.connect(stateGain);
+
+    const tremolo = context.createOscillator();
+    tremolo.type = "sine";
+    tremolo.frequency.value = TREMOLO_HZ;
+
+    const tremoloDepth = context.createGain();
+    tremoloDepth.gain.value = TREMOLO_DEPTH;
+
+    tremolo.connect(tremoloDepth);
+    tremoloDepth.connect(keysBus.gain);
+    tremolo.start();
+
+    const crackleSource = context.createBufferSource();
+    crackleSource.buffer = noiseBuffer;
+    crackleSource.loop = true;
+
+    const crackleFilter = context.createBiquadFilter();
+    crackleFilter.type = "bandpass";
+    crackleFilter.frequency.value = CRACKLE_BAND_HZ;
+
+    const crackleGain = context.createGain();
+    crackleGain.gain.value = CRACKLE_GAIN;
+
+    crackleSource.connect(crackleFilter);
+    crackleFilter.connect(crackleGain);
+    crackleGain.connect(stateGain);
+    crackleSource.start();
   }
 
-  function schedulePadNote(frequency: number, startTime: number, duration: number): void {
-    if (audioContext === null || stateGain === null) {
+  function scheduleRhodesNote(frequency: number, startTime: number): void {
+    if (audioContext === null || keysBus === null) {
       return;
     }
 
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = "triangle";
-    oscillator.frequency.value = frequency;
+    const fundamental = audioContext.createOscillator();
+    fundamental.type = "sine";
+    fundamental.frequency.value = frequency;
 
-    const noteGain = audioContext.createGain();
-    noteGain.gain.setValueAtTime(0, startTime);
-    noteGain.gain.linearRampToValueAtTime(PAD_NOTE_GAIN, startTime + 0.08);
-    noteGain.gain.setValueAtTime(PAD_NOTE_GAIN, startTime + Math.max(0.08, duration - 0.2));
-    noteGain.gain.linearRampToValueAtTime(0, startTime + duration);
+    const fundamentalGain = audioContext.createGain();
+    fundamentalGain.gain.setValueAtTime(0, startTime);
+    fundamentalGain.gain.linearRampToValueAtTime(RHODES_GAIN, startTime + 0.01);
+    fundamentalGain.gain.exponentialRampToValueAtTime(0.001, startTime + RHODES_DECAY_SECONDS);
 
-    oscillator.connect(noteGain);
-    noteGain.connect(stateGain);
-    oscillator.start(startTime);
-    oscillator.stop(startTime + duration + 0.02);
+    fundamental.connect(fundamentalGain);
+    fundamentalGain.connect(keysBus);
+    fundamental.start(startTime);
+    fundamental.stop(startTime + RHODES_DECAY_SECONDS + 0.02);
+
+    const harmonic = audioContext.createOscillator();
+    harmonic.type = "sine";
+    harmonic.frequency.value = frequency * 2;
+
+    const harmonicGain = audioContext.createGain();
+    harmonicGain.gain.setValueAtTime(0, startTime);
+    harmonicGain.gain.linearRampToValueAtTime(RHODES_HARMONIC_GAIN, startTime + 0.01);
+    harmonicGain.gain.exponentialRampToValueAtTime(0.001, startTime + RHODES_DECAY_SECONDS / 2);
+
+    harmonic.connect(harmonicGain);
+    harmonicGain.connect(keysBus);
+    harmonic.start(startTime);
+    harmonic.stop(startTime + RHODES_DECAY_SECONDS / 2 + 0.02);
   }
 
   function scheduleBassNote(frequency: number, startTime: number, duration: number): void {
@@ -184,15 +242,22 @@ export function createLightMusicController(deps: LightMusicDeps = {}): LightMusi
       return;
     }
 
-    for (const frequency of chord) {
-      schedulePadNote(frequency, startTime, barSeconds);
+    if (chord[0] === undefined || chord[1] === undefined || chord[2] === undefined) {
+      return;
     }
+
+    const beatSeconds = barSeconds / composition.beatsPerBar;
+    scheduleRhodesNote(chord[0], startTime);
+    scheduleRhodesNote(chord[1], startTime);
+    scheduleRhodesNote(chord[2], startTime);
+    scheduleRhodesNote(chord[2], startTime + 2.5 * beatSeconds);
+    scheduleRhodesNote(chord[1], startTime + 2.5 * beatSeconds);
 
     scheduleBassNote(bassRoot, startTime, barSeconds / 2);
     scheduleBassNote(bassRoot, startTime + barSeconds / 2, barSeconds / 2);
 
     const eighthSeconds = barSeconds / 8;
-    for (let eighth = 0; eighth < 8; eighth += 1) {
+    for (let eighth = 1; eighth < 8; eighth += 2) {
       scheduleHat(startTime + eighth * eighthSeconds);
     }
   }
@@ -255,6 +320,7 @@ export function createLightMusicController(deps: LightMusicDeps = {}): LightMusi
         }
 
         stateGain = null;
+        keysBus = null;
         noiseBuffer = null;
         audioContext = null;
         started = false;
@@ -316,6 +382,7 @@ export function createLightMusicController(deps: LightMusicDeps = {}): LightMusi
       void audioContext.close().catch(() => undefined);
       audioContext = null;
       stateGain = null;
+      keysBus = null;
       noiseBuffer = null;
     }
   }

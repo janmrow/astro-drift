@@ -6,15 +6,15 @@ export type SimpleComposition = {
   beatsPerBar: number;
 };
 
-export const SIMPLE_LOFI_BPM = 76;
+export const SIMPLE_LOFI_BPM = 92;
 export const SIMPLE_LOFI_BEATS_PER_BAR = 4;
 export const SIMPLE_LOFI_BARS_PER_LOOP = 4;
 
 const SIMPLE_LOFI_CHORDS: number[][] = [
-  [116.54, 146.83, 174.61, 220.0],
-  [98.0, 116.54, 146.83, 174.61],
-  [130.81, 155.56, 196.0, 233.08],
-  [87.31, 130.81, 174.61, 209.3],
+  [116.54, 174.61, 220.0],
+  [98.0, 146.83, 174.61],
+  [130.81, 196.0, 233.08],
+  [87.31, 174.61, 209.3],
 ];
 
 const SIMPLE_LOFI_BASS_ROOTS: number[] = [58.27, 49.0, 65.41, 43.65];

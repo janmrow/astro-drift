@@ -11,13 +11,17 @@ describe("simple lo-fi composition", () => {
   it("keeps the selected loop contract", () => {
     const composition = createSimpleComposition();
 
-    expect(composition.bpm).toBe(76);
+    expect(composition.bpm).toBe(92);
     expect(composition.beatsPerBar).toBe(4);
     expect(composition.barsPerLoop).toBe(4);
     expect(composition.chords).toHaveLength(4);
     expect(composition.bassRoots).toHaveLength(4);
     expect(composition.chords).toHaveLength(composition.barsPerLoop);
     expect(composition.bassRoots).toHaveLength(composition.barsPerLoop);
+
+    for (const chord of composition.chords) {
+      expect(chord).toHaveLength(3);
+    }
   });
 
   it("creates a fresh deterministic arrangement every time", () => {
@@ -45,8 +49,8 @@ describe("simple lo-fi composition", () => {
   it("keeps the loop duration consistent with the pinned tempo", () => {
     const composition = createSimpleComposition();
 
-    expect(getBarSeconds(composition.bpm, composition.beatsPerBar)).toBeCloseTo(3.1579, 4);
-    expect(getLoopSeconds(composition)).toBeCloseTo(12.6316, 4);
+    expect(getBarSeconds(composition.bpm, composition.beatsPerBar)).toBeCloseTo(2.6087, 4);
+    expect(getLoopSeconds(composition)).toBeCloseTo(10.4348, 4);
   });
 
   it("converts decibels to a valid gain", () => {

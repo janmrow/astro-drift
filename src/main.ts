@@ -1,6 +1,6 @@
 import "./style.css";
 
-import { createBackgroundMusicController } from "./audio/backgroundMusic";
+import { createLightMusicController as createBackgroundMusicController } from "./audio/lightMusicController";
 import { capFrameDelta, createInputState } from "./game/engine";
 import { formatScore, formatTime } from "./game/format";
 import {

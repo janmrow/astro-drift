@@ -1,12 +1,11 @@
 import {
   createSimpleComposition,
   dbToGain,
-  GAME_OVER_DUCK_DB,
   getBarSeconds,
   type SimpleComposition,
 } from "./simpleComposition";
 
-export type BackgroundMusicController = {
+export type LightMusicController = {
   startFromUserGesture: () => Promise<void>;
   setRunningLevel: () => void;
   setGameOverLevel: () => void;
@@ -27,6 +26,7 @@ const SCHEDULER_INTERVAL_MS = 100;
 const LOOKAHEAD_SECONDS = 0.2;
 const START_DELAY_SECONDS = 0.05;
 const RAMP_TIME_CONSTANT = 0.05;
+const GAME_OVER_DUCK_DB = -6;
 const MASTER_GAIN_VALUE = 0.9;
 const PAD_NOTE_GAIN = 0.06;
 const BASS_NOTE_GAIN = 0.14;
@@ -59,7 +59,7 @@ function readInitialPageVisible(): boolean {
   return true;
 }
 
-export function createLightMusicController(deps: LightMusicDeps = {}): BackgroundMusicController {
+export function createLightMusicController(deps: LightMusicDeps = {}): LightMusicController {
   const composition: SimpleComposition = createSimpleComposition();
   const barSeconds = getBarSeconds(composition.bpm, composition.beatsPerBar);
 
@@ -202,6 +202,10 @@ export function createLightMusicController(deps: LightMusicDeps = {}): Backgroun
       return;
     }
 
+    if (nextBarTime < audioContext.currentTime - barSeconds) {
+      nextBarTime = audioContext.currentTime + START_DELAY_SECONDS;
+    }
+
     while (nextBarTime < audioContext.currentTime + LOOKAHEAD_SECONDS) {
       scheduleBar(barIndex, nextBarTime);
       nextBarTime += barSeconds;
@@ -231,15 +235,32 @@ export function createLightMusicController(deps: LightMusicDeps = {}): Backgroun
 
     if (audioContext === null) {
       const createContext = deps.createAudioContext ?? ((): AudioContext => new AudioContext());
-      audioContext = createContext();
-      ensureGraph(audioContext);
-      nextBarTime = audioContext.currentTime + START_DELAY_SECONDS;
-      barIndex = 0;
+      const freshContext = createContext();
+      audioContext = freshContext;
 
-      const starter = deps.startScheduler ?? ((callback, ms): ReturnType<typeof setInterval> =>
-        setInterval(callback, ms));
-      schedulerId = starter(scheduleBars, SCHEDULER_INTERVAL_MS);
-      started = true;
+      try {
+        ensureGraph(freshContext);
+        nextBarTime = freshContext.currentTime + START_DELAY_SECONDS;
+        barIndex = 0;
+
+        const starter = deps.startScheduler ?? ((callback, ms): ReturnType<typeof setInterval> =>
+          setInterval(callback, ms));
+        schedulerId = starter(scheduleBars, SCHEDULER_INTERVAL_MS);
+        started = true;
+      } catch (error) {
+        if (schedulerId !== null) {
+          const stopper = deps.stopScheduler ?? clearInterval;
+          stopper(schedulerId);
+          schedulerId = null;
+        }
+
+        stateGain = null;
+        noiseBuffer = null;
+        audioContext = null;
+        started = false;
+        void freshContext.close().catch(() => undefined);
+        throw error;
+      }
     }
 
     await audioContext.resume();

@@ -19,6 +19,19 @@ type FakeGain = {
   connect: ReturnType<typeof vi.fn>;
 };
 
+type FakeAudioContext = {
+  fake: {
+    context: AudioContext;
+    createdGains: FakeGain[];
+    resume: ReturnType<typeof vi.fn>;
+    suspend: ReturnType<typeof vi.fn>;
+    close: ReturnType<typeof vi.fn>;
+    createOscillator: ReturnType<typeof vi.fn>;
+    createBuffer: ReturnType<typeof vi.fn>;
+    setCurrentTime: (time: number) => void;
+  };
+};
+
 function createFakeGain(): FakeGain {
   return {
     gain: {
@@ -34,14 +47,28 @@ function createFakeGain(): FakeGain {
   };
 }
 
-function createFakeAudioContext() {
+function createFakeAudioContext(): FakeAudioContext["fake"] {
   const createdGains: FakeGain[] = [];
   const resume = vi.fn(() => Promise.resolve());
   const suspend = vi.fn(() => Promise.resolve());
   const close = vi.fn(() => Promise.resolve());
+  let currentTime = 10;
+
+  const createOscillator = vi.fn(() => ({
+    type: "sine",
+    frequency: { value: 0 },
+    connect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+  }));
+  const createBuffer = vi.fn(() => ({
+    getChannelData: () => new Float32Array(44100),
+  }));
 
   const context = {
-    currentTime: 10,
+    get currentTime(): number {
+      return currentTime;
+    },
     sampleRate: 44100,
     destination: {},
     createGain: vi.fn(() => {
@@ -49,13 +76,7 @@ function createFakeAudioContext() {
       createdGains.push(gain);
       return gain;
     }),
-    createOscillator: vi.fn(() => ({
-      type: "sine",
-      frequency: { value: 0 },
-      connect: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn(),
-    })),
+    createOscillator,
     createBiquadFilter: vi.fn(() => ({
       type: "highpass",
       frequency: { value: 0 },
@@ -67,9 +88,7 @@ function createFakeAudioContext() {
       start: vi.fn(),
       stop: vi.fn(),
     })),
-    createBuffer: vi.fn(() => ({
-      getChannelData: () => new Float32Array(44100),
-    })),
+    createBuffer,
     resume,
     suspend,
     close,
@@ -81,8 +100,19 @@ function createFakeAudioContext() {
     resume,
     suspend,
     close,
-    createGainCalls: context.createGain,
+    createOscillator,
+    createBuffer,
+    setCurrentTime: (time: number): void => {
+      currentTime = time;
+    },
   };
+}
+
+function getLastTargetGain(fake: FakeAudioContext["fake"]): number | undefined {
+  const calls = fake.createdGains.flatMap(
+    (gain) => gain.gain.setTargetAtTime.mock.calls,
+  );
+  return calls.at(-1)?.[0] as number | undefined;
 }
 
 describe("light music target gain", () => {
@@ -96,10 +126,11 @@ describe("light music target gain", () => {
 
   it("uses full level running and ducked level on game over", () => {
     expect(getLightMusicTargetGain("running", true, true, true, false)).toBe(1);
-    expect(getLightMusicTargetGain("gameOver", true, true, true, false)).toBeCloseTo(
-      dbToGain(-6),
-      10,
-    );
+
+    const ducked = getLightMusicTargetGain("gameOver", true, true, true, false);
+    expect(ducked).toBeCloseTo(dbToGain(-6), 10);
+    expect(ducked).toBeGreaterThan(0);
+    expect(ducked).toBeLessThan(1);
   });
 });
 
@@ -133,11 +164,68 @@ describe("light music lifecycle", () => {
 
     expect(fake.resume).toHaveBeenCalledOnce();
     expect(schedulerCallbacks).toHaveLength(1);
+    expect(getLastTargetGain(fake)).toBe(1);
+  });
 
-    const stateGain = fake.createdGains[1];
-    expect(stateGain?.gain.setTargetAtTime).toHaveBeenCalled();
-    const lastCall = stateGain?.gain.setTargetAtTime.mock.calls.at(-1);
-    expect(lastCall?.[0]).toBe(1);
+  it("does not recreate the context or scheduler on a second gesture", async () => {
+    const fake = createFakeAudioContext();
+    const createAudioContext = vi.fn(() => fake.context);
+    const startScheduler = vi.fn(
+      (): ReturnType<typeof setInterval> => 1 as unknown as ReturnType<typeof setInterval>,
+    );
+    const controller = createLightMusicController({ createAudioContext, startScheduler });
+
+    controller.setRunningLevel();
+    await controller.startFromUserGesture();
+    await controller.startFromUserGesture();
+
+    expect(createAudioContext).toHaveBeenCalledOnce();
+    expect(startScheduler).toHaveBeenCalledOnce();
+    expect(fake.resume).toHaveBeenCalledTimes(2);
+
+    controller.dispose();
+  });
+
+  it("allows retry after a failed graph initialization", async () => {
+    const fake = createFakeAudioContext();
+    fake.createBuffer.mockImplementationOnce(() => {
+      throw new Error("buffer failed");
+    });
+    const createAudioContext = vi.fn(() => fake.context);
+    const controller = createLightMusicController({ createAudioContext });
+
+    controller.setRunningLevel();
+    await expect(controller.startFromUserGesture()).rejects.toThrow("buffer failed");
+    await expect(controller.startFromUserGesture()).resolves.toBeUndefined();
+
+    expect(createAudioContext).toHaveBeenCalledTimes(2);
+    expect(fake.resume).toHaveBeenCalledOnce();
+
+    controller.dispose();
+  });
+
+  it("clamps the scheduler instead of burst-scheduling after a long pause", async () => {
+    const fake = createFakeAudioContext();
+    let schedulerCallback: (() => void) | undefined;
+    const controller = createLightMusicController({
+      createAudioContext: () => fake.context,
+      startScheduler: (callback) => {
+        schedulerCallback = callback;
+        return 1 as unknown as ReturnType<typeof setInterval>;
+      },
+    });
+
+    controller.setRunningLevel();
+    await controller.startFromUserGesture();
+    expect(schedulerCallback).toBeDefined();
+
+    fake.createOscillator.mockClear();
+    fake.setCurrentTime(1000);
+    schedulerCallback?.();
+
+    expect(fake.createOscillator.mock.calls.length).toBeLessThanOrEqual(12);
+
+    controller.dispose();
   });
 
   it("ducks on game over without restarting the scheduler", async () => {
@@ -157,10 +245,7 @@ describe("light music lifecycle", () => {
     controller.setGameOverLevel();
 
     expect(schedulerStarts).toBe(1);
-
-    const stateGain = fake.createdGains[1];
-    const lastCall = stateGain?.gain.setTargetAtTime.mock.calls.at(-1);
-    expect(lastCall?.[0]).toBeCloseTo(dbToGain(-6), 10);
+    expect(getLastTargetGain(fake)).toBeCloseTo(dbToGain(-6), 10);
 
     controller.dispose();
   });

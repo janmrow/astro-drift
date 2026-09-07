@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   createSimpleComposition,
-  dbToGain,
   getBarSeconds,
   getLoopSeconds,
   SIMPLE_LOFI_BARS_PER_LOOP,
@@ -53,13 +52,5 @@ describe("simple lo-fi composition", () => {
       getBarSeconds(composition.bpm, composition.beatsPerBar) * composition.barsPerLoop,
       10,
     );
-  });
-
-  it("converts the game-over ducking level to a valid gain", () => {
-    const duckedGain = dbToGain(-6);
-
-    expect(Number.isFinite(duckedGain)).toBe(true);
-    expect(duckedGain).toBeGreaterThan(0);
-    expect(duckedGain).toBeLessThan(1);
   });
 });

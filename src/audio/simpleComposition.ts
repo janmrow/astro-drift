@@ -9,7 +9,6 @@ export type SimpleComposition = {
 export const SIMPLE_LOFI_BPM = 76;
 export const SIMPLE_LOFI_BEATS_PER_BAR = 4;
 export const SIMPLE_LOFI_BARS_PER_LOOP = 4;
-export const GAME_OVER_DUCK_DB = -6;
 
 const SIMPLE_LOFI_CHORDS: number[][] = [
   [116.54, 146.83, 174.61, 220.0],

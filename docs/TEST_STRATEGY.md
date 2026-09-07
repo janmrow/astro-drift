@@ -38,16 +38,16 @@ Representative coverage areas include:
 - asteroid spawning, movement, variants, and cleanup;
 - state creation, reset, and running-state advancement;
 - formatting and deterministic randomness utilities;
-- deterministic Late Library composition invariants;
+- deterministic simple lo-fi composition invariants;
 - keyboard input boundaries; and
 - local storage boundaries.
 
 These tests should stay fast and independent from the browser.
 
-Composition tests cover stable data contracts such as tempo, swing, loop
-boundary, event positions and counts, valid velocities and gains, determinism,
-and the final bass turnaround. They do not assert whether music sounds good or
-recreate the Tone.js node graph in mocks.
+Composition tests cover stable data contracts such as tempo, loop
+boundary, valid frequencies and gains, and determinism.
+They do not assert whether music sounds good or
+recreate the Web Audio node graph in mocks.
 
 ### Property-based tests
 
@@ -101,7 +101,7 @@ presentation changes would make them brittle without improving confidence in the
 underlying rules. Detailed rendering assumptions and visual invariants are owned by
 [Visual Style Constraints](VISUAL-STYLE-CONSTRAINTS.md).
 
-Audio waveform, DSP-output, Web Audio timing, Tone Transport position, and
+Audio waveform, DSP-output, Web Audio timing and scheduler position, and
 audibility assertions are also excluded. Browser tests observe the radio-status
 hook and gameplay status; the Canvas icon is not pixel-tested, and perceptual
 audio quality remains a manual responsibility.

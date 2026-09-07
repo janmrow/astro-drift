@@ -28,7 +28,7 @@ Astro Drift is intentionally small, frontend-only, and focused on one clear arca
 Avoid incoming asteroids and pass them safely to increase your score.
 
 The session-local radio is enabled by default and shown by a small Canvas
-speaker icon. The procedural Late Library loop starts only from an eligible
+speaker icon. The procedural simple lo-fi loop starts only from an eligible
 gameplay gesture and remains scheduled across rounds. It plays at the running
 level during gameplay, ducks during game over, and remains silent while idle.
 
@@ -45,7 +45,7 @@ level during gameplay, ducks during game over, and remains silent while idle.
 
 ## Tech Stack
 
-- **Game, audio, and build:** TypeScript, Canvas 2D, Tone.js, Vite
+- **Game, audio, and build:** TypeScript, Canvas 2D, Web Audio, Vite
 - **Testing:** Vitest, `fast-check`, Playwright
 - **Quality and automation:** ESLint, GitHub Actions, GitHub Pages
 
@@ -87,7 +87,7 @@ npx playwright install chromium
 
 ## Architecture
 
-Browser-independent game rules and state updates live separately from Canvas rendering, procedural audio, keyboard input, storage, time, and other browser effects. `src/main.ts` connects that core to the browser shell and animation loop. `src/audio/` owns the lazy Tone.js graph and page-lifetime music lifecycle; `src/game/` has no audio dependency.
+Browser-independent game rules and state updates live separately from Canvas rendering, procedural audio, keyboard input, storage, time, and other browser effects. `src/main.ts` connects that core to the browser shell and animation loop. `src/audio/` owns the lazy Web Audio graph and page-lifetime music lifecycle; `src/game/` has no audio dependency.
 
 This boundary keeps important gameplay behavior directly testable without Canvas pixel assertions. The decision and its trade-offs are recorded in [Architecture Decision: Separate Game Engine from Rendering](docs/ADR-001-separate-engine-from-rendering.md).
 
@@ -116,8 +116,8 @@ docs/            architecture, testing, engineering, and visual decisions
 
 Canvas pixels and audio waveforms are not automated contracts. Rules and
 composition data are tested below the presentation layer, while browser tests
-observe stable page behavior. Late Library is synthesized at runtime with
-Tone.js and ships without sample files or other audio assets. See the
+observe stable page behavior. The simple loop is synthesized at runtime with
+Web Audio and ships without sample files or other audio assets. See the
 [Test Strategy](docs/TEST_STRATEGY.md) for the detailed coverage boundaries and
 trade-offs.
 

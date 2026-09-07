@@ -4,7 +4,8 @@ import {
   createLightMusicController,
   getLightMusicTargetGain,
 } from "../../src/audio/lightMusicController";
-import { dbToGain } from "../../src/audio/simpleComposition";
+
+const DUCKED_GAME_OVER_GAIN = 0.5012;
 
 type FakeGainParam = {
   value: number;
@@ -20,16 +21,14 @@ type FakeGain = {
 };
 
 type FakeAudioContext = {
-  fake: {
-    context: AudioContext;
-    createdGains: FakeGain[];
-    resume: ReturnType<typeof vi.fn>;
-    suspend: ReturnType<typeof vi.fn>;
-    close: ReturnType<typeof vi.fn>;
-    createOscillator: ReturnType<typeof vi.fn>;
-    createBuffer: ReturnType<typeof vi.fn>;
-    setCurrentTime: (time: number) => void;
-  };
+  context: AudioContext;
+  createdGains: FakeGain[];
+  resume: ReturnType<typeof vi.fn>;
+  suspend: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+  createOscillator: ReturnType<typeof vi.fn>;
+  createBuffer: ReturnType<typeof vi.fn>;
+  setCurrentTime: (time: number) => void;
 };
 
 function createFakeGain(): FakeGain {
@@ -47,7 +46,7 @@ function createFakeGain(): FakeGain {
   };
 }
 
-function createFakeAudioContext(): FakeAudioContext["fake"] {
+function createFakeAudioContext(): FakeAudioContext {
   const createdGains: FakeGain[] = [];
   const resume = vi.fn(() => Promise.resolve());
   const suspend = vi.fn(() => Promise.resolve());
@@ -108,7 +107,7 @@ function createFakeAudioContext(): FakeAudioContext["fake"] {
   };
 }
 
-function getLastTargetGain(fake: FakeAudioContext["fake"]): number | undefined {
+function getLastTargetGain(fake: FakeAudioContext): number | undefined {
   const calls = fake.createdGains.flatMap(
     (gain) => gain.gain.setTargetAtTime.mock.calls,
   );
@@ -128,7 +127,7 @@ describe("light music target gain", () => {
     expect(getLightMusicTargetGain("running", true, true, true, false)).toBe(1);
 
     const ducked = getLightMusicTargetGain("gameOver", true, true, true, false);
-    expect(ducked).toBeCloseTo(dbToGain(-6), 10);
+    expect(ducked).toBeCloseTo(DUCKED_GAME_OVER_GAIN, 4);
     expect(ducked).toBeGreaterThan(0);
     expect(ducked).toBeLessThan(1);
   });
@@ -192,7 +191,12 @@ describe("light music lifecycle", () => {
       throw new Error("buffer failed");
     });
     const createAudioContext = vi.fn(() => fake.context);
-    const controller = createLightMusicController({ createAudioContext });
+    const stopScheduler = vi.fn();
+    const controller = createLightMusicController({
+      createAudioContext,
+      startScheduler: () => 1 as unknown as ReturnType<typeof setInterval>,
+      stopScheduler,
+    });
 
     controller.setRunningLevel();
     await expect(controller.startFromUserGesture()).rejects.toThrow("buffer failed");
@@ -200,8 +204,12 @@ describe("light music lifecycle", () => {
 
     expect(createAudioContext).toHaveBeenCalledTimes(2);
     expect(fake.resume).toHaveBeenCalledOnce();
+    expect(stopScheduler).not.toHaveBeenCalled();
 
     controller.dispose();
+
+    expect(stopScheduler).toHaveBeenCalledOnce();
+    expect(fake.close).toHaveBeenCalledTimes(2);
   });
 
   it("clamps the scheduler instead of burst-scheduling after a long pause", async () => {
@@ -245,7 +253,7 @@ describe("light music lifecycle", () => {
     controller.setGameOverLevel();
 
     expect(schedulerStarts).toBe(1);
-    expect(getLastTargetGain(fake)).toBeCloseTo(dbToGain(-6), 10);
+    expect(getLastTargetGain(fake)).toBeCloseTo(DUCKED_GAME_OVER_GAIN, 4);
 
     controller.dispose();
   });

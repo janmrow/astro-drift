@@ -92,13 +92,13 @@ Stable `data-testid` DOM hooks relied on by Playwright:
 - Improve the existing arcade loop, small visual polish, architecture, tests, CI, and documentation.
 - Do not grow the project into a large game unless explicitly requested.
 - Do not add React, a backend, accounts, a database, multiplayer, complex levels, shooting mechanics, power-ups, large redesigns, or broad rewrites unless explicitly requested.
-- Keep the existing stack: TypeScript, Vite, Canvas, Tone.js, Vitest, Playwright, ESLint, and GitHub Actions.
+- Keep the existing stack: TypeScript, Vite, Canvas, Web Audio, Vitest, Playwright, ESLint, and GitHub Actions.
 - Do not switch package managers or add dependencies unless the task requires it or the trade-off is clearly justified.
 - Keep game rules in `src/game/`, Canvas rendering and tokens in
-  `src/rendering/`, procedural music and Tone.js lifecycle in `src/audio/`, DOM
+  `src/rendering/`, procedural music and Web Audio lifecycle in `src/audio/`, DOM
   styling in `src/style.css`, keyboard input in `src/input/keyboard.ts`, and
   browser persistence in `src/storage/bestScoreStorage.ts`.
-- `src/game/` must not depend on Tone.js, audio controllers, or browser-audio
+- `src/game/` must not depend on the audio controller or browser-audio
   state. `src/main.ts` translates broad application transitions into audio
   controller operations.
 - Keep `src/main.ts` mostly as glue.

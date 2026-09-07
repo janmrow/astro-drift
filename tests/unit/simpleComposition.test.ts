@@ -2,22 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import {
   createSimpleComposition,
+  dbToGain,
   getBarSeconds,
   getLoopSeconds,
-  SIMPLE_LOFI_BARS_PER_LOOP,
-  SIMPLE_LOFI_BEATS_PER_BAR,
-  SIMPLE_LOFI_BPM,
 } from "../../src/audio/simpleComposition";
 
 describe("simple lo-fi composition", () => {
   it("keeps the selected loop contract", () => {
     const composition = createSimpleComposition();
 
-    expect(composition.bpm).toBe(SIMPLE_LOFI_BPM);
-    expect(composition.beatsPerBar).toBe(SIMPLE_LOFI_BEATS_PER_BAR);
-    expect(composition.barsPerLoop).toBe(SIMPLE_LOFI_BARS_PER_LOOP);
+    expect(composition.bpm).toBe(76);
+    expect(composition.beatsPerBar).toBe(4);
+    expect(composition.barsPerLoop).toBe(4);
     expect(composition.chords).toHaveLength(4);
     expect(composition.bassRoots).toHaveLength(4);
+    expect(composition.chords).toHaveLength(composition.barsPerLoop);
+    expect(composition.bassRoots).toHaveLength(composition.barsPerLoop);
   });
 
   it("creates a fresh deterministic arrangement every time", () => {
@@ -27,6 +27,7 @@ describe("simple lo-fi composition", () => {
     expect(second).toEqual(first);
     expect(second).not.toBe(first);
     expect(second.chords).not.toBe(first.chords);
+    expect(second.bassRoots).not.toBe(first.bassRoots);
   });
 
   it("keeps every frequency finite and positive", () => {
@@ -41,16 +42,16 @@ describe("simple lo-fi composition", () => {
     }
   });
 
-  it("keeps the loop duration consistent with tempo", () => {
+  it("keeps the loop duration consistent with the pinned tempo", () => {
     const composition = createSimpleComposition();
 
-    expect(getBarSeconds(composition.bpm, composition.beatsPerBar)).toBeCloseTo(
-      (60 / SIMPLE_LOFI_BPM) * SIMPLE_LOFI_BEATS_PER_BAR,
-      10,
-    );
-    expect(getLoopSeconds(composition)).toBeCloseTo(
-      getBarSeconds(composition.bpm, composition.beatsPerBar) * composition.barsPerLoop,
-      10,
-    );
+    expect(getBarSeconds(composition.bpm, composition.beatsPerBar)).toBeCloseTo(3.1579, 4);
+    expect(getLoopSeconds(composition)).toBeCloseTo(12.6316, 4);
+  });
+
+  it("converts decibels to a valid gain", () => {
+    expect(dbToGain(0)).toBe(1);
+    expect(dbToGain(-6)).toBeCloseTo(0.5012, 4);
+    expect(dbToGain(6)).toBeGreaterThan(1);
   });
 });

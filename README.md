@@ -44,7 +44,7 @@ Avoid incoming asteroids and pass them safely to increase your score.
 
 ## Getting Started
 
-Use Node.js 22 and npm.
+Use Node.js 24 and npm.
 
 ```bash
 git clone https://github.com/janmrow/astro-drift.git

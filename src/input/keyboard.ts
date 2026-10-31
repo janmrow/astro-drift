@@ -5,7 +5,6 @@ type KeyboardResetHandler = () => void;
 
 type KeyboardActionHandlers = {
   onGameAction: () => void;
-  onRadioToggle: () => void;
 };
 
 const GAMEPLAY_KEYS: ReadonlySet<string> = new Set([
@@ -21,7 +20,7 @@ const GAMEPLAY_KEYS: ReadonlySet<string> = new Set([
 
 export function setupKeyboardControls(
   currentInput: InputState,
-  { onGameAction, onRadioToggle }: KeyboardActionHandlers,
+  { onGameAction }: KeyboardActionHandlers,
 ): KeyboardResetHandler {
   const pressedKeys = new Set<string>();
   const pressedActionKeys = new Set<string>();
@@ -35,7 +34,7 @@ export function setupKeyboardControls(
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
 
-    if (isGameActionKey(key) || isRadioToggleKey(key)) {
+    if (isGameActionKey(key)) {
       event.preventDefault();
 
       if (event.repeat || pressedActionKeys.has(key)) {
@@ -43,12 +42,7 @@ export function setupKeyboardControls(
       }
 
       pressedActionKeys.add(key);
-
-      if (isGameActionKey(key)) {
-        onGameAction();
-      } else {
-        onRadioToggle();
-      }
+      onGameAction();
 
       return;
     }
@@ -65,7 +59,7 @@ export function setupKeyboardControls(
   window.addEventListener("keyup", (event) => {
     const key = event.key.toLowerCase();
 
-    if (isGameActionKey(key) || isRadioToggleKey(key)) {
+    if (isGameActionKey(key)) {
       event.preventDefault();
       pressedActionKeys.delete(key);
       return;
@@ -101,8 +95,4 @@ function isGameplayKey(key: string): boolean {
 
 function isGameActionKey(key: string): boolean {
   return key === "enter";
-}
-
-function isRadioToggleKey(key: string): boolean {
-  return key === "r";
 }

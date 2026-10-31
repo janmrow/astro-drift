@@ -1,6 +1,5 @@
 import "./style.css";
 
-import { createLightMusicController } from "./audio/lightMusicController";
 import { capFrameDelta, createInputState } from "./game/engine";
 import { formatScore, formatTime } from "./game/format";
 import {
@@ -23,7 +22,6 @@ const statusElement = getRequiredElement("[data-testid='game-status']");
 const scoreElement = getRequiredElement("[data-testid='game-score']");
 const timeElement = getRequiredElement("[data-testid='game-time']");
 const asteroidCountElement = getRequiredElement("[data-testid='asteroid-count']");
-const radioStatusElement = getRequiredElement("[data-testid='radio-status']");
 
 const context = getRequiredContext(canvas);
 const canvasStyles = window.getComputedStyle(canvas);
@@ -38,10 +36,8 @@ const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 
 const stars = createStars(STAR_COUNT);
 const input = createInputState();
-const lightMusic = createLightMusicController();
 
 let gameStatus: GameStatus = "idle";
-let radioEnabled = true;
 let previousFrameTime = performance.now();
 let bestScore = readBestScore();
 
@@ -49,40 +45,14 @@ let gameState: GameState = createInitialGameState();
 
 const resetKeyboardControls = setupKeyboardControls(input, {
   onGameAction: handleGameAction,
-  onRadioToggle: handleRadioToggle,
 });
 document.addEventListener("visibilitychange", handleVisibilityChange);
-window.addEventListener("pagehide", handlePageHide);
-window.addEventListener("pageshow", handlePageShow);
 requestAnimationFrame(runGameLoop);
 
 function handleVisibilityChange(): void {
   if (document.visibilityState === "hidden" && gameStatus === "running") {
     persistBestScore();
   }
-
-  syncAudioVisibility();
-}
-
-function handlePageHide(event: PageTransitionEvent): void {
-  if (event.persisted) {
-    void lightMusic.setPageVisible(false).catch(reportAudioFailure);
-    return;
-  }
-
-  lightMusic.dispose();
-}
-
-function handlePageShow(event: PageTransitionEvent): void {
-  if (event.persisted) {
-    syncAudioVisibility();
-  }
-}
-
-function syncAudioVisibility(): void {
-  void lightMusic
-    .setPageVisible(document.visibilityState !== "hidden")
-    .catch(reportAudioFailure);
 }
 
 function persistBestScore(): void {
@@ -104,7 +74,6 @@ function runGameLoop(currentFrameTime: number): void {
 
     if (result.collided) {
       gameStatus = "gameOver";
-      lightMusic.setGameOverLevel();
       persistBestScore();
     }
   }
@@ -120,7 +89,6 @@ function runGameLoop(currentFrameTime: number): void {
     bestScore,
     bonusFeedback: gameState.bonusFeedback,
     fontFamilies,
-    radioEnabled,
   });
   updateDomStatus();
 
@@ -130,45 +98,21 @@ function runGameLoop(currentFrameTime: number): void {
 function handleGameAction(): void {
   if (gameStatus === "idle") {
     startGame();
-    startMusicFromUserGestureIfEnabled();
     return;
   }
 
   if (gameStatus === "gameOver") {
     restartGame();
-    startMusicFromUserGestureIfEnabled();
   }
-}
-
-function handleRadioToggle(): void {
-  radioEnabled = !radioEnabled;
-  lightMusic.setRadioEnabled(radioEnabled);
-  radioStatusElement.textContent = radioEnabled ? "Radio on" : "Radio off";
-
-  if (radioEnabled && gameStatus === "running") {
-    void lightMusic.startFromUserGesture().catch(reportAudioFailure);
-  }
-}
-
-function startMusicFromUserGestureIfEnabled(): void {
-  if (radioEnabled) {
-    void lightMusic.startFromUserGesture().catch(reportAudioFailure);
-  }
-}
-
-function reportAudioFailure(error: unknown): void {
-  console.warn("Light music is unavailable; gameplay will continue silently.", error);
 }
 
 function startGame(): void {
   gameStatus = "running";
-  lightMusic.setRunningLevel();
   previousFrameTime = performance.now();
 }
 
 function restartGame(): void {
   gameStatus = "running";
-  lightMusic.setRunningLevel();
   gameState = createInitialGameState();
   resetKeyboardControls();
   previousFrameTime = performance.now();

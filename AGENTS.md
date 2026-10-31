@@ -10,7 +10,7 @@ Optimize for a small, playable, polished arcade loop with clear architecture, re
 
 ## Setup and Commands
 
-This project uses Node.js 22 and npm.
+This project uses Node.js 24 and npm.
 
 See [README.md](README.md) for setup and primary commands. The scripts in
 `package.json` are the executable source of truth. Use `npm run check` as the

@@ -200,6 +200,37 @@ test("saves the best score when the tab is hidden mid-run", async ({ page }) => 
   expect(storedBestScore).toBeGreaterThanOrEqual(scoreBeforeHiding);
 });
 
+test("keeps the best score across a page reload", async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
+  await page.goto("/");
+
+  await startGameMovingUp(page);
+  await expect(page.getByTestId("game-status")).toHaveText("running");
+  await expect(page.getByTestId("game-score")).toHaveText("00025", { timeout: 5_000 });
+  await page.keyboard.up("ArrowUp");
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+
+  const storedBeforeReload = await page.evaluate(() =>
+    Number(localStorage.getItem("astro-drift-best-score:v2")),
+  );
+  expect(storedBeforeReload).toBeGreaterThan(0);
+
+  await page.reload();
+  await expect(page.getByTestId("game-status")).toHaveText("idle");
+
+  const storedAfterReload = await page.evaluate(() =>
+    Number(localStorage.getItem("astro-drift-best-score:v2")),
+  );
+
+  expect(storedAfterReload).toBe(storedBeforeReload);
+});
+
 async function startGameMovingUp(page: Page): Promise<void> {
   await page.keyboard.down("ArrowUp");
   await page.keyboard.press("Enter");

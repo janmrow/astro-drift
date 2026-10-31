@@ -23,14 +23,8 @@ Astro Drift is intentionally small, frontend-only, and focused on one clear arca
 | Steer down | `Arrow Down` or `S` |
 | Brake gameplay speed | `Arrow Left` or `A` |
 | Boost gameplay speed | `Arrow Right` or `D` |
-| Toggle the radio | `R` |
 
 Avoid incoming asteroids and pass them safely to increase your score.
-
-The session-local radio is enabled by default and shown by a small Canvas
-speaker icon. The procedural simple lo-fi loop starts only from an eligible
-gameplay gesture and remains scheduled across rounds. It plays at the running
-level during gameplay, ducks during game over, and remains silent while idle.
 
 ## Gameplay Highlights
 
@@ -39,13 +33,12 @@ level during gameplay, ducks during game over, and remains silent while idle.
 - After a brief opening grace period, asteroids become faster and arrive more frequently.
 - Asteroid positions are distributed more evenly across the play field to avoid repetitive patterns.
 - Clear HUD, pass, collision, and game-state feedback keep the loop easy to read.
-- A deterministic synthesized lo-fi track supports the loop without audio samples or assets.
 - The best score is saved locally in the browser.
 - Reduced-motion preferences quiet ambient star movement outside active play.
 
 ## Tech Stack
 
-- **Game, audio, and build:** TypeScript, Canvas 2D, Web Audio, Vite
+- **Game and build:** TypeScript, Canvas 2D, Vite
 - **Testing:** Vitest, `fast-check`, Playwright
 - **Quality and automation:** ESLint, GitHub Actions, GitHub Pages
 
@@ -87,7 +80,7 @@ npx playwright install chromium
 
 ## Architecture
 
-Browser-independent game rules and state updates live separately from Canvas rendering, procedural audio, keyboard input, storage, time, and other browser effects. `src/main.ts` connects that core to the browser shell and animation loop. `src/audio/` owns the lazy Web Audio graph and page-lifetime music lifecycle; `src/game/` has no audio dependency.
+Browser-independent game rules and state updates live separately from Canvas rendering, keyboard input, storage, time, and other browser effects. `src/main.ts` connects that core to the browser shell and animation loop.
 
 This boundary keeps important gameplay behavior directly testable without Canvas pixel assertions. The decision and its trade-offs are recorded in [Architecture Decision: Separate Game Engine from Rendering](docs/ADR-001-separate-engine-from-rendering.md).
 
@@ -96,7 +89,6 @@ This boundary keeps important gameplay behavior directly testable without Canvas
 ```text
 src/game/        game rules and state updates
 src/rendering/   Canvas 2D presentation
-src/audio/       procedural music definition and browser-audio lifecycle
 src/input/       keyboard input
 src/storage/     browser persistence
 src/main.ts      browser shell and animation loop
@@ -109,15 +101,13 @@ docs/            architecture, testing, engineering, and visual decisions
 
 ## Testing Approach
 
-- Unit tests cover gameplay rules, deterministic music invariants, and small boundary modules without requiring a browser.
+- Unit tests cover gameplay rules and small boundary modules without requiring a browser.
 - Property-based tests use `fast-check` to exercise meaningful invariants across generated inputs.
 - Playwright verifies important browser-level flows and stable DOM contracts.
-- Manual browser checks cover Canvas presentation, gameplay feel, and audible music quality where pixel-, waveform-, or DSP-level automation would be brittle.
+- Manual browser checks cover Canvas presentation and gameplay feel where pixel-level automation would be brittle.
 
-Canvas pixels and audio waveforms are not automated contracts. Rules and
-composition data are tested below the presentation layer, while browser tests
-observe stable page behavior. The simple loop is synthesized at runtime with
-Web Audio and ships without sample files or other audio assets. See the
+Canvas pixels are not automated contracts. Rules are tested below the presentation layer, while browser tests
+observe stable page behavior. See the
 [Test Strategy](docs/TEST_STRATEGY.md) for the detailed coverage boundaries and
 trade-offs.
 

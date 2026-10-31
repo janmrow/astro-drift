@@ -52,8 +52,9 @@ game-rule updates receive that RNG explicitly rather than selecting a global
 randomness source. Rendering owns separate visual randomness, currently used only
 for the star field in `src/rendering/canvasRenderer.ts`. `src/input/keyboard.ts`
 owns keyboard events, `src/storage/bestScoreStorage.ts` owns browser
-persistence, and `src/audio/` owns the deterministic music definition and
-Tone.js/Web Audio lifecycle.
+persistence.
+Browser audio existed at this boundary until its removal for scope simplicity
+(see the removal addendum below).
 
 ## Consequences
 
@@ -96,7 +97,7 @@ state resets to grow in `main.ts` without unit coverage. To close that gap:
   stay covered directly at unit/property level.
 
 This does not change the trade-off described above: rendering stays out of `src/game/`, and
-`main.ts` stays thin glue that wires input, state, rendering, audio, and storage together.
+`main.ts` stays thin glue that wires input, state, rendering, and storage together.
 
 ## Addendum: audio is an imperative presentation boundary
 
@@ -137,3 +138,12 @@ same controller operations, and `src/game/` still has no audio dependency.
 The startup path is atomic (a failed graph build resets to pre-start so a
 later gesture can retry) and the lookahead scheduler clamps catch-up after
 long pauses instead of burst-scheduling missed bars.
+
+## Addendum: audio removed for scope simplicity
+
+Background music and the session-local radio were removed. `src/audio/`,
+the radio toggle (`R`), the Canvas speaker icon, and the `radio-status` DOM
+hook no longer exist. `src/main.ts` wires input, state, rendering, and storage
+only. `src/game/` remains independent from browser effects. The historical
+addenda above are retained as context for why the boundary existed and why
+removal kept the game smaller without affecting core rules.

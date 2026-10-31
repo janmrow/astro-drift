@@ -17,7 +17,6 @@ function createKeyboardEvent(
 describe("keyboard controls", () => {
   let input: ReturnType<typeof createInputState>;
   let onGameActionRequested: ReturnType<typeof vi.fn<() => void>>;
-  let onRadioToggleRequested: ReturnType<typeof vi.fn<() => void>>;
   let resetKeyboardControls: () => void;
 
   beforeEach(() => {
@@ -25,10 +24,8 @@ describe("keyboard controls", () => {
 
     input = createInputState();
     onGameActionRequested = vi.fn();
-    onRadioToggleRequested = vi.fn();
     resetKeyboardControls = setupKeyboardControls(input, {
       onGameAction: onGameActionRequested,
-      onRadioToggle: onRadioToggleRequested,
     });
   });
 
@@ -123,7 +120,6 @@ describe("keyboard controls", () => {
     expect(event.defaultPrevented).toBe(false);
     expect(input).toEqual(createInputState());
     expect(onGameActionRequested).not.toHaveBeenCalled();
-    expect(onRadioToggleRequested).not.toHaveBeenCalled();
   });
 
   it("uses Enter only for the game action", () => {
@@ -133,27 +129,15 @@ describe("keyboard controls", () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(onGameActionRequested).toHaveBeenCalledOnce();
-    expect(onRadioToggleRequested).not.toHaveBeenCalled();
   });
 
-  it("leaves Space unrelated to game and radio actions", () => {
+  it("leaves Space unrelated to game actions", () => {
     const event = createKeyboardEvent("keydown", " ");
 
     window.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(false);
     expect(onGameActionRequested).not.toHaveBeenCalled();
-    expect(onRadioToggleRequested).not.toHaveBeenCalled();
-  });
-
-  it("uses R only for the radio toggle", () => {
-    const event = createKeyboardEvent("keydown", "R");
-
-    window.dispatchEvent(event);
-
-    expect(event.defaultPrevented).toBe(true);
-    expect(onGameActionRequested).not.toHaveBeenCalled();
-    expect(onRadioToggleRequested).toHaveBeenCalledOnce();
   });
 
   it("does not repeat a held Enter game action", () => {
@@ -167,19 +151,6 @@ describe("keyboard controls", () => {
     window.dispatchEvent(createKeyboardEvent("keydown", "Enter"));
 
     expect(onGameActionRequested).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not repeat a held R radio toggle", () => {
-    window.dispatchEvent(createKeyboardEvent("keydown", "r"));
-    window.dispatchEvent(createKeyboardEvent("keydown", "r", true));
-    window.dispatchEvent(createKeyboardEvent("keydown", "R"));
-
-    expect(onRadioToggleRequested).toHaveBeenCalledOnce();
-
-    window.dispatchEvent(createKeyboardEvent("keyup", "r"));
-    window.dispatchEvent(createKeyboardEvent("keydown", "R"));
-
-    expect(onRadioToggleRequested).toHaveBeenCalledTimes(2);
   });
 
   it("resets gameplay input on window blur", () => {

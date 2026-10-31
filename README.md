@@ -65,12 +65,12 @@ npm run preview
 | Command | Purpose |
 | --- | --- |
 | `npm run lint` | Lint the repository |
-| `npm run typecheck:tests` | Type-check the test suite |
+| `npm run typecheck:tests` | Type-check the tests and game source |
 | `npm test` | Run unit and property-based tests |
 | `npm run test:e2e` | Build the app and run Playwright browser tests |
 | `npm run check` | Run the canonical full local quality gate |
 
-The full gate covers ESLint, TypeScript checks for the tests and application, Vitest, a production build, and Playwright browser tests. The scripts in `package.json` are the executable source of truth.
+The full gate (`npm run check` = `lint`, test typecheck, Vitest, then build + Playwright E2E) covers ESLint, TypeScript checks, unit tests, a production build, and browser tests. The scripts in `package.json` are the executable source of truth.
 
 On a fresh machine, install Playwright's Chromium browser before running browser tests:
 

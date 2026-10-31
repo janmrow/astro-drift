@@ -129,4 +129,4 @@ To reduce flaky tests:
 - avoid Canvas pixel assertions;
 - use DOM status hooks for E2E;
 - keep E2E scenarios short;
-- test one main flow before adding more cases.
+- add a new E2E case only for a distinct browser-level risk.

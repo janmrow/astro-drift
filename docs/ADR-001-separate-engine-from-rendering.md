@@ -99,51 +99,14 @@ state resets to grow in `main.ts` without unit coverage. To close that gap:
 This does not change the trade-off described above: rendering stays out of `src/game/`, and
 `main.ts` stays thin glue that wires input, state, rendering, and storage together.
 
-## Addendum: audio is an imperative presentation boundary
-
-Procedural background music is another browser-facing presentation effect, not
-a game rule. `src/audio/lateLibrary.ts` owns the deterministic Late Library
-composition data. `src/audio/backgroundMusic.ts` owns Tone.js, lazy browser
-audio startup, synthesis and scheduling, state-level gain, visibility, and
-disposal.
-
-`src/main.ts` translates only broad application transitions—start/restart,
-game over, visibility, the session-local radio preference, and page
-teardown—into controller operations. After a user gesture starts the audio
-session, the outer state gain provides the running level, a ducked game-over
-level, and silence while idle, muted, or hidden. These transitions do not
-rebuild the track or schedule.
-
-The Canvas renderer receives the radio preference as presentation-only input
-for its speaker icon, while a non-interactive DOM status exposes the same state
-to accessibility tools and browser tests. Scoring, collision, movement, and
-difficulty do not know about music. In particular, `src/game/` does not depend
-on Web Audio or the audio controller.
-
-This boundary keeps the selected composition directly testable as data while
-leaving Web Audio effects in the imperative shell. It does not introduce a
-general soundtrack service, playlist, audio backend, or adaptive-music system.
-
-## Addendum: lightweight Web Audio loop replaces Tone.js
-
-The Tone.js graph (`src/audio/backgroundMusic.ts`) and the Late Library data
-(`src/audio/lateLibrary.ts`) are replaced by a smaller Web Audio shell with
-the same boundary: `src/audio/simpleComposition.ts` owns the deterministic
-4-chord loop data, `src/audio/lightMusicController.ts` owns lazy
-`AudioContext` startup, synthesis and scheduling, state-level gain,
-visibility, and disposal.
-
-`src/main.ts` keeps translating only broad application transitions into the
-same controller operations, and `src/game/` still has no audio dependency.
-The startup path is atomic (a failed graph build resets to pre-start so a
-later gesture can retry) and the lookahead scheduler clamps catch-up after
-long pauses instead of burst-scheduling missed bars.
-
 ## Addendum: audio removed for scope simplicity
 
 Background music and the session-local radio were removed. `src/audio/`,
 the radio toggle (`R`), the Canvas speaker icon, and the `radio-status` DOM
 hook no longer exist. `src/main.ts` wires input, state, rendering, and storage
-only. `src/game/` remains independent from browser effects. The historical
-addenda above are retained as context for why the boundary existed and why
-removal kept the game smaller without affecting core rules.
+only. `src/game/` remains independent from browser effects.
+
+Earlier revisions described the removed audio boundary in detail (a Tone.js
+graph with deterministic composition data, later a lightweight Web Audio loop).
+That detail is omitted because the feature no longer exists; removal kept the
+game smaller without affecting core rules.
